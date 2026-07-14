@@ -40,14 +40,9 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                     return false;
                 }
 
-                if (response.StatusCode == HttpStatusCode.Forbidden)
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 {
                     return true;
-                }
-
-                if (response.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    throw new DownloadClientException("Failed to connect to qBittorrent. Check your settings and qBittorrent configuration.", new HttpException(response));
                 }
 
                 if (response.HasHttpError)
@@ -341,9 +336,18 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         {
             var requestBuilder = new HttpRequestBuilder(settings.UseSsl, settings.Host, settings.Port, settings.UrlBase)
             {
-                LogResponseContent = true,
-                NetworkCredential = new BasicNetworkCredential(settings.Username, settings.Password)
+                LogResponseContent = true
             };
+
+            if (settings.ApiKey.IsNotNullOrWhiteSpace())
+            {
+                requestBuilder.SetHeader("Authorization", $"Bearer {settings.ApiKey}");
+            }
+            else
+            {
+                requestBuilder.NetworkCredential = new BasicNetworkCredential(settings.Username, settings.Password);
+            }
+
             return requestBuilder;
         }
 
@@ -361,15 +365,20 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             var request = requestBuilder.Build();
             request.LogResponseContent = true;
-            request.SuppressHttpErrorStatusCodes = new[] { HttpStatusCode.Forbidden };
+            request.SuppressHttpErrorStatusCodes = new[] { HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden };
 
             HttpResponse response;
             try
             {
                 response = _httpClient.Execute(request);
 
-                if (response.StatusCode == HttpStatusCode.Forbidden)
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 {
+                    if (settings.ApiKey.IsNotNullOrWhiteSpace())
+                    {
+                        throw new DownloadClientAuthenticationException("Failed to authenticate with qBittorrent API key.");
+                    }
+
                     _logger.Debug("Authentication required, logging in.");
 
                     AuthenticateClient(requestBuilder, settings, true);
@@ -393,6 +402,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         private void AuthenticateClient(HttpRequestBuilder requestBuilder, QBittorrentSettings settings, bool reauthenticate = false)
         {
+            if (settings.ApiKey.IsNotNullOrWhiteSpace())
+            {
+                return;
+            }
+
             if (settings.Username.IsNullOrWhiteSpace() || settings.Password.IsNullOrWhiteSpace())
             {
                 if (reauthenticate)
@@ -437,8 +451,12 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                     throw new DownloadClientUnavailableException("Failed to connect to qBittorrent, please check your settings.", ex);
                 }
 
-                // returns "Fails." on bad login
-                if (response.Content != "Ok.")
+                // qBittorrent 5.2 and newer return 204 No Content on a successful
+                // login. Older versions return 200 OK with an "Ok." response body.
+                var authenticationSucceeded = response.StatusCode == HttpStatusCode.NoContent ||
+                                              (response.StatusCode == HttpStatusCode.OK && response.Content == "Ok.");
+
+                if (!authenticationSucceeded)
                 {
                     _logger.Debug("qbitTorrent authentication failed.");
                     throw new DownloadClientAuthenticationException("Failed to authenticate with qBittorrent.");
