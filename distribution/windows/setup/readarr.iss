@@ -4,7 +4,7 @@
 #define AppName "Readarr"
 #define AppPublisher "Team Readarr"
 #define AppURL "https://readarr.com/"
-#define ForumsURL "https://readarr.com/discord"
+#define ForumsURL "https://discord.gg/5PyXBfvS6T"
 #define AppExeName "Readarr.exe"
 #define BaseVersion GetEnv('MAJORVERSION')
 #define BuildNumber GetEnv('MINORVERSION')
