@@ -99,6 +99,48 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
         }
 
         [Test]
+        public void should_search_when_optional_edition_metadata_is_json_null()
+        {
+            var requests = new List<HttpRequest>();
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Execute(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request =>
+                {
+                    requests.Add(request);
+                    var payload = JObject.Parse(Encoding.UTF8.GetString(request.ContentData));
+                    var operation = payload["operationName"].Value<string>();
+
+                    return new HttpResponse(request,
+                        new HttpHeader { { "Content-Type", "application/json" } },
+                        operation == "Search" ? SearchResponse : CreateSparseWorkResponse());
+                });
+
+            var result = Subject.Search("Foundation");
+
+            result.Should().ContainSingle();
+            result[0].WorkId.Should().Be(101);
+            result[0].BookId.Should().Be(201);
+
+            var work = Subject.GetWork("101");
+            work.Books.Should().ContainSingle();
+            work.Books[0].Language.Should().BeNull();
+            work.Books[0].Publisher.Should().BeNull();
+            requests.Should().HaveCount(2);
+        }
+
+        [Test]
+        public void should_return_empty_results_when_search_envelope_is_json_null()
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Execute(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request => new HttpResponse(request,
+                    new HttpHeader { { "Content-Type", "application/json" } },
+                    NullSearchResponse));
+
+            Subject.Search("Foundation").Should().BeEmpty();
+        }
+
+        [Test]
         public void should_resolve_identifier_to_native_work()
         {
             var requests = new List<HttpRequest>();
@@ -181,9 +223,24 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
             }.ToString();
         }
 
+        private static string CreateSparseWorkResponse()
+        {
+            var response = JObject.Parse(WorkResponse);
+            var edition = (JObject)response["data"]["books_by_pk"]["editions"][0];
+            edition["language"] = JValue.CreateNull();
+            edition["publisher"] = JValue.CreateNull();
+            return response.ToString();
+        }
+
         private const string SearchResponse = @"{
             ""data"": {
                 ""search"": { ""ids"": [101] }
+            }
+        }";
+
+        private const string NullSearchResponse = @"{
+            ""data"": {
+                ""search"": null
             }
         }";
 
