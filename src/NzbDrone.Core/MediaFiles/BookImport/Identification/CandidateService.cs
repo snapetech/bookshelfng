@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
@@ -300,35 +301,40 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
             var bookTag = localEdition.LocalBooks.MostCommon(x => x.FileTrackInfo.BookTitle) ?? "";
 
-            // If no valid author or book tags, stop
-            if (!authorTags.Any() || bookTag.IsNullOrWhiteSpace())
+            // A title is sufficient for a provider search. Author metadata is
+            // useful for narrowing the search, but it is not guaranteed to be
+            // present in a downloaded filename or its embedded tags.
+            if (bookTag.IsNullOrWhiteSpace())
             {
                 yield break;
             }
 
-            // Search by author+book
-            foreach (var authorTag in authorTags)
+            // Search by author+book when author metadata is available.
+            if (authorTags.Any())
             {
-                try
+                foreach (var authorTag in authorTags)
                 {
-                    remoteBooks = _bookSearchService.SearchForNewBook(bookTag, authorTag);
-                }
-                catch (GoodreadsException e)
-                {
-                    _logger.Info(e, "Skipping author/title search due to Goodreads Error");
-                    remoteBooks = new List<Book>();
+                    try
+                    {
+                        remoteBooks = _bookSearchService.SearchForNewBook(bookTag, authorTag);
+                    }
+                    catch (GoodreadsException e)
+                    {
+                        _logger.Info(e, "Skipping author/title search due to Goodreads Error");
+                        remoteBooks = new List<Book>();
+                    }
+
+                    foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
+                    {
+                        yield return candidate;
+                    }
                 }
 
-                foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
+                // If we got an author/book search result, stop
+                if (seenCandidates.Any())
                 {
-                    yield return candidate;
+                    yield break;
                 }
-            }
-
-            // If we got an author/book search result, stop
-            if (seenCandidates.Any())
-            {
-                yield break;
             }
 
             // Search by just book title
@@ -347,22 +353,61 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 yield return candidate;
             }
 
-            // Search by just author
-            foreach (var a in authorTags)
+            // A single-file download can be parsed ambiguously when its name
+            // contains no author/title delimiter. Retry with the normalized
+            // filename before falling back to author-only searches.
+            if (!seenCandidates.Any() && localEdition.LocalBooks.Count == 1)
             {
-                try
-                {
-                    remoteBooks = _bookSearchService.SearchForNewBook(a, null);
-                }
-                catch (GoodreadsException e)
-                {
-                    _logger.Info(e, "Skipping author search due to Goodreads Error");
-                    remoteBooks = new List<Book>();
-                }
+                var filenameBookTag = Path.GetFileNameWithoutExtension(localEdition.LocalBooks[0].Path)?
+                    .Replace('.', ' ')
+                    .Replace('_', ' ')
+                    .Replace('-', ' ')
+                    .Trim();
 
-                foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
+                if (filenameBookTag.IsNotNullOrWhiteSpace() &&
+                    !filenameBookTag.Equals(bookTag, System.StringComparison.InvariantCultureIgnoreCase))
                 {
-                    yield return candidate;
+                    try
+                    {
+                        remoteBooks = _bookSearchService.SearchForNewBook(filenameBookTag, null);
+                    }
+                    catch (GoodreadsException e)
+                    {
+                        _logger.Info(e, "Skipping filename title search due to Goodreads Error");
+                        remoteBooks = new List<Book>();
+                    }
+
+                    foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
+                    {
+                        yield return candidate;
+                    }
+
+                    if (seenCandidates.Any())
+                    {
+                        yield break;
+                    }
+                }
+            }
+
+            // Search by just author when author metadata is available.
+            if (authorTags.Any())
+            {
+                foreach (var a in authorTags)
+                {
+                    try
+                    {
+                        remoteBooks = _bookSearchService.SearchForNewBook(a, null);
+                    }
+                    catch (GoodreadsException e)
+                    {
+                        _logger.Info(e, "Skipping author search due to Goodreads Error");
+                        remoteBooks = new List<Book>();
+                    }
+
+                    foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
+                    {
+                        yield return candidate;
+                    }
                 }
             }
         }
