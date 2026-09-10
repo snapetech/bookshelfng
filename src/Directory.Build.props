@@ -114,6 +114,11 @@
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 
+  <!-- Pin legacy transitive System packages to patched versions. -->
+  <ItemGroup Condition="'$(TestProject)'=='true' or '$(MSBuildProjectName)'=='Readarr.Test.Common'">
+    <PackageReference Include="System.Text.RegularExpressions" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup>
     <EmbedAllSources>true</EmbedAllSources>
     <SourceLinkCreate>true</SourceLinkCreate>
