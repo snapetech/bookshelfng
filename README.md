@@ -48,6 +48,11 @@ Image tags are published by GitHub Actions:
 - `hardcover-v0.4.20`
 - `hardcover-v0.4.20.<run-number>`
 
+The stable `softcover` and `hardcover` tags are updated only by releases from
+the `main` branch. Pushes to `develop` publish `softcover-develop` and
+`hardcover-develop` instead. Downstream applications that use the stable tags
+therefore always consume the latest released `main` build.
+
 If anonymous `docker pull ghcr.io/snapetech/bookshelfng:softcover` returns
 `denied`, the GHCR package visibility still needs to be changed to public in
 GitHub package settings, or Docker needs to be authenticated with package read
@@ -122,6 +127,21 @@ the API key configured in the Bookshelf import-list settings.
 
 This project won't use Discord for support. If you have a problem please file
 an issue or start a discussion.
+
+## Building from source
+
+Install the versions listed in `mise.toml`, then build the backend and frontend
+for a Linux x64 host:
+
+    ./build.sh --backend --frontend -r linux-x64 -f net6.0
+
+Additional MSBuild arguments can be passed with `--msbuild-arg`. For example,
+to keep a NuGet audit warning visible without treating it as an error:
+
+    ./build.sh --backend --frontend -r linux-x64 -f net6.0 --msbuild-arg "-p:WarningsNotAsErrors=NU1903"
+
+Unknown build options fail fast so misspelled or unsupported flags are not
+silently ignored.
 
 ## Contributors & Developers
 

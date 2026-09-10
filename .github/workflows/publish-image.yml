@@ -32,12 +32,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Publish edge images on every develop push so downstream SeerrNG,
-          # which tracks the floating softcover/hardcover tags, always receives
-          # the latest develop changes. Versioned releases still require a
-          # main-* tag pointing at a commit on main.
+          # Stable softcover/hardcover tags are reserved for main releases.
+          # Develop pushes use explicit -develop tags so downstream SeerrNG
+          # cannot accidentally consume unreleased changes.
           if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "develop" ]]; then
-            echo "Publishing edge images from develop."
+            echo "Publishing development images with explicit -develop tags."
+            exit 0
+          fi
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "Publishing stable images from main."
             exit 0
           fi
           if [[ "${GITHUB_REF_NAME}" != main-* ]]; then
@@ -114,9 +117,12 @@ jobs:
             ghcr.io/${{ github.repository }}
             docker.io/snapetech/bookshelfng
           tags: |
-            type=raw,value=softcover
-            type=raw,value=softcover-v${{ env.READARR_VERSION }}
-            type=raw,value=softcover-v${{ env.READARR_VERSION }}.${{ github.run_number }}
+            type=raw,value=softcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=softcover-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=softcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=softcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=softcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
 
       - uses: docker/metadata-action@v5
         id: hardcover_meta
@@ -125,9 +131,12 @@ jobs:
             ghcr.io/${{ github.repository }}
             docker.io/snapetech/bookshelfng
           tags: |
-            type=raw,value=hardcover
-            type=raw,value=hardcover-v${{ env.READARR_VERSION }}
-            type=raw,value=hardcover-v${{ env.READARR_VERSION }}.${{ github.run_number }}
+            type=raw,value=hardcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=hardcover-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=hardcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
 
       - uses: docker/login-action@v3
         with:
