@@ -7,6 +7,9 @@ testPackageFolder='_tests'
 #Artifact variables
 artifactsFolder="_artifacts";
 
+# Additional arguments passed through to the backend MSBuild invocation.
+MSBUILD_ARGS=()
+
 ProgressStart()
 {
     echo "Start '$1'"
@@ -77,12 +80,13 @@ Build()
         platform=Posix
     fi
 
-    if [[ -z "$RID" || -z "$FRAMEWORK" ]];
+    local msbuild_args=(-restore "$slnFile" "-p:Configuration=Release" "-p:Platform=$platform")
+    if [[ -n "$RID" && -n "$FRAMEWORK" ]];
     then
-        dotnet msbuild -restore $slnFile -p:Configuration=Release -p:Platform=$platform -t:PublishAllRids
-    else
-        dotnet msbuild -restore $slnFile -p:Configuration=Release -p:Platform=$platform -p:RuntimeIdentifiers=$RID -t:PublishAllRids
+        msbuild_args+=("-p:RuntimeIdentifiers=$RID")
     fi
+
+    dotnet msbuild "${msbuild_args[@]}" "${MSBUILD_ARGS[@]}" -t:PublishAllRids
 
     ProgressEnd 'Build'
 }
@@ -292,6 +296,7 @@ case "$(uname -s)" in
 esac
 
 POSITIONAL=()
+MSBUILD_ARGS=()
 
 if [ $# -eq 0 ]; then
     echo "No arguments provided, building everything"
@@ -347,6 +352,18 @@ case $key in
         LINT=YES
         shift # past argument
         ;;
+    --msbuild-arg)
+        if [[ $# -lt 2 ]]; then
+            echo "Missing value for --msbuild-arg" >&2
+            exit 2
+        fi
+        MSBUILD_ARGS+=("$2")
+        shift 2
+        ;;
+    --msbuild-arg=*)
+        MSBUILD_ARGS+=("${key#*=}")
+        shift
+        ;;
     --all)
         BACKEND=YES
         FRONTEND=YES
@@ -354,13 +371,12 @@ case $key in
         LINT=YES
         shift # past argument
         ;;
-    *)    # unknown option
-        POSITIONAL+=("$1") # save it in an array for later
-        shift # past argument
+    *)
+        echo "Unknown option: $1" >&2
+        exit 2
         ;;
 esac
 done
-set -- "${POSITIONAL[@]}" # restore positional parameters
 
 if [ "$ENABLE_EXTRA_PLATFORMS_IN_SDK" = "YES" ];
 then
