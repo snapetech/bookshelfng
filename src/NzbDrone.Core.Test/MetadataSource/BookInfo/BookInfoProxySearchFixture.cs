@@ -11,6 +11,7 @@ using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.Test.MetadataSource.BookInfo;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MetadataSource.Goodreads
@@ -23,12 +24,25 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         {
             UseRealHttp();
 
-            Mocker.SetConstant<IGoodreadsSearchProxy>(Mocker.Resolve<GoodreadsSearchProxy>());
+            Mocker.GetMock<IGoodreadsSearchProxy>()
+                .Setup(x => x.Search(It.IsAny<string>()))
+                .Returns((string query) => BookInfoTestData.BookInfoSearchResults(query));
 
-            var httpClient = Mocker.Resolve<IHttpClient>();
             Mocker.GetMock<ICachedHttpResponseService>()
-                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
-                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => httpClient.Get<List<SearchJsonResource>>(request));
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => BookInfoTestData.DetailResponse(request));
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request =>
+                    request.Url.Path.Trim('/').StartsWith("book/", StringComparison.Ordinal)
+                        ? BookInfoTestData.EditionLookupResponse(request)
+                        : BookInfoTestData.DetailResponse(request));
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Post<BulkBookResource>(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request =>
+                    BookInfoTestData.TypedJsonResponse<BulkBookResource>(request, BookInfoTestData.CombinedSearchResponse()));
 
             var metadataProfile = new MetadataProfile();
 

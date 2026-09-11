@@ -8,6 +8,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.Test.MetadataSource.BookInfo;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MetadataSource.Goodreads
@@ -26,7 +27,10 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 
             Mocker.GetMock<ICachedHttpResponseService>()
                 .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
-                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => Mocker.Resolve<IHttpClient>().Get<List<SearchJsonResource>>(request));
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    BookInfoTestData.TypedJsonResponse<List<SearchJsonResource>>(
+                        request,
+                        BookInfoTestData.GoodreadsSearchResults(Uri.UnescapeDataString(request.Url.Query.Substring("q=".Length)))));
         }
 
         [TestCase("Robert Harris", 575)]

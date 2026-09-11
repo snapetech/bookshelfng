@@ -797,6 +797,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var authorId = GetAuthorId(resource).ToString();
             var metadata = resource.Authors.Select(MapAuthorMetadata).ToList();
 
+            // Work responses are also used when resolving an edition. Keep the
+            // primary author metadata on the mapped book so that the edition
+            // path can build its trimmed book without dereferencing null.
+            book.AuthorMetadata = metadata.FirstOrDefault(x => x.ForeignAuthorId == authorId) ?? metadata.First();
+
             var series = resource.Series.Select(MapSeries).ToList();
             MapSeriesLinks(series, new List<Book> { book }, resource.Series);
 

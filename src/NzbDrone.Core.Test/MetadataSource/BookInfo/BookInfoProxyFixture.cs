@@ -4,12 +4,15 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.Test.MetadataSource.BookInfo;
 
 namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 {
@@ -22,6 +25,17 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         public void Setup()
         {
             UseRealHttp();
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => BookInfoTestData.DetailResponse(request));
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request =>
+                    request.Url.Path.Trim('/').StartsWith("book/", StringComparison.Ordinal)
+                        ? BookInfoTestData.EditionLookupResponse(request)
+                        : BookInfoTestData.DetailResponse(request));
 
             _metadataProfile = new MetadataProfile();
 
