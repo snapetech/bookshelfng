@@ -102,25 +102,31 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             dist.AddString("book", fileTitles, titleOptions);
             Logger.Trace("book: '{0}' vs '{1}'; {2}", fileTitles.ConcatToString("' or '"), titleOptions.ConcatToString("' or '"), dist.NormalizedDistance());
 
+            // A matching identifier is strong evidence that this is the right edition, but a
+            // differing one is not evidence that it is the wrong book: editions of the same work
+            // legitimately carry different ISBNs and ASINs, and the metadata source frequently
+            // holds an identifier the file does not. Reward a match rather than punish a
+            // mismatch, otherwise an edition with an identifier scores worse than an unrelated
+            // book that has none.
             var isbn = ValidIdentifier(localTracks.MostCommon(x => x.FileTrackInfo.Isbn), ValidIsbnRegex, "isbn");
-            if (isbn.IsNotNullOrWhiteSpace() && edition.Isbn13.IsNotNullOrWhiteSpace())
+            if (isbn.IsNotNullOrWhiteSpace() && isbn == edition.Isbn13)
             {
-                dist.AddBool("isbn", isbn != edition.Isbn13);
+                dist.AddBool("isbn", false);
                 Logger.Trace("isbn: '{0}' vs '{1}'; {2}", isbn, edition.Isbn13, dist.NormalizedDistance());
             }
-            else if (isbn.IsNullOrWhiteSpace() != edition.Isbn13.IsNullOrWhiteSpace())
+            else if (isbn.IsNotNullOrWhiteSpace() || edition.Isbn13.IsNotNullOrWhiteSpace())
             {
                 dist.AddBool("isbn_missing", true);
                 Logger.Trace("isbn: '{0}' vs '{1}'; {2}", isbn, edition.Isbn13, dist.NormalizedDistance());
             }
 
             var asin = ValidIdentifier(localTracks.MostCommon(x => x.FileTrackInfo.Asin), ValidAsinRegex, "asin");
-            if (asin.IsNotNullOrWhiteSpace() && edition.Asin.IsNotNullOrWhiteSpace())
+            if (asin.IsNotNullOrWhiteSpace() && asin == edition.Asin)
             {
-                dist.AddBool("asin", asin != edition.Asin);
+                dist.AddBool("asin", false);
                 Logger.Trace("asin: '{0}' vs '{1}'; {2}", asin, edition.Asin, dist.NormalizedDistance());
             }
-            else if (asin.IsNullOrWhiteSpace() != edition.Asin.IsNullOrWhiteSpace())
+            else if (asin.IsNotNullOrWhiteSpace() || edition.Asin.IsNotNullOrWhiteSpace())
             {
                 dist.AddBool("asin_missing", true);
                 Logger.Trace("asin: '{0}' vs '{1}'; {2}", asin, edition.Asin, dist.NormalizedDistance());

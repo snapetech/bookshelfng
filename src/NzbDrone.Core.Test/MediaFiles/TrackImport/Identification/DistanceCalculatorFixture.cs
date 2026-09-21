@@ -175,5 +175,37 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
 
             correctDistance.Should().BeLessThan(otherDistance);
         }
+
+        [Test]
+        public void should_not_penalise_a_differing_asin_more_than_a_missing_one()
+        {
+            // Editions of the same work legitimately carry different ASINs, so a mismatch must not
+            // be treated as stronger evidence than a wrong title.
+            var localBook = GivenLocalBook("Twisted Lies", "Ana Huang", asin: "B09TVV9NH2");
+
+            var differingAsin = GivenEdition("Twisted Lies", "Ana Huang", asin: "B0B9FPHBD6");
+            var noAsin = GivenEdition("Twisted Lies", "Ana Huang");
+
+            DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, differingAsin)
+                .NormalizedDistance()
+                .Should()
+                .Be(DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, noAsin).NormalizedDistance());
+        }
+
+        [Test]
+        public void should_prefer_correct_title_over_book_with_matching_missing_identifiers()
+        {
+            // The real-world case from the data-loss report: the file has a valid ASIN that does
+            // not appear on any edition the metadata source holds for the correct book.
+            var localBook = GivenLocalBook("Twisted Lies", "Ana Huang", asin: "B09TVV9NH2");
+
+            var correctBook = GivenEdition("Twisted Lies", "Ana Huang", asin: "B0B9FPHBD6", isbn: "9780349434292");
+            var otherBook = GivenEdition("Twisted Games", "Ana Huang", isbn: "9781728274874");
+
+            DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, correctBook)
+                .NormalizedDistance()
+                .Should()
+                .BeLessThan(DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, otherBook).NormalizedDistance());
+        }
     }
 }
