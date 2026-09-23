@@ -11,6 +11,14 @@ of metadata sources: Goodreads-compatible metadata for existing libraries,
 Hardcover metadata fetched directly from Hardcover, or a compatible hosted or
 self-hosted metadata service.
 
+Google Books, Open Library, Library of Congress, and Goodreads-compatible
+Apify Actors are not currently BookshelfNG runtime metadata providers. SeerrNG
+uses some of these catalogs only in its migration recovery helper; see the
+[SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
+for exact scope and configuration. A runtime provider must support search and
+the follow-up book, author, and edition lookups using its own IDs before it can
+be safely exposed in BookshelfNG.
+
 ## What makes BookshelfNG different
 
 - **Choose how book metadata is served.** The `hardcover` image includes a
@@ -115,6 +123,14 @@ existing proxy or cache, or run your own compatible endpoint. In the
 path instead of direct Hardcover GraphQL access. The choice is explicit, so
 you can see which service is handling metadata requests.
 
+`METADATA_URL` is a compatibility boundary, not an automatic multi-provider
+aggregator. It can point to a service that itself translates or combines
+providers, but BookshelfNG expects that service to return stable IDs and
+compatible detail responses. Goodreads work and edition IDs, Hardcover IDs,
+Google Books volume IDs, Open Library keys, and LOC identifiers are not
+interchangeable. BookshelfNG does not currently query those public catalogs as
+fallbacks when the selected runtime provider fails.
+
 ## Moving an existing library to Hardcover
 
 Do not switch an existing Goodreads/softcover database to Hardcover by changing
@@ -129,6 +145,15 @@ optionally use a softcover endpoint to recover metadata for stale IDs. Its
 deterministic local database fallback can preserve books that Hardcover still
 cannot import. Those fallback entries, such as `local:ebook:1076`, are local
 Bookshelf records rather than native Hardcover records.
+
+SeerrNG's migration helper can additionally search Google Books and the
+Library of Congress and can optionally call a user-selected Apify Actor that
+scrapes Goodreads-compatible catalogs. These sources are used to recover
+candidate metadata and attempt strict remapping to Hardcover. Unmatched
+metadata can enrich the optional local fallback. This tooling does not add
+Google Books, LOC, or Apify results to BookshelfNG's ordinary search/detail
+flows. Apify Actors are third-party services with Actor-specific schemas and
+potential charges; Goodreads does not issue new public developer API keys.
 
 ## BookshelfNG with SeerrNG
 
