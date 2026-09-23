@@ -338,7 +338,7 @@ namespace NzbDrone.Core.Books
             }
         }
 
-        private void RefreshSelectedAuthors(List<int> authorIds, bool isNew, CommandTrigger trigger)
+        private void RefreshSelectedAuthors(List<int> authorIds, bool isNew, CommandTrigger trigger, bool forceRefresh = false)
         {
             var updated = false;
             var authors = _authorService.GetAuthors(authorIds);
@@ -350,6 +350,15 @@ namespace NzbDrone.Core.Books
 
             foreach (var author in authors)
             {
+                if (!forceRefresh &&
+                    trigger != CommandTrigger.Manual &&
+                    author.LastInfoSync.HasValue &&
+                    !_checkIfAuthorShouldBeRefreshed.ShouldRefresh(author))
+                {
+                    _logger.Info("Skipping refresh of author: {0}", author.Name);
+                    continue;
+                }
+
                 try
                 {
                     var data = GetSkyhookData(author.ForeignAuthorId);
@@ -376,7 +385,7 @@ namespace NzbDrone.Core.Books
 
             if (message.AuthorId.HasValue)
             {
-                RefreshSelectedAuthors(new List<int> { message.AuthorId.Value }, isNew, trigger);
+                RefreshSelectedAuthors(new List<int> { message.AuthorId.Value }, isNew, trigger, message.ForceRefresh);
             }
             else
             {

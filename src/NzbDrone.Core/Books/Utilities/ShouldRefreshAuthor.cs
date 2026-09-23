@@ -22,9 +22,9 @@ namespace NzbDrone.Core.Books
 
         public bool ShouldRefresh(Author author)
         {
-            if (author.LastInfoSync < DateTime.UtcNow.AddDays(-30))
+            if (!author.LastInfoSync.HasValue || author.LastInfoSync.Value < DateTime.UtcNow.AddDays(-30))
             {
-                _logger.Trace("Author {0} last updated more than 30 days ago, should refresh.", author.Name);
+                _logger.Trace("Author {0} has never been updated or was updated more than 30 days ago, should refresh.", author.Name);
                 return true;
             }
 

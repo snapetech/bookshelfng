@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Books
             // Refresh Author is we change BookType Preferences
             if (message.Author.MetadataProfileId != message.OldAuthor.MetadataProfileId)
             {
-                _commandQueueManager.Push(new RefreshAuthorCommand(message.Author.Id, false));
+                _commandQueueManager.Push(new RefreshAuthorCommand(message.Author.Id, forceRefresh: true));
             }
         }
     }

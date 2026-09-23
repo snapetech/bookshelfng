@@ -6,15 +6,17 @@ namespace NzbDrone.Core.Books.Commands
     {
         public int? AuthorId { get; set; }
         public bool IsNewAuthor { get; set; }
+        public bool ForceRefresh { get; set; }
 
         public RefreshAuthorCommand()
         {
         }
 
-        public RefreshAuthorCommand(int? authorId, bool isNewAuthor = false)
+        public RefreshAuthorCommand(int? authorId, bool isNewAuthor = false, bool forceRefresh = false)
         {
             AuthorId = authorId;
             IsNewAuthor = isNewAuthor;
+            ForceRefresh = forceRefresh;
         }
 
         public override bool SendUpdatesToClient => true;
