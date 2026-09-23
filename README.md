@@ -1,17 +1,58 @@
 # BookshelfNG
 
-BookshelfNG is a self-hosted ebook and audiobook library manager descended from
-Readarr. It monitors RSS feeds for books by authors you follow, searches Usenet
-and BitTorrent download clients, and organizes, renames, and upgrades files in
-your library. It can run on its own; SeerrNG integration is optional.
+BookshelfNG is a self-hosted ebook and audiobook library manager descended
+from Readarr. Follow authors and books, monitor indexers for new releases,
+automatically grab downloads, and organize, rename, and upgrade files in your
+library. BookshelfNG is a complete app on its own. It does not require SeerrNG
+or a metadata proxy.
 
-Bookshelf supports one format per book in an instance. Run separate instances
-if you want to manage both the ebook and audiobook editions of the same title.
+BookshelfNG is for people who want Readarr-style book automation with a choice
+of metadata sources: Goodreads-compatible metadata for existing libraries,
+Hardcover metadata fetched directly from Hardcover, or a compatible hosted or
+self-hosted metadata service.
+
+## What makes BookshelfNG different
+
+- **Choose how book metadata is served.** The `hardcover` image includes a
+  native Hardcover GraphQL provider. Search, author, work, edition, series,
+  ISBN, and ASIN lookups go from BookshelfNG directly to Hardcover. There is
+  no proxy between them. When you need one, BookshelfNG can use a
+  Readarr-compatible metadata endpoint instead, including a service you host
+  yourself.
+- **Keep old libraries usable.** The `softcover` image retains Goodreads
+  compatible IDs and import behavior for existing Readarr/softcover databases.
+  You can also choose a compatible metadata endpoint with `METADATA_URL`.
+- **Identify ebooks from their own metadata.** BookshelfNG reads identifiers
+  embedded in ebook files, strips ISBN formatting, validates ISBN-10 and
+  ISBN-13 check digits, and prefers ISBN-13 when an ebook provides multiple
+  valid identifiers. ISBN and ASIN are also used for direct metadata searches
+  and edition matching.
+- **Match real world releases more reliably.** Import identification considers
+  edition metadata and identifiers, uses improved title and author matching,
+  and can match title-only ebooks and audiobooks when author information is
+  absent. Search result ordering is preserved so results stay predictable.
+- **Import books from the lists you use.** BookshelfNG supports Goodreads
+  shelves, owned books, series, and Listopia lists, plus native Hardcover list
+  imports. Hardcover imports honor the lists selected in configuration.
+- **Search MyAnonamouse directly.** The native MyAnonamouse indexer lets you
+  use the tracker without adding Prowlarr as an intermediary.
+- **Connect current download clients.** BookshelfNG supports qBittorrent 5.2
+  authentication alongside the download clients inherited from Readarr.
+- **Keep the familiar automation.** Monitor authors and books, search RSS
+  feeds, apply quality and metadata profiles, manage download clients, scan
+  and import existing files, and rename and upgrade releases automatically.
+- **Keep library activity private.** BookshelfNG removes Servarr's Sentry
+  analytics and exception-reporting integration.
+
+BookshelfNG retains the Readarr-compatible API and the broader Readarr
+library-management workflow. It supports one format per book in an instance;
+run separate ebook and audiobook instances if you want both formats of the
+same title.
 
 ## Quick start
 
 The web interface listens on port `8787`. Persist `/config`, and mount your
-downloads and library paths where the application and download clients can
+downloads and library paths so BookshelfNG and your download clients can
 access them.
 
 ```yaml
@@ -27,53 +68,81 @@ services:
     restart: unless-stopped
 ```
 
-Start it with `docker compose up -d`, then open `http://localhost:8787` to
-configure your root folder, metadata provider, indexers, and download clients.
-The image is also available as `ghcr.io/snapetech/bookshelfng:softcover`.
+Start it with `docker compose up -d`, then open `http://localhost:8787` to set
+up your root folder, metadata source, indexers, and download clients. The
+`softcover` image is available for Goodreads-compatible libraries.
 
-## Metadata providers
+## Metadata sources
 
-BookshelfNG offers two metadata modes:
+### Hardcover: direct API access
 
-- **Hardcover** (`hardcover` image): uses BookshelfNG's native Hardcover
-  GraphQL provider by default. Set `HARDCOVER=true` and provide
-  `HARDCOVER_AUTH=Bearer your-hardcover-api-token` at runtime. You can use
-  `HARDCOVER_API_KEY` instead of `HARDCOVER_AUTH`. The default API endpoint is
-  `https://api.hardcover.app`; `HARDCOVER_API_URL` can override it. Native
-  metadata requests go directly from BookshelfNG to Hardcover; no metadata
-  proxy is required. Set `HARDCOVER_NATIVE=false` to use the compatibility
-  endpoint configured with `METADATA_URL` instead.
-- **Goodreads-compatible** (`softcover` image): retains compatibility with
-  existing Readarr databases and Goodreads list imports. Goodreads metadata
-  quality is variable.
+The `hardcover` image uses BookshelfNG's native Hardcover GraphQL provider by
+default. It searches Hardcover for books and authors and maps work, edition,
+series, ISBN, and ASIN data into Bookshelf's existing metadata model. This
+removes the extra metadata service from the normal request path.
 
-Goodreads/softcover and Hardcover foreign author, book, and edition IDs are not
-interchangeable. Changing an existing database from softcover to Hardcover by
-changing only the image tag or metadata URL can leave records that the new
-provider cannot resolve. Back up your configuration before changing providers
-and follow the migration guidance below when migrating an existing library.
+Native access requires a Hardcover API token at runtime:
 
-## Using BookshelfNG with SeerrNG
+```env
+HARDCOVER=true
+HARDCOVER_AUTH=Bearer your-hardcover-api-token
+```
 
-SeerrNG can use BookshelfNG as a Readarr-compatible ebook or audiobook service.
-This integration is optional: BookshelfNG runs as a complete library manager
-without SeerrNG.
+`HARDCOVER_API_KEY` is accepted in place of `HARDCOVER_AUTH`. The default API
+endpoint is `https://api.hardcover.app`; set `HARDCOVER_API_URL` to use a
+compatible endpoint or test service. Credentials are provided at runtime and
+are not baked into the image.
 
-The `softcover` image is useful when retaining a Readarr-compatible database.
-Its `/api/v1/book/lookup` response includes nested author and edition metadata
-when BookshelfNG can resolve it, which supports downstream book-add requests.
+Native mode handles transient request failures and sparse or nullable metadata
+responses, maps Hardcover work and edition records into Bookshelf's library
+model, and caches responses in the BookshelfNG process for the lifetime of the
+instance. It does not silently switch to another metadata service after an API
+error.
 
-For an existing softcover library migrating to Hardcover, back up the ebook
-and audiobook configuration directories first. SeerrNG's migration helper can
-inventory the source database, rebuild strict matches against a temporary
-Hardcover BookshelfNG target, and optionally use a softcover endpoint or its
-deterministic local database fallback for records Hardcover cannot import.
-Fallback records such as `local:ebook:1076` are local Bookshelf records, not
-native Hardcover metadata records.
+### Goodreads-compatible metadata and proxies
+
+The `softcover` image is intended for Goodreads-compatible metadata and
+existing Readarr/softcover databases. Goodreads and Hardcover use different
+foreign author, book, and edition IDs; those IDs cannot be converted by
+changing an image tag or metadata URL.
+
+BookshelfNG also supports the Readarr-compatible metadata API through
+`METADATA_URL`. Use a hosted service such as rreading-glasses, preserve an
+existing proxy or cache, or run your own compatible endpoint. In the
+`hardcover` image, set `HARDCOVER_NATIVE=false` to select this compatibility
+path instead of direct Hardcover GraphQL access. The choice is explicit, so
+you can see which service is handling metadata requests.
+
+## Moving an existing library to Hardcover
+
+Do not switch an existing Goodreads/softcover database to Hardcover by changing
+only the image tag or `METADATA_URL`. The two providers' foreign IDs are not
+portable, and a direct switch can leave existing authors, books, and editions
+that Hardcover cannot resolve.
+
+Back up the ebook and audiobook configuration directories before migrating.
+SeerrNG includes a migration helper that can inventory the source database,
+rebuild strict matches against a temporary Hardcover BookshelfNG target, and
+optionally use a softcover endpoint to recover metadata for stale IDs. Its
+deterministic local database fallback can preserve books that Hardcover still
+cannot import. Those fallback entries, such as `local:ebook:1076`, are local
+Bookshelf records rather than native Hardcover records.
+
+## BookshelfNG with SeerrNG
+
+SeerrNG can connect to BookshelfNG as a Readarr-compatible ebook or audiobook
+service. That integration is optional; BookshelfNG can monitor, download, and
+manage a library without SeerrNG.
+
+For compatible book-add requests, BookshelfNG's
+`/api/v1/book/lookup` response includes nested author and edition metadata when
+it can resolve the requested book. Use the `softcover` image when retaining a
+Readarr-compatible Goodreads database, or use the Hardcover migration process
+above when moving to Hardcover metadata.
 
 ## Releases
 
-GitHub Actions publishes these rolling and versioned image tags:
+GitHub Actions publishes these rolling and versioned container tags:
 
 - `softcover`, `softcover-v0.4.20`, `softcover-v0.4.20.<run-number>`
 - `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
