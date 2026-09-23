@@ -109,6 +109,64 @@ model, and caches responses in the BookshelfNG process for the lifetime of the
 instance. It does not silently switch to another metadata service after an API
 error.
 
+Text search fetches Hardcover's result IDs in one batched book query instead
+of making a separate detail request for every result. ISBN/ASIN searches and
+edition lookups fetch the parent work in the same GraphQL operation. API
+requests are paced at one per second. BookshelfNG honors Hardcover's
+`Retry-After` and exhausted rate-limit headers; when a limit is reached, it
+stops sending further requests from this process until the reported reset and
+returns an error for calls made during that cooldown instead of retrying into
+the limit.
+
+### Optional additional runtime catalogs
+
+The Hardcover image can merge configured Google Books, Library of Congress,
+and Apify Goodreads-compatible results into normal book searches. Hardcover
+remains the primary default source. Additional providers are opt-in and are
+selected with `BOOKSHELF_METADATA_SOURCES`; supported values are
+`googlebooks`, `loc`, and `apify-goodreads`.
+
+```env
+HARDCOVER=true
+HARDCOVER_AUTH=Bearer your-hardcover-api-token
+BOOKSHELF_METADATA_SOURCES=googlebooks,loc
+GOOGLE_BOOKS_API_KEY=your-google-books-api-key
+```
+
+To add a Goodreads-compatible Apify Actor:
+
+```env
+BOOKSHELF_METADATA_SOURCES=googlebooks,loc,apify-goodreads
+HARDCOVER_APIFY_GOODREADS_ACTOR=publisher~goodreads-scraper
+HARDCOVER_APIFY_TOKEN=your-apify-token
+# Override only when the Actor does not use searchQueries and maxItems:
+HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE={"searchQueries":[{{query}}],"maxItems":10}
+```
+
+Google Books public searches require a Google API key; user OAuth is not
+needed. Library of Congress search is public and rate limited. The optional
+Apify adapter runs a user-selected Actor, whose schema, availability, terms,
+and pricing are controlled by its publisher. The default Actor input is
+`{"searchQueries":[{{query}}],"maxItems":10}`; a custom JSON template must
+include the literal `{{query}}` placeholder, which Bookshelf replaces with a
+JSON-escaped search string. Actor output is normalized from common Goodreads
+scraper fields, and results missing a title or author are skipped.
+
+Each provider result receives a namespaced foreign ID such as
+`googlebooks:volume-id`, `loc:<encoded-record-url>`, or
+`apify-goodreads:<encoded-record-key>`. Bookshelf uses those same IDs for
+subsequent book and author metadata lookups; it does not coerce them into
+numeric Goodreads IDs. The selected provider names and credentials must remain
+available when the library is refreshed. Search results are cached for 10
+minutes, Google Books and LOC responses for one day, and Apify result sets for
+one day. Provider failures are logged independently; other configured sources
+continue to return results.
+
+To use only the selected primary source, leave `BOOKSHELF_METADATA_SOURCES`
+unset. This variable applies to the `hardcover` and `softcover` images. It does
+not rewrite IDs already stored in the library, and it does not combine remote
+catalog results into Hardcover itself.
+
 ### Goodreads-compatible metadata and proxies
 
 The `softcover` image is intended for Goodreads-compatible metadata and
@@ -128,8 +186,10 @@ aggregator. It can point to a service that itself translates or combines
 providers, but BookshelfNG expects that service to return stable IDs and
 compatible detail responses. Goodreads work and edition IDs, Hardcover IDs,
 Google Books volume IDs, Open Library keys, and LOC identifiers are not
-interchangeable. BookshelfNG does not currently query those public catalogs as
-fallbacks when the selected runtime provider fails.
+interchangeable. The optional additional catalogs documented above provide
+parallel search results and provider-specific detail lookups; they do not
+rewrite IDs already stored in the library or silently replace a failed primary
+provider.
 
 ## Moving an existing library to Hardcover
 
@@ -173,6 +233,13 @@ GitHub Actions publishes these rolling and versioned container tags:
 
 - `softcover`, `softcover-v0.4.20`, `softcover-v0.4.20.<run-number>`
 - `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
+
+Tagged `main-v*` builds also publish a GitHub Release with curated release
+notes and announce the successfully built softcover and hardcover images to
+Discord. Pull requests require a release-note fragment for user-facing changes;
+internal-only work must be marked `release-note: none`. See
+[`release-notes/README.md`](./release-notes/README.md) for the format and
+preview command.
 
 If an anonymous pull returns `denied`, the GHCR package may not be public yet;
 you can also authenticate with package read access.
