@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
@@ -45,6 +46,9 @@ namespace NzbDrone.Core.MetadataSource.Hardcover
         private const int CacheLockCount = 32;
         private const int MaxRequestAttempts = 3;
         private const int AuthorPageSize = 50;
+        private const int RequestRateLimitSeconds = 1;
+        private static readonly object RateLimitPauseLock = new object();
+        private static readonly SemaphoreSlim RequestSemaphore = new SemaphoreSlim(1, 1);
         private static readonly Regex AsinRegex = new Regex("^[Bb]0[0-9A-Za-z]{8}$", RegexOptions.Compiled);
         private static readonly Regex Isbn10Regex = new Regex("^[0-9]{9}[0-9Xx]$", RegexOptions.Compiled);
         private static readonly Regex Isbn13Regex = new Regex("^[0-9]{13}$", RegexOptions.Compiled);
@@ -123,6 +127,41 @@ query GetWorkByASINISBN($identifier: String!) {
   ) {
     id
     book_id
+    title
+    subtitle
+    asin
+    isbn_13
+    edition_format
+    pages
+    language { code3 }
+    publisher { name }
+    release_date
+    physical_format
+    physical_information
+    edition_information
+    book {
+      id
+      title
+      subtitle
+      description
+      release_date
+      cached_tags(path: ""$.Genre"")
+      cached_image(path: ""url"")
+      slug
+      canonical_id
+      rating
+      ratings_count
+      contributions {
+        contribution
+        author {
+          id
+          name
+          slug
+          bio
+          cached_image(path: ""url"")
+        }
+      }
+    }
   }
 }";
 
@@ -176,10 +215,105 @@ query GetWork($bookID: Int!) {
   }
 }";
 
+        private static readonly string WorksByIdsQuery = @"
+query GetWorksByIds($ids: [Int!]!) {
+  books(where: { id: { _in: $ids } }, limit: 100) {
+    id
+    title
+    subtitle
+    description
+    release_date
+    cached_tags(path: ""$.Genre"")
+    cached_image(path: ""url"")
+    slug
+    canonical_id
+    rating
+    ratings_count
+    contributions {
+      contribution
+      author {
+        id
+        name
+        slug
+        bio
+        cached_image(path: ""url"")
+      }
+    }
+    book_series {
+      position
+      series {
+        id
+        name
+        description
+      }
+    }
+    editions(order_by: { score: desc_nulls_last }) {
+      id
+      title
+      subtitle
+      asin
+      isbn_13
+      edition_format
+      pages
+      language { code3 }
+      publisher { name }
+      release_date
+      physical_format
+      physical_information
+      edition_information
+    }
+  }
+}";
+
         private static readonly string EditionQuery = @"
 query GetEdition($editionID: Int!) {
   editions_by_pk(id: $editionID) {
-    book { id }
+    book {
+      id
+      title
+      subtitle
+      description
+      release_date
+      cached_tags(path: ""$.Genre"")
+      cached_image(path: ""url"")
+      slug
+      canonical_id
+      rating
+      ratings_count
+      contributions {
+        contribution
+        author {
+          id
+          name
+          slug
+          bio
+          cached_image(path: ""url"")
+        }
+      }
+      book_series {
+        position
+        series {
+          id
+          name
+          description
+        }
+      }
+      editions(order_by: { score: desc_nulls_last }) {
+        id
+        title
+        subtitle
+        asin
+        isbn_13
+        edition_format
+        pages
+        language { code3 }
+        publisher { name }
+        release_date
+        physical_format
+        physical_information
+        edition_information
+      }
+    }
   }
 }";
 
@@ -258,6 +392,8 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
   }
 }";
 
+        private static DateTime _rateLimitPauseUntilUtc = DateTime.MinValue;
+
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
         private readonly ICached<WorkResource> _workCache;
@@ -318,14 +454,23 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             var id = ParseId(foreignEditionId, "edition");
             var data = ExecuteGraphQl("GetEdition", EditionQuery, new JObject { ["editionID"] = id });
             var edition = data["editions_by_pk"] as JObject;
-            var workId = GetInt(AsObject(edition?["book"])?["id"]);
+            var work = edition?["book"] as JObject;
+            var workId = GetInt(work?["id"]);
 
             if (workId == 0)
             {
                 throw new EditionNotFoundException(foreignEditionId);
             }
 
-            return GetWork(workId.ToString(CultureInfo.InvariantCulture));
+            var canonicalId = GetInt(work["canonical_id"]);
+            if (canonicalId != 0 && canonicalId != workId)
+            {
+                return GetWork(canonicalId.ToString(CultureInfo.InvariantCulture));
+            }
+
+            var result = MapWork(work);
+            _workCache.Set(workId.ToString(CultureInfo.InvariantCulture), result, TimeSpan.FromHours(6));
+            return result;
         }
 
         private List<SearchJsonResource> SearchUncached(string query)
@@ -344,17 +489,17 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
                 return results;
             }
 
-            foreach (var idToken in ids)
-            {
-                var workId = GetInt(idToken);
-                if (workId == 0)
-                {
-                    continue;
-                }
+            var workIds = ids
+                .Select(GetInt)
+                .Where(x => x != 0)
+                .Distinct()
+                .ToList();
+            var works = LoadWorks(workIds);
 
-                try
+            foreach (var workId in workIds)
+            {
+                if (works.TryGetValue(workId, out var work))
                 {
-                    var work = GetWork(workId.ToString(CultureInfo.InvariantCulture));
                     var edition = work.Books?.FirstOrDefault();
                     var author = work.Authors?.FirstOrDefault();
 
@@ -364,10 +509,6 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
                     }
 
                     results.Add(ToSearchResource(work, edition, author));
-                }
-                catch (BookInfoException ex)
-                {
-                    _logger.Warn(ex, "Unable to map Hardcover work {0} returned for search {1}", workId, query);
                 }
             }
 
@@ -385,10 +526,38 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
                 return results;
             }
 
-            foreach (var editionToken in editions.OfType<JObject>())
+            var editionRows = editions.OfType<JObject>().ToList();
+            var canonicalIds = editionRows
+                .Select(x => x["book"] as JObject)
+                .Where(x => GetInt(x?["id"]) > 0)
+                .Select(x => new { WorkId = GetInt(x["id"]), CanonicalId = GetInt(x["canonical_id"]) })
+                .Where(x => x.CanonicalId != 0 && x.CanonicalId != x.WorkId)
+                .Select(x => x.CanonicalId);
+            var works = LoadWorks(canonicalIds);
+            var missingBookIds = editionRows
+                .Where(x => GetInt(AsObject(x["book"])?["id"]) == 0)
+                .Select(x => GetInt(x["book_id"]))
+                .Where(x => x > 0)
+                .Distinct();
+            foreach (var workId in missingBookIds)
+            {
+                try
+                {
+                    works[workId] = GetWork(workId.ToString(CultureInfo.InvariantCulture));
+                }
+                catch (BookInfoException ex)
+                {
+                    _logger.Warn(ex, "Unable to load Hardcover work {0} for identifier {1}", workId, identifier);
+                }
+            }
+
+            foreach (var editionToken in editionRows)
             {
                 var workId = GetInt(editionToken["book_id"]);
                 var editionId = GetInt(editionToken["id"]);
+                var book = editionToken["book"] as JObject;
+                var canonicalId = GetInt(book?["canonical_id"]);
+                var selectedWorkId = canonicalId != 0 && canonicalId != workId ? canonicalId : workId;
                 if (workId == 0 || editionId == 0)
                 {
                     continue;
@@ -396,8 +565,22 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
 
                 try
                 {
-                    var work = GetWork(workId.ToString(CultureInfo.InvariantCulture));
-                    var edition = work.Books?.FirstOrDefault(x => x.ForeignId == editionId);
+                    WorkResource work;
+                    BookResource edition;
+                    if (GetInt(book?["id"]) > 0 && selectedWorkId == workId)
+                    {
+                        work = MapWork(book);
+                        edition = MapEdition(editionToken, book);
+                    }
+                    else if (works.TryGetValue(selectedWorkId, out work))
+                    {
+                        edition = work.Books?.FirstOrDefault(x => x.ForeignId == editionId);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
                     var author = work.Authors?.FirstOrDefault();
 
                     if (edition != null && author != null)
@@ -412,6 +595,94 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             }
 
             return results;
+        }
+
+        private Dictionary<int, WorkResource> LoadWorks(IEnumerable<int> requestedIds)
+        {
+            return LoadWorks(requestedIds, new HashSet<int>());
+        }
+
+        private Dictionary<int, WorkResource> LoadWorks(IEnumerable<int> requestedIds, HashSet<int> visitedIds)
+        {
+            var workIds = requestedIds
+                .Where(x => x > 0)
+                .Distinct()
+                .Where(visitedIds.Add)
+                .ToList();
+            var works = new Dictionary<int, WorkResource>();
+            var missingIds = new List<int>();
+            var canonicalIds = new Dictionary<int, int>();
+
+            foreach (var workId in workIds)
+            {
+                var key = workId.ToString(CultureInfo.InvariantCulture);
+                var cached = _workCache.Find(key);
+                if (cached != null)
+                {
+                    works[workId] = cached;
+                }
+                else
+                {
+                    missingIds.Add(workId);
+                }
+            }
+
+            for (var offset = 0; offset < missingIds.Count; offset += 100)
+            {
+                var batch = missingIds.Skip(offset).Take(100).ToList();
+                var data = ExecuteGraphQl("GetWorksByIds", WorksByIdsQuery, new JObject
+                {
+                    ["ids"] = new JArray(batch.Select(x => new JValue(x)))
+                });
+                var rows = data["books"] as JArray;
+
+                foreach (var row in rows?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+                {
+                    var workId = GetInt(row["id"]);
+                    if (workId == 0)
+                    {
+                        continue;
+                    }
+
+                    var canonicalId = GetInt(row["canonical_id"]);
+                    if (canonicalId != 0 && canonicalId != workId)
+                    {
+                        canonicalIds[workId] = canonicalId;
+                        continue;
+                    }
+
+                    try
+                    {
+                        var work = MapWork(row);
+                        _workCache.Set(workId.ToString(CultureInfo.InvariantCulture), work, TimeSpan.FromHours(6));
+                        works[workId] = work;
+                    }
+                    catch (BookInfoException ex)
+                    {
+                        _logger.Warn(ex, "Unable to map Hardcover work {0} returned in a batch lookup", workId);
+                    }
+                }
+            }
+
+            if (canonicalIds.Count > 0)
+            {
+                var unresolvedCanonicalIds = canonicalIds
+                    .Where(x => !works.ContainsKey(x.Value))
+                    .Select(x => x.Value)
+                    .ToList();
+                var canonicalWorks = LoadWorks(unresolvedCanonicalIds, visitedIds);
+                foreach (var canonical in canonicalIds)
+                {
+                    if (works.TryGetValue(canonical.Value, out var work) ||
+                        canonicalWorks.TryGetValue(canonical.Value, out work))
+                    {
+                        works[canonical.Key] = work;
+                        _workCache.Set(canonical.Key.ToString(CultureInfo.InvariantCulture), work, TimeSpan.FromHours(6));
+                    }
+                }
+            }
+
+            return works;
         }
 
         private AuthorResource LoadAuthor(int id)
@@ -678,27 +949,56 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             {
                 var request = BuildGraphQlRequest(payload);
                 HttpResponse response;
+                DateTime? rateLimitPauseUntil = null;
 
                 try
                 {
-                    response = _httpClient.Execute(request);
+                    RequestSemaphore.Wait();
+                    try
+                    {
+                        ThrowIfRateLimitCooldownActive(operationName);
+                        response = _httpClient.Execute(request);
+
+                        rateLimitPauseUntil = GetRateLimitPauseUntil(response);
+                        if (response.StatusCode == HttpStatusCode.TooManyRequests && !rateLimitPauseUntil.HasValue)
+                        {
+                            rateLimitPauseUntil = DateTime.UtcNow.AddMinutes(1);
+                        }
+
+                        if (rateLimitPauseUntil.HasValue && rateLimitPauseUntil.Value > DateTime.UtcNow)
+                        {
+                            var reason = response.StatusCode == HttpStatusCode.TooManyRequests
+                                ? "returned HTTP 429"
+                                : "rate-limit headers show an exhausted bucket";
+                            PauseRequestsUntil(rateLimitPauseUntil.Value, reason);
+                        }
+                    }
+                    finally
+                    {
+                        RequestSemaphore.Release();
+                    }
                 }
                 catch (WebException ex)
                 {
                     if (attempt < MaxRequestAttempts - 1 && IsTransientNetworkError(ex))
                     {
-                        WaitUntilRetry(null, attempt, ex.Status.ToString());
+                        WaitUntilRetry(attempt, ex.Status.ToString());
                         continue;
                     }
 
                     throw new BookInfoException("Hardcover {0} network request failed", ex, operationName);
                 }
 
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new BookInfoException("Hardcover rate limit reached for {0}; no new requests will be sent before {1:yyyy-MM-dd HH:mm:ss} UTC", operationName, rateLimitPauseUntil.Value);
+                }
+
                 if (IsTransientStatus(response.StatusCode))
                 {
                     if (attempt < MaxRequestAttempts - 1)
                     {
-                        WaitUntilRetry(response, attempt, response.StatusCode.ToString());
+                        WaitUntilRetry(attempt, response.StatusCode.ToString());
                         continue;
                     }
 
@@ -743,6 +1043,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
         {
             var request = new HttpRequestBuilder($"{GetApiUrl().TrimEnd('/')}/v1/graphql")
                 .Post()
+                .WithRateLimit(RequestRateLimitSeconds)
                 .Accept(HttpAccept.Json)
                 .SetHeader("Authorization", $"Bearer {GetApiToken()}")
                 .SetHeader("X-Api-Key", GetApiToken())
@@ -757,23 +1058,149 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return request;
         }
 
-        private void WaitUntilRetry(HttpResponse response, int attempt, string reason)
+        private void WaitUntilRetry(int attempt, string reason)
         {
             var seconds = Math.Min(1 << attempt, 4);
-            if (response != null && response.StatusCode == HttpStatusCode.TooManyRequests &&
-                response.Headers.ContainsKey("Retry-After") && int.TryParse(response.Headers["Retry-After"], out var retryAfter))
-            {
-                seconds = Math.Min(Math.Max(retryAfter, 1), 30);
-            }
-
             _logger.Info("Hardcover returned {0}, retrying in {1}s (attempt {2}/{3})", reason, seconds, attempt + 1, MaxRequestAttempts);
             System.Threading.Thread.Sleep(TimeSpan.FromSeconds(seconds));
+        }
+
+        private void ThrowIfRateLimitCooldownActive(string operationName)
+        {
+            lock (RateLimitPauseLock)
+            {
+                if (_rateLimitPauseUntilUtc > DateTime.UtcNow)
+                {
+                    throw new BookInfoException("Hardcover rate limit pause is active for {0}; no request was sent. Retry after {1:yyyy-MM-dd HH:mm:ss} UTC", operationName, _rateLimitPauseUntilUtc);
+                }
+            }
+        }
+
+        private void PauseRequestsUntil(DateTime pauseUntilUtc, string reason)
+        {
+            var pauseExtended = false;
+            lock (RateLimitPauseLock)
+            {
+                if (pauseUntilUtc > _rateLimitPauseUntilUtc)
+                {
+                    _rateLimitPauseUntilUtc = pauseUntilUtc;
+                    pauseExtended = true;
+                }
+            }
+
+            if (pauseExtended)
+            {
+                _logger.Warn("Hardcover {0}; pausing all requests until {1:yyyy-MM-dd HH:mm:ss} UTC", reason, pauseUntilUtc);
+            }
+        }
+
+        private static DateTime? GetRateLimitPauseUntil(HttpResponse response)
+        {
+            var retryAfter = GetRetryAfterUntil(response);
+            var exhaustedBucketReset = GetExhaustedRateLimitBucketReset(response);
+
+            if (retryAfter.HasValue && exhaustedBucketReset.HasValue)
+            {
+                return retryAfter.Value > exhaustedBucketReset.Value ? retryAfter : exhaustedBucketReset;
+            }
+
+            return retryAfter ?? exhaustedBucketReset;
+        }
+
+        private static DateTime? GetRetryAfterUntil(HttpResponse response)
+        {
+            var value = response?.Headers["Retry-After"];
+            if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds) && seconds >= 0)
+            {
+                var remaining = (DateTime.MaxValue - DateTime.UtcNow).TotalSeconds;
+                return DateTime.UtcNow.AddSeconds(Math.Min(Math.Max(seconds, 1), remaining));
+            }
+
+            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var retryAt))
+            {
+                var utcRetryAt = retryAt.UtcDateTime;
+                return utcRetryAt > DateTime.UtcNow ? utcRetryAt : DateTime.UtcNow.AddSeconds(1);
+            }
+
+            return null;
+        }
+
+        private static DateTime? GetExhaustedRateLimitBucketReset(HttpResponse response)
+        {
+            var rateLimit = response?.Headers["RateLimit"];
+            var resets = new List<DateTime>();
+
+            if (!rateLimit.IsNullOrWhiteSpace())
+            {
+                foreach (var bucket in rateLimit.Split(','))
+                {
+                    var parts = bucket.Split(';').Select(x => x.Trim()).ToList();
+                    if (parts.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var remaining = GetRateLimitParameter(parts, "r");
+                    var resetSeconds = GetRateLimitParameter(parts, "t");
+                    if (remaining == 0 && resetSeconds >= 0)
+                    {
+                        resets.Add(DateTime.UtcNow.AddSeconds(Math.Max(resetSeconds, 1)));
+                    }
+                }
+            }
+
+            var legacyRemaining = response?.Headers["X-RateLimit-Remaining"];
+            var legacyReset = response?.Headers["X-RateLimit-Reset"];
+            if (long.TryParse(legacyRemaining, NumberStyles.Integer, CultureInfo.InvariantCulture, out var requestsRemaining) &&
+                requestsRemaining == 0 &&
+                long.TryParse(legacyReset, NumberStyles.Integer, CultureInfo.InvariantCulture, out var resetEpoch))
+            {
+                AddFutureReset(resets, resetEpoch);
+            }
+
+            var legacyDailyRemaining = response?.Headers["X-RateLimit-Daily-Remaining"];
+            var legacyDailyReset = response?.Headers["X-RateLimit-Daily-Reset"];
+            if (long.TryParse(legacyDailyRemaining, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dailyRequestsRemaining) &&
+                dailyRequestsRemaining == 0 &&
+                long.TryParse(legacyDailyReset, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dailyResetEpoch))
+            {
+                AddFutureReset(resets, dailyResetEpoch);
+            }
+
+            return resets.Count == 0 ? (DateTime?)null : resets.Max();
+        }
+
+        private static void AddFutureReset(ICollection<DateTime> resets, long resetEpoch)
+        {
+            try
+            {
+                var resetAt = DateTimeOffset.FromUnixTimeSeconds(resetEpoch).UtcDateTime;
+                if (resetAt > DateTime.UtcNow)
+                {
+                    resets.Add(resetAt);
+                }
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Ignore invalid reset timestamps and continue with other headers.
+            }
+        }
+
+        private static int GetRateLimitParameter(IEnumerable<string> parts, string name)
+        {
+            var prefix = name + "=";
+            var value = parts
+                .Select(x => x.Trim())
+                .FirstOrDefault(x => x.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+
+            return value != null && int.TryParse(value.Substring(prefix.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed
+                : -1;
         }
 
         private static bool IsTransientStatus(HttpStatusCode statusCode)
         {
             return statusCode == HttpStatusCode.RequestTimeout ||
-                   statusCode == HttpStatusCode.TooManyRequests ||
                    statusCode == HttpStatusCode.InternalServerError ||
                    statusCode == HttpStatusCode.BadGateway ||
                    statusCode == HttpStatusCode.ServiceUnavailable ||
