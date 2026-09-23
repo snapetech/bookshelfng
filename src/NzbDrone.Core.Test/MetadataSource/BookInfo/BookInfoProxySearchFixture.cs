@@ -73,6 +73,40 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             ExceptionVerification.IgnoreWarns();
         }
 
+        [Test]
+        public void should_include_additional_catalog_authors_in_author_lookup()
+        {
+            var authorMetadata = new AuthorMetadata
+            {
+                ForeignAuthorId = "googlebooks-author:cnViZW5zIG1hcmNoaW9uaQ",
+                Name = "Rubens Marchioni",
+            };
+            var catalogBook = new Book
+            {
+                ForeignBookId = "googlebooks:volume-rubens",
+                Title = "Escrita criativa da ideia ao texto",
+                AuthorMetadata = authorMetadata,
+                Author = new Author
+                {
+                    CleanName = "Rubens Marchioni",
+                    Metadata = authorMetadata,
+                },
+            };
+
+            Mocker.GetMock<IGoodreadsSearchProxy>()
+                .Setup(x => x.Search(It.IsAny<string>()))
+                .Returns(new List<SearchJsonResource>());
+            Mocker.GetMock<IAdditionalBookMetadataProxy>()
+                .Setup(x => x.Search(It.IsAny<string>()))
+                .Returns(new List<Book> { catalogBook });
+
+            var authors = Subject.SearchForNewAuthor("Rubens Marchioni");
+
+            authors.Should().ContainSingle();
+            authors[0].Name.Should().Be("Rubens Marchioni");
+            authors[0].ForeignAuthorId.Should().StartWith("googlebooks-author:");
+        }
+
         //[TestCase("asin:B0192CTMYG", null, "Harry Potter and the Sorcerer's Stone")] // ASIN not working
         [TestCase("Harry Potter and the sorcerer's stone a summary of the novel", null, "Harry Potter and the Sorcerer's Stone (Book 1)")]
         [TestCase("edition:3", null, "Harry Potter and the Sorcerer's Stone")]
