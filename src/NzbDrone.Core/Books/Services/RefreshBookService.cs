@@ -81,13 +81,37 @@ namespace NzbDrone.Core.Books
             try
             {
                 var tuple = _bookInfo.GetBookInfo(book.ForeignBookId);
-                var author = _authorInfo.GetAuthorInfo(tuple.Item1);
-                var newbook = tuple.Item2;
+                var localAuthor = _authorService.FindById(tuple.Item1);
+                var authorMetadata = tuple.Item3?.FirstOrDefault(x => x.ForeignAuthorId == tuple.Item1);
+                Author author;
 
+                if (localAuthor != null)
+                {
+                    // The work response already has author metadata. Reuse the
+                    // local author's database IDs instead of loading its full catalogue.
+                    authorMetadata ??= localAuthor.Metadata.Value;
+                    authorMetadata.Id = localAuthor.AuthorMetadataId;
+
+                    author = new Author
+                    {
+                        Id = localAuthor.Id,
+                        AuthorMetadataId = localAuthor.AuthorMetadataId,
+                        CleanName = localAuthor.CleanName,
+                        Metadata = authorMetadata,
+                        Books = new List<Book>()
+                    };
+                }
+                else
+                {
+                    author = _authorInfo.GetAuthorInfo(tuple.Item1);
+                    authorMetadata = author.Metadata.Value;
+                    authorMetadata.Id = book.AuthorMetadataId;
+                }
+
+                var newbook = tuple.Item2;
                 newbook.Author = author;
-                newbook.AuthorMetadata = author.Metadata.Value;
-                newbook.AuthorMetadataId = book.AuthorMetadataId;
-                newbook.AuthorMetadata.Value.Id = book.AuthorMetadataId;
+                newbook.AuthorMetadata = authorMetadata;
+                newbook.AuthorMetadataId = authorMetadata.Id;
 
                 author.Books = new List<Book> { newbook };
                 return author;
@@ -135,7 +159,10 @@ namespace NzbDrone.Core.Books
             // TODO filter by metadata id before hitting database
             _logger.Trace($"Ensuring parent author exists [{remote.AuthorMetadata.Value.ForeignAuthorId}]");
 
-            var newAuthor = _authorService.FindById(remote.AuthorMetadata.Value.ForeignAuthorId);
+            var remoteAuthor = remote.Author.Value;
+            var newAuthor = remoteAuthor.Id > 0 && remoteAuthor.ForeignAuthorId == remote.AuthorMetadata.Value.ForeignAuthorId
+                ? remoteAuthor
+                : _authorService.FindById(remote.AuthorMetadata.Value.ForeignAuthorId);
 
             if (newAuthor == null)
             {
