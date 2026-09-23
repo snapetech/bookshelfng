@@ -4,6 +4,7 @@
   "description": "Readarr",
   "scripts": {
     "build": "webpack --config ./frontend/build/webpack.config.js",
+    "release-notes:preview": "node scripts/preview-release-notes.mjs",
     "prebuild": "yarn clean",
     "clean": "rimraf ./_output/UI && rimraf --glob \"**/*.js.map\"",
     "start": "webpack --watch --config ./frontend/build/webpack.config.js",
