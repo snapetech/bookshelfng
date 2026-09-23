@@ -1,174 +1,99 @@
-# bookshelf
+# BookshelfNG
 
-## Snapetech BookshelfNG fork
+BookshelfNG is a self-hosted ebook and audiobook library manager descended from
+Readarr. It monitors RSS feeds for books by authors you follow, searches Usenet
+and BitTorrent download clients, and organizes, renames, and upgrades files in
+your library. It can run on its own; SeerrNG integration is optional.
 
-This public fork publishes SeerrNG-compatible images at:
+Bookshelf supports one format per book in an instance. Run separate instances
+if you want to manage both the ebook and audiobook editions of the same title.
 
-    ghcr.io/snapetech/bookshelfng:softcover
-    ghcr.io/snapetech/bookshelfng:hardcover
+## Quick start
 
-The `softcover` image includes a compatibility fix for SeerrNG and other
-Readarr-compatible clients: `/api/v1/book/lookup` returns nested author and
-edition metadata when Bookshelf can resolve it. Without that fix, softcover
-lookups can return `editions: []` even when they include `foreignEditionId`,
-which makes downstream book-add calls unreliable.
+The web interface listens on port `8787`. Persist `/config`, and mount your
+downloads and library paths where the application and download clients can
+access them.
 
-Use `softcover` when you need Goodreads-compatible metadata or when you are
-holding an existing Readarr-compatible database in place. Use `hardcover` for
-new deployments and for migrated deployments that have rebuilt their books
-against Hardcover metadata.
-
-Do not switch an existing softcover/Readarr config to the `hardcover` image by
-changing only `METADATA_URL` or the container tag. Goodreads/softcover
-`ForeignAuthorId`, `ForeignBookId`, and `ForeignEditionId` values are not
-portable to Hardcover. A direct switch can leave books, authors, and editions
-that the Hardcover metadata provider cannot resolve.
-
-SeerrNG includes a migration helper for this transition. The supported path is:
-
-1. back up the existing ebook and audiobook config directories;
-2. inventory the source database;
-3. rebuild strict matches against a temporary Hardcover Bookshelf target;
-4. optionally use a softcover Bookshelf endpoint to recover metadata for stale
-   IDs;
-5. optionally use SeerrNG's deterministic local DB fallback for books that
-   Hardcover still cannot import.
-
-The last fallback creates local Bookshelf records with IDs such as
-`local:ebook:1076`. Those records are visible through the Bookshelf API, but
-they are not native Hardcover metadata records. That fallback is intentionally
-owned by the SeerrNG migration tool rather than the Bookshelf image.
-
-Image tags are published by GitHub Actions:
-
-- `softcover`
-- `softcover-v0.4.20`
-- `softcover-v0.4.20.<run-number>`
-- `hardcover`
-- `hardcover-v0.4.20`
-- `hardcover-v0.4.20.<run-number>`
-
-The stable `softcover` and `hardcover` tags are updated only by releases from
-the `main` branch. Pushes to `develop` publish `softcover-develop` and
-`hardcover-develop` instead. Downstream applications that use the stable tags
-therefore always consume the latest released `main` build.
-
-If anonymous `docker pull ghcr.io/snapetech/bookshelfng:softcover` returns
-`denied`, the GHCR package visibility still needs to be changed to public in
-GitHub package settings, or Docker needs to be authenticated with package read
-access.
-
-### Native Hardcover metadata
-
-The `hardcover` image uses BookshelfNG's native Hardcover GraphQL provider by
-default. It handles search, author, work, edition, series, ISBN, and ASIN
-lookups directly from BookshelfNG, so a normal Hardcover deployment does not
-need rreading-glasses or a metadata proxy in the request path.
-
-Native mode requires a Hardcover API token at runtime:
-
-```env
-HARDCOVER=true
-HARDCOVER_AUTH=Bearer your-hardcover-api-token
+```yaml
+services:
+  bookshelf:
+    image: ghcr.io/snapetech/bookshelfng:hardcover
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./bookshelf-config:/config
+      - /path/to/downloads:/downloads
+      - /path/to/books:/books
+    restart: unless-stopped
 ```
 
-`HARDCOVER_API_KEY` is accepted as an alternative variable. The default API
-endpoint is `https://api.hardcover.app`; override it with
-`HARDCOVER_API_URL` only when using a compatible endpoint or a test service.
-The token is sent to Hardcover by BookshelfNG and is not baked into the image.
+Start it with `docker compose up -d`, then open `http://localhost:8787` to
+configure your root folder, metadata provider, indexers, and download clients.
+The image is also available as `ghcr.io/snapetech/bookshelfng:softcover`.
 
-`METADATA_URL` remains the compatibility fallback. Set
-`HARDCOVER_NATIVE=false` to disable direct GraphQL access and route metadata
-through that URL instead. This is the setting to use when an existing
-rreading-glasses cache must be preserved, when another Readarr-compatible
-metadata service is required, or when testing the legacy path. Native mode
-does not silently fail over to another service after a GraphQL error; select
-the compatibility path deliberately so the active dependency is visible.
+## Metadata providers
 
-Native and compatibility modes use the same Bookshelf metadata models, but
-their foreign IDs are not interchangeable with Goodreads/softcover IDs.
-Native mode caches responses in the Bookshelf process for the lifetime of the
-instance. rreading-glasses remains useful when a durable shared PostgreSQL
-cache, a Goodreads-compatible endpoint, or a proxy boundary is more valuable
-than removing the extra service.
+BookshelfNG offers two metadata modes:
 
-## Upstream project
+- **Hardcover** (`hardcover` image): uses BookshelfNG's native Hardcover
+  GraphQL provider by default. Set `HARDCOVER=true` and provide
+  `HARDCOVER_AUTH=Bearer your-hardcover-api-token` at runtime. You can use
+  `HARDCOVER_API_KEY` instead of `HARDCOVER_AUTH`. The default API endpoint is
+  `https://api.hardcover.app`; `HARDCOVER_API_URL` can override it. Native
+  metadata requests go directly from BookshelfNG to Hardcover; no metadata
+  proxy is required. Set `HARDCOVER_NATIVE=false` to use the compatibility
+  endpoint configured with `METADATA_URL` instead.
+- **Goodreads-compatible** (`softcover` image): retains compatibility with
+  existing Readarr databases and Goodreads list imports. Goodreads metadata
+  quality is variable.
 
-This is a revival of [Readarr](https://github.com/Readarr/Readarr). The images
-published are configured to use working Goodreads or Hardcover metadata out of
-the box.
+Goodreads/softcover and Hardcover foreign author, book, and edition IDs are not
+interchangeable. Changing an existing database from softcover to Hardcover by
+changing only the image tag or metadata URL can leave records that the new
+provider cannot resolve. Back up your configuration before changing providers
+and follow the migration guidance below when migrating an existing library.
 
-Bookshelf is an ebook and audiobook collection manager for Usenet and BitTorrent
-users. It can monitor multiple RSS feeds for new books from your favorite
-authors and will grab, sort, and rename them. Note that only one type of a
-given book is supported. If you want both an audiobook and ebook of a given
-book you will need multiple instances.
+## Using BookshelfNG with SeerrNG
 
-## Getting Started
+SeerrNG can use BookshelfNG as a Readarr-compatible ebook or audiobook service.
+This integration is optional: BookshelfNG runs as a complete library manager
+without SeerrNG.
 
-The container listens on port 8787 and expects a volume mounted at `/config`.
+The `softcover` image is useful when retaining a Readarr-compatible database.
+Its `/api/v1/book/lookup` response includes nested author and edition metadata
+when BookshelfNG can resolve it, which supports downstream book-add requests.
 
-    docker run -p 8787:8787 -v ~/.config/bookshelf:/config ghcr.io/pennydreadful/bookshelf:hardcover
+For an existing softcover library migrating to Hardcover, back up the ebook
+and audiobook configuration directories first. SeerrNG's migration helper can
+inventory the source database, rebuild strict matches against a temporary
+Hardcover BookshelfNG target, and optionally use a softcover endpoint or its
+deterministic local database fallback for records Hardcover cannot import.
+Fallback records such as `local:ebook:1076` are local Bookshelf records, not
+native Hardcover metadata records.
 
-The `softcover` tags use [Goodreads](https://www.goodreads.com) as the metadata
-provider. The quality of this metadata is generally poor and contains a lot of
-slop. However, it is backward-compatible with existing Readarr databases and
-functionality like Goodreads list imports should continue to work normally.
+## Releases
 
-The `hardcover` tags use [Hardcover](https://hardcover.app/home) as a metadata
-provider. When `HARDCOVER=true`, BookshelfNG selects the native provider by
-default; set `HARDCOVER_NATIVE=false` to use the compatibility endpoint at
-`METADATA_URL` instead. Native mode requires `HARDCOVER_AUTH` (or
-`HARDCOVER_API_KEY`) at runtime. This metadata is higher quality but isn't
-backward-compatible with Goodreads/softcover IDs. Hardcover list imports use
-the API key configured in the Bookshelf import-list settings.
+GitHub Actions publishes these rolling and versioned image tags:
 
-## Support
+- `softcover`, `softcover-v0.4.20`, `softcover-v0.4.20.<run-number>`
+- `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
 
-This project won't use Discord for support. If you have a problem please file
-an issue or start a discussion.
+If an anonymous pull returns `denied`, the GHCR package may not be public yet;
+you can also authenticate with package read access.
 
-## Building from source
+## Support and contributing
 
-Install the versions listed in `mise.toml`, then build the backend and frontend
-for a Linux x64 host:
+Please file a GitHub issue or start a discussion for help. Contributions are
+welcome, especially fixes and quality-of-life improvements. Current areas of
+interest include monitoring series and supporting ebook and audiobook files
+in the same root folder.
 
-    ./build.sh --backend --frontend -r linux-x64 -f net6.0
+## Upstream and license
 
-Additional MSBuild arguments can be passed with `--msbuild-arg`. For example,
-to keep a NuGet audit warning visible without treating it as an error:
+BookshelfNG is derived from [Bookshelf](https://github.com/pennydreadful/bookshelf),
+a revival of [Readarr](https://github.com/Readarr/Readarr), and
+[Prowlarr](https://github.com/Prowlarr/Prowlarr). Those projects are licensed
+under GPLv3, and BookshelfNG is distributed under the terms of GPLv3. See
+[LICENSE](LICENSE.md).
 
-    ./build.sh --backend --frontend -r linux-x64 -f net6.0 --msbuild-arg "-p:WarningsNotAsErrors=NU1903"
-
-Unknown build options fail fast so misspelled or unsupported flags are not
-silently ignored.
-
-## Contributors & Developers
-
-Help is very welcome. Priority is on fixing quality of life issues
-
-- [ ] Monitor series.
-- [ ] Support ebook and audio files in the same root.
-
-Already done
-
-- [x] Native support for MyAnonaMouse without Prowlarr.
-- [x] Hardcover list import.
-- [x] Improved matching.
-- [x] Native Hardcover metadata with an explicit compatibility fallback.
-- [x] Removed servarr analytics spyware.
-- [x] Supports selfhosted metadata (UI or `METADATA_URL` env var).
-
-## Sponsors
-
-If you ever donated to [this](https://opencollective.com/readarr) project you
-should request a refund. Those people don't deserve your money.
-
-### License
-
-The is a derivative work of the [Readarr](https://github.com/Readarr/Readarr)
-and [Prowlarr](https://github.com/Prowlarr/Prowlarr) projects which are both
-licensed [GPLv3](http://www.gnu.org/licenses/gpl.html). This project is
-therefore also licensed under the terms of GPLv3.
-
-Copyright 2025-2026
+Copyright 2025–2026.
