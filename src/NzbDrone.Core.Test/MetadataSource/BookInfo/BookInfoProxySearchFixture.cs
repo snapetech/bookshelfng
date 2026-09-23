@@ -90,6 +90,28 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             ExceptionVerification.IgnoreErrors();
         }
 
+        [Test]
+        public void should_resolve_provider_qualified_book_ids_without_goodreads_numeric_parsing()
+        {
+            var book = new Book
+            {
+                ForeignBookId = "googlebooks:volume-123",
+                Title = "Provider Book",
+            };
+            Mocker.GetMock<IAdditionalBookMetadataProxy>()
+                .Setup(x => x.HandlesBookId("googlebooks:volume-123"))
+                .Returns(true);
+            Mocker.GetMock<IAdditionalBookMetadataProxy>()
+                .Setup(x => x.GetBook("googlebooks:volume-123"))
+                .Returns(Tuple.Create("googlebooks:volume-123", book, new List<AuthorMetadata>()));
+
+            var result = Subject.SearchForNewBook("googlebooks:volume-123", null);
+
+            result.Should().ContainSingle().Which.ForeignBookId.Should().Be("googlebooks:volume-123");
+            Mocker.GetMock<IGoodreadsSearchProxy>()
+                .Verify(x => x.Search(It.IsAny<string>()), Times.Never);
+        }
+
         [TestCase("edition:")]
         [TestCase("edition: 99999999999999999999")]
         [TestCase("edition: 0")]

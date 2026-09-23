@@ -41,6 +41,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private readonly Logger _logger;
         private readonly IMetadataRequestBuilder _requestBuilder;
         private readonly IHardcoverMetadataProxy _hardcoverMetadataProxy;
+        private readonly IAdditionalBookMetadataProxy _additionalBookMetadataProxy;
         private readonly ICached<HashSet<string>> _cache;
         private readonly CachingService _authorCache;
 
@@ -52,6 +53,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                              IEditionService editionService,
                              IMetadataRequestBuilder requestBuilder,
                              IHardcoverMetadataProxy hardcoverMetadataProxy,
+                             IAdditionalBookMetadataProxy additionalBookMetadataProxy,
                              Logger logger,
                              ICacheManager cacheManager)
         {
@@ -63,6 +65,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             _editionService = editionService;
             _requestBuilder = requestBuilder;
             _hardcoverMetadataProxy = hardcoverMetadataProxy;
+            _additionalBookMetadataProxy = additionalBookMetadataProxy;
             _cache = cacheManager.GetCache<HashSet<string>>(GetType());
             _logger = logger;
 
@@ -101,6 +104,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Author GetAuthorInfo(string foreignAuthorId, bool useCache = false)
         {
+            if (_additionalBookMetadataProxy.HandlesAuthorId(foreignAuthorId))
+            {
+                return _additionalBookMetadataProxy.GetAuthor(foreignAuthorId);
+            }
+
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
                 return MapAuthor(_hardcoverMetadataProxy.GetAuthor(foreignAuthorId));
@@ -136,6 +144,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Tuple<string, Book, List<AuthorMetadata>> GetBookInfo(string foreignBookId)
         {
+            if (_additionalBookMetadataProxy.HandlesBookId(foreignBookId))
+            {
+                return _additionalBookMetadataProxy.GetBook(foreignBookId);
+            }
+
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
                 var resource = _hardcoverMetadataProxy.GetWork(foreignBookId);
@@ -191,6 +204,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Book> SearchForNewBook(string title, string author, bool getAllEditions = true)
         {
+            if (_additionalBookMetadataProxy.HandlesBookId(title))
+            {
+                return new List<Book> { _additionalBookMetadataProxy.GetBook(title).Item2 };
+            }
+
             var q = title.ToLower().Trim();
             if (author != null)
             {
@@ -241,7 +259,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     q = slug;
                 }
 
-                return Search(q, getAllEditions);
+                return SearchWithAdditional(q, getAllEditions);
             }
             catch (HttpException ex)
             {
@@ -257,12 +275,27 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Book> SearchByIsbn(string isbn)
         {
-            return Search(isbn, true);
+            return SearchWithAdditional(isbn, true);
         }
 
         public List<Book> SearchByAsin(string asin)
         {
-            return Search(asin, true);
+            return SearchWithAdditional(asin, true);
+        }
+
+        private List<Book> SearchWithAdditional(string query, bool getAllEditions)
+        {
+            var books = Search(query, getAllEditions);
+            try
+            {
+                books.AddRange(_additionalBookMetadataProxy.Search(query));
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "Additional book metadata search failed for {0}", query);
+            }
+
+            return books.DistinctBy(x => x.ForeignBookId).ToList();
         }
 
         private List<Book> Search(string query, bool getAllEditions)
