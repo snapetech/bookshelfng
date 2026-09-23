@@ -19,7 +19,8 @@ installation identifier. As with any network request, the configured collector
 can observe the source IP address. No request is made unless the module is
 installed, enabled, and configured with both an HTTPS endpoint and bearer
 token. Redirects are disabled and TLS certificate validation uses the system
-trust store.
+trust store. Counters are cumulative for the current process and held in
+memory only; they are not written to disk and reset when BookshelfNG restarts.
 
 ## Build and install
 

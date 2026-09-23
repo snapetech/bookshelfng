@@ -166,7 +166,7 @@ namespace Bookshelf.Diagnostics
                 return;
             }
 
-            Dictionary<string, long> snapshot = null;
+            Dictionary<string, long> snapshot;
             var windowStart = DateTimeOffset.UtcNow;
             var windowEnd = DateTimeOffset.UtcNow;
 
@@ -180,9 +180,7 @@ namespace Bookshelf.Diagnostics
                     }
 
                     snapshot = new Dictionary<string, long>(_counts, StringComparer.Ordinal);
-                    _counts.Clear();
                     windowStart = _windowStart;
-                    _windowStart = windowEnd;
                 }
 
                 var payload = CreatePayload(snapshot, windowStart, windowEnd);
@@ -197,20 +195,14 @@ namespace Bookshelf.Diagnostics
                     {
                         if (!response.IsSuccessStatusCode)
                         {
-                            Restore(snapshot, windowStart);
-                            _logger.Warn("Optional diagnostics collector returned HTTP {0}; aggregate counters were retained for retry.", (int)response.StatusCode);
+                            _logger.Warn("Optional diagnostics collector returned HTTP {0}; cumulative counters remain available for retry.", (int)response.StatusCode);
                         }
                     }
                 }
             }
             catch (Exception)
             {
-                if (snapshot != null)
-                {
-                    Restore(snapshot, windowStart);
-                }
-
-                _logger.Warn("Optional diagnostics report failed; aggregate counters were retained for retry.");
+                _logger.Warn("Optional diagnostics report failed; cumulative counters remain available for retry.");
             }
             finally
             {
@@ -263,7 +255,7 @@ namespace Bookshelf.Diagnostics
                                         sum = new
                                         {
                                             dataPoints,
-                                            aggregationTemporality = 1,
+                                            aggregationTemporality = 2,
                                             isMonotonic = true
                                         }
                                     }
@@ -273,23 +265,6 @@ namespace Bookshelf.Diagnostics
                     }
                 }
             };
-        }
-
-        private void Restore(Dictionary<string, long> counts, DateTimeOffset windowStart)
-        {
-            lock (_sync)
-            {
-                foreach (var entry in counts)
-                {
-                    _counts.TryGetValue(entry.Key, out var current);
-                    _counts[entry.Key] = current + entry.Value;
-                }
-
-                if (_windowStart > windowStart)
-                {
-                    _windowStart = windowStart;
-                }
-            }
         }
 
         private static string ToUnixNanoseconds(DateTimeOffset value)
