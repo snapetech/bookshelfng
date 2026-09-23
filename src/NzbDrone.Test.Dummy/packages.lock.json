@@ -31,7 +31,6 @@
     },
     "net6.0/linux-musl-arm64": {},
     "net6.0/linux-musl-x64": {},
-    "net6.0/linux-x64": {},
-    "net6.0/osx-x64": {}
+    "net6.0/linux-x64": {}
   }
 }

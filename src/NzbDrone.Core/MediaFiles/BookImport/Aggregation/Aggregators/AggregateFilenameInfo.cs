@@ -62,6 +62,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Aggregation.Aggregators
                 || tracks.Any(x => x.FileTrackInfo.AuthorTitle.IsNullOrWhiteSpace()))
             {
                 _logger.Debug("Missing data in tags, trying filename augmentation");
+
+                if (TryApplySingleFileTitle(tracks))
+                {
+                    return release;
+                }
+
                 foreach (var charSep in CharsAndSeps)
                 {
                     foreach (var pattern in Patterns(charSep.Item1, charSep.Item2))
@@ -76,6 +82,33 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Aggregation.Aggregators
             }
 
             return release;
+        }
+
+        private bool TryApplySingleFileTitle(List<LocalBook> tracks)
+        {
+            if (tracks.Count != 1)
+            {
+                return false;
+            }
+
+            var track = tracks[0];
+            if (!track.FileTrackInfo.BookTitle.IsNullOrWhiteSpace() ||
+                track.FileTrackInfo.Authors?.Any(a => a.IsNotNullOrWhiteSpace()) == true)
+            {
+                return false;
+            }
+
+            var filename = Path.GetFileNameWithoutExtension(track.Path)?.Trim();
+            if (filename.IsNullOrWhiteSpace() ||
+                !filename.Any(char.IsWhiteSpace) ||
+                filename.IndexOfAny(new[] { '-', '_' }) >= 0)
+            {
+                return false;
+            }
+
+            _logger.Debug("Treating delimiter-free single-file name as title: {0}", filename);
+            track.FileTrackInfo.BookTitle = filename;
+            return true;
         }
 
         private Dictionary<LocalBook, Match> AllMatches(List<LocalBook> tracks, Regex pattern)

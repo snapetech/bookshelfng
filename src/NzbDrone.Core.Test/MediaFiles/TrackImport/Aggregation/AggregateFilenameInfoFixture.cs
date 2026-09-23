@@ -55,6 +55,20 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Aggregation.Aggregators
             VerifyData(release.LocalBooks[3], "Adele", "That's It, I Quit, I'm Moving On", 3, 2);
         }
 
+        [TestCase("Rogue Elements.epub")]
+        [TestCase("Rogue Elements.m4b")]
+        public void should_extract_title_only_filenames_for_book_formats(string filename)
+        {
+            var release = GivenTracks(
+                new List<string> { filename },
+                @"C:\incoming".AsOsAgnostic());
+
+            Subject.Aggregate(release, true);
+
+            release.LocalBooks[0].FileTrackInfo.BookTitle.Should().Be("Rogue Elements");
+            release.LocalBooks[0].FileTrackInfo.Authors.Should().BeEmpty();
+        }
+
         public static class TestCaseFactory
         {
             private static List<string[]> tokenList = new List<string[]>
