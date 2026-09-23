@@ -11,6 +11,9 @@ namespace NzbDrone.Core.Books
 
     public class ShouldRefreshAuthor : ICheckIfAuthorShouldBeRefreshed
     {
+        // LastInfoSync is persisted on the author. This gate avoids repeating a
+        // full remote author lookup for every book event while still validating
+        // active, recently published, and old records periodically.
         private readonly IBookService _bookService;
         private readonly Logger _logger;
 
@@ -22,6 +25,8 @@ namespace NzbDrone.Core.Books
 
         public bool ShouldRefresh(Author author)
         {
+            // Keep the short-term guard ahead of activity checks so repeated
+            // events cannot trigger another catalog fetch within 12 hours.
             if (!author.LastInfoSync.HasValue || author.LastInfoSync.Value < DateTime.UtcNow.AddDays(-30))
             {
                 _logger.Trace("Author {0} has never been updated or was updated more than 30 days ago, should refresh.", author.Name);

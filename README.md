@@ -59,6 +59,15 @@ library-management workflow. It supports one format per book in an instance;
 run separate ebook and audiobook instances if you want both formats of the
 same title.
 
+Author and book metadata are persisted in BookshelfNG's application database.
+Refreshing a book for an author already in the library reuses that local author
+record when the provider IDs match, so a book refresh does not need to fetch the
+author's full catalog again. Automatic author validation is age and activity
+based; manual refreshes and metadata-profile changes can force an update. See
+[Author metadata storage and refresh behavior](docs/author-metadata-refresh.md)
+for the exact rules, Hardcover request caching and rate-limit behavior, failure
+handling, troubleshooting logs, and source-code references.
+
 ## Quick start
 
 The web interface listens on port `8787`. Persist `/config`, and mount your
@@ -106,8 +115,13 @@ are not baked into the image.
 Native mode handles transient request failures and sparse or nullable metadata
 responses, maps Hardcover work and edition records into Bookshelf's library
 model, and caches responses in the BookshelfNG process for the lifetime of the
-instance. It does not silently switch to another metadata service after an API
-error.
+instance. Author responses are cached for 30 minutes, work responses for six
+hours, and search responses for 10 minutes. These response caches are separate
+from the author and book metadata stored in the library database. See the
+[Hardcover API getting-started guide](https://github.com/hardcoverapp/hardcover-docs/blob/main/src/content/docs/api/Getting-Started.mdx)
+and [Hardcover author schema](https://github.com/hardcoverapp/hardcover-docs/blob/main/src/content/docs/api/GraphQL/Schemas/Authors.mdx)
+for Hardcover's API reference. BookshelfNG does not silently switch to another
+metadata service after an API error.
 
 Text search fetches Hardcover's result IDs in one batched book query instead
 of making a separate detail request for every result. ISBN/ASIN searches and
@@ -122,29 +136,30 @@ the limit.
 
 The Hardcover image keeps Hardcover as its primary metadata source and merges
 public catalog results into normal book searches. Library of Congress is
-enabled by default. Google Books is enabled automatically when
-`GOOGLE_BOOKS_API_KEY` is set. The Goodreads-compatible Apify adapter remains
-opt-in because Actor usage may be metered. Supported values for
-`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, and `apify-goodreads`.
-When set, this variable replaces the defaults; an empty value disables all
-additional catalogs.
+enabled by default. Google Books and Europeana are enabled automatically when
+their API keys are set. The Goodreads-compatible Apify adapter remains opt-in
+because Actor usage may be metered. Supported values for
+`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, `europeana`, and
+`apify-goodreads`. When set, this variable replaces the defaults; an empty
+value disables all additional catalogs.
 
 ```env
 HARDCOVER=true
 HARDCOVER_AUTH=Bearer your-hardcover-api-token
 GOOGLE_BOOKS_API_KEY=your-google-books-api-key
+EUROPEANA_API_KEY=your-europeana-api-key
 ```
 
-With this configuration Google Books and Library of Congress are both
-queried alongside Hardcover. Without a Google API key, Library of Congress
-still runs and Google Books is skipped. To keep only LOC, set
+With these keys, Google Books and Europeana results are also queried alongside
+Hardcover. Library of Congress runs without a key. Google Books and Europeana
+are skipped when their keys are absent. To keep only LOC, set
 `BOOKSHELF_METADATA_SOURCES=loc`; to disable the additions, set
 `BOOKSHELF_METADATA_SOURCES=`.
 
 To add a Goodreads-compatible Apify Actor:
 
 ```env
-BOOKSHELF_METADATA_SOURCES=googlebooks,loc,apify-goodreads
+BOOKSHELF_METADATA_SOURCES=googlebooks,loc,europeana,apify-goodreads
 HARDCOVER_APIFY_GOODREADS_ACTOR=publisher~goodreads-scraper
 HARDCOVER_APIFY_TOKEN=your-apify-token
 # Override only when the Actor does not use searchQueries and maxItems:
@@ -152,12 +167,17 @@ HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE={"searchQueries":[{{query}}],"maxItems"
 ```
 
 Google Books public searches require a Google API key; user OAuth is not
-needed. Library of Congress search is public and rate limited. Requests are
-paced to one per 3.2 seconds per Bookshelf process and successful responses
-are cached for one day. If multiple Bookshelf processes share an outbound IP,
-set a source list that avoids querying LOC from every process. The optional
-Apify adapter runs a user-selected Actor, whose schema, availability, terms,
-and pricing are controlled by its publisher. The default Actor input is
+needed. Europeana requires a free key from a registered account and searches
+text records with open reuse status. It is a cultural heritage index rather
+than a complete current-book catalog, and per-record metadata and cover
+availability vary. See Europeana's [Search API documentation](https://pro.europeana.eu/resources/apis/search)
+and [API key registration](https://pro.europeana.eu/page/get-api). Library of
+Congress search is public and rate limited. Requests are paced to one per 3.2
+seconds per Bookshelf process and successful responses are cached for one day.
+If multiple Bookshelf processes share an outbound IP, set a source list that
+avoids querying LOC from every process. The optional Apify adapter runs a
+user-selected Actor, whose schema, availability, terms, and pricing are
+controlled by its publisher. The default Actor input is
 `{"searchQueries":[{{query}}],"maxItems":10}`; a custom JSON template must
 include the literal `{{query}}` placeholder, which Bookshelf replaces with a
 JSON-escaped search string. Actor output is normalized from common Goodreads
@@ -253,6 +273,15 @@ preview command.
 
 If an anonymous pull returns `denied`, the GHCR package may not be public yet;
 you can also authenticate with package read access.
+
+## Documentation
+
+- [Metadata providers and configuration](#metadata-sources)
+- [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
+- [Author metadata storage, refresh policy, and troubleshooting](docs/author-metadata-refresh.md)
+- [Optional diagnostics module](src/Bookshelf.Diagnostics/README.md)
+- [Release-note format and preview](release-notes/README.md)
+- [SeerrNG migration metadata source matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
 
 ## Support and contributing
 
