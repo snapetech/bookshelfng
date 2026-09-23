@@ -156,7 +156,7 @@ namespace NzbDrone.Host
                 .UseServiceProviderFactory(new DryIocServiceProviderFactory(new Container(rules => rules.WithNzbDroneRules())))
                 .ConfigureContainer<IContainer>(c =>
                 {
-                    c.AutoAddServices(Bootstrap.ASSEMBLIES)
+                    c.AutoAddServices(Bootstrap.ASSEMBLIES, GetDiagnosticsPluginPaths(context))
                         .AddNzbDroneLogger()
                         .AddDatabase()
                         .AddStartupContext(context)
@@ -192,6 +192,23 @@ namespace NzbDrone.Host
                     });
                     builder.UseStartup<Startup>();
                 });
+        }
+
+        private static IEnumerable<string> GetDiagnosticsPluginPaths(StartupContext context)
+        {
+            if (!string.Equals(Environment.GetEnvironmentVariable("BOOKSHELF_DIAGNOSTICS_ENABLED"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return Array.Empty<string>();
+            }
+
+            var pluginPath = Path.Combine(new AppFolderInfo(context).AppDataFolder, "plugins", "Bookshelf.Diagnostics.dll");
+            if (!File.Exists(pluginPath))
+            {
+                Logger.Warn("Optional diagnostics are enabled, but Bookshelf.Diagnostics.dll is not installed. No diagnostics will be sent.");
+                return Array.Empty<string>();
+            }
+
+            return new[] { pluginPath };
         }
 
         public static ApplicationModes GetApplicationMode(IStartupContext startupContext)

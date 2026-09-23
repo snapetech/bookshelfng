@@ -42,7 +42,9 @@ self-hosted metadata service.
   feeds, apply quality and metadata profiles, manage download clients, scan
   and import existing files, and rename and upgrade releases automatically.
 - **Keep library activity private.** BookshelfNG removes Servarr's Sentry
-  analytics and exception-reporting integration.
+  analytics and exception-reporting integration. An independent diagnostics
+  module is available for operators who explicitly install and enable it; the
+  standard app image contains no reporting module or telemetry SDK.
 
 BookshelfNG retains the Readarr-compatible API and the broader Readarr
 library-management workflow. It supports one format per book in an instance;
@@ -156,6 +158,18 @@ Please file a GitHub issue or start a discussion for help. Contributions are
 welcome, especially fixes and quality-of-life improvements. Current areas of
 interest include monitoring series and supporting ebook and audiobook files
 in the same root folder.
+
+## Optional diagnostics
+
+The standard BookshelfNG image sends no analytics or exception reports. An
+optional module can report aggregated application-start, book-grab, book-import,
+and download-failure counts to an OTLP collector you configure. It requires the
+module assembly, an explicit enable flag, an HTTPS endpoint, and a bearer token.
+It sends no book or author metadata, paths, search terms, log messages,
+exception details, or persistent installation identifier. The collector can
+still see the source IP address of the HTTPS request. See the
+[diagnostics module instructions](src/Bookshelf.Diagnostics/README.md) for the
+data schema and installation steps.
 
 ## Upstream and license
 
