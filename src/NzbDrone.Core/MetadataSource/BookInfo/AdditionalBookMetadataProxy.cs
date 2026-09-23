@@ -26,7 +26,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     }
 
     /// <summary>
-    /// Optional Google Books, Library of Congress, and Apify catalog providers.
+    /// Additional Google Books, Library of Congress, Europeana, and Apify catalogs.
     /// Provider-qualified foreign IDs are retained in Bookshelf so subsequent
     /// book and author refreshes resolve through the same catalog.
     /// </summary>
@@ -34,6 +34,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     {
         private const string GoogleBooks = "googlebooks";
         private const string LibraryOfCongress = "loc";
+        private const string Europeana = "europeana";
         private const string ApifyGoodreads = "apify-goodreads";
         private readonly IHttpClient _httpClient;
         private readonly ICachedHttpResponseService _cachedHttpClient;
@@ -58,7 +59,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledSources(
             Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
-            Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY"));
+            Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY"),
+            Environment.GetEnvironmentVariable("EUROPEANA_API_KEY"));
 
         private static bool IsEnabled(string provider) => EnabledSources.Contains(provider);
 
@@ -83,6 +85,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     {
                         books.AddRange(SearchLoc(query));
                     }
+                    else if (provider == Europeana)
+                    {
+                        books.AddRange(SearchEuropeana(query));
+                    }
                     else if (provider == ApifyGoodreads)
                     {
                         books.AddRange(SearchApify(query));
@@ -103,11 +109,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public bool HandlesBookId(string foreignBookId) =>
             HasPrefix(foreignBookId, GoogleBooks) ||
             HasPrefix(foreignBookId, LibraryOfCongress) ||
+            HasPrefix(foreignBookId, Europeana) ||
             HasPrefix(foreignBookId, ApifyGoodreads);
 
         public bool HandlesAuthorId(string foreignAuthorId) =>
             HasPrefix(foreignAuthorId, GoogleBooks + "-author") ||
             HasPrefix(foreignAuthorId, LibraryOfCongress + "-author") ||
+            HasPrefix(foreignAuthorId, Europeana + "-author") ||
             HasPrefix(foreignAuthorId, ApifyGoodreads + "-author");
 
         public Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId)
@@ -140,6 +148,27 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     TimeSpan.FromDays(1)).Resource;
                 record = record["item"] as JObject ?? record;
             }
+            else if (provider == Europeana)
+            {
+                var key = Environment.GetEnvironmentVariable("EUROPEANA_API_KEY");
+                if (key.IsNullOrWhiteSpace())
+                {
+                    throw new BookInfoException("Europeana requires EUROPEANA_API_KEY.");
+                }
+
+                var recordId = Decode(id).Trim('/');
+                var segments = recordId.Split('/');
+                if (segments.Length != 2 || segments.Any(x => x.IsNullOrWhiteSpace()))
+                {
+                    throw new BookInfoException("Europeana returned an invalid record identifier.");
+                }
+
+                var escapedId = string.Join("/", segments.Select(Uri.EscapeDataString));
+                var url = new HttpRequestBuilder($"https://api.europeana.eu/record/v2/{escapedId}.json")
+                    .AddQueryParam("wskey", key)
+                    .Build();
+                record = _cachedHttpClient.Get<JObject>(url, true, TimeSpan.FromDays(1)).Resource;
+            }
             else if (provider == ApifyGoodreads)
             {
                 var source = DecodeApifyId(id);
@@ -153,7 +182,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             var book = provider == GoogleBooks ? MapGoogleVolume(record) :
-                provider == LibraryOfCongress ? MapLocRecord(record) : MapApifyRecord(record);
+                provider == LibraryOfCongress ? MapLocRecord(record) :
+                provider == Europeana ? MapEuropeanaRecord(record) : MapApifyRecord(record);
             var metadata = book.AuthorMetadata.Value;
             book.Author.Value.Metadata = metadata;
             return Tuple.Create(metadata.ForeignAuthorId, book, new List<AuthorMetadata> { metadata });
@@ -208,6 +238,27 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .OfType<JObject>().Select(MapLocRecord).Where(x => x != null).ToList();
         }
 
+        private List<Book> SearchEuropeana(string query)
+        {
+            var key = Environment.GetEnvironmentVariable("EUROPEANA_API_KEY");
+            if (key.IsNullOrWhiteSpace())
+            {
+                return new List<Book>();
+            }
+
+            var request = new HttpRequestBuilder("https://api.europeana.eu/record/v2/search.json")
+                .AddQueryParam("query", query)
+                .AddQueryParam("qf", "TYPE:TEXT")
+                .AddQueryParam("reusability", "open")
+                .AddQueryParam("rows", "10")
+                .AddQueryParam("profile", "rich")
+                .AddQueryParam("wskey", key)
+                .Build();
+            var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
+            return (response["items"] as JArray ?? new JArray())
+                .OfType<JObject>().Select(MapEuropeanaRecord).Where(x => x != null).ToList();
+        }
+
         private List<Book> SearchApify(string query)
         {
             if (Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_ACTOR").IsNullOrWhiteSpace() ||
@@ -241,7 +292,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException("Invalid Apify actor identifier.");
             }
 
-            var template = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE") ?? "{\"searchQueries\":[{{query}}],\"maxItems\":10}";
+            var template = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE");
+            if (template.IsNullOrWhiteSpace())
+            {
+                template = "{\"searchQueries\":[{{query}}],\"maxItems\":10}";
+            }
+
             if (!template.Contains("{{query}}") || template.Length > 16384)
             {
                 throw new BookInfoException("Apify input template must be valid JSON and include {{query}}.");
@@ -290,6 +346,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var uri = SafeLocUri(idUrl);
             var author = (record["contributors"] as JArray)?.Values<string>().FirstOrDefault()
                 ?? (record["contributor"] as JArray)?.Values<string>().FirstOrDefault();
+            var language = record["language"] is JArray languages
+                ? languages.Values<string>().FirstOrDefault()
+                : (string)record["language"];
             return BuildBook(
                 LibraryOfCongress,
                 Encode(uri.ToString()),
@@ -297,7 +356,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 author,
                 (record["description"] as JArray)?.Values<string>().FirstOrDefault() ?? (string)record["description"],
                 (record["publisher"] as JArray)?.Values<string>().FirstOrDefault(),
-                null,
+                language,
                 (string)record["date"],
                 null,
                 (string)record["image_url"],
@@ -332,6 +391,66 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 identifiers,
                 (string)record["url"] ?? "https://www.goodreads.com/");
         }
+
+        private Book MapEuropeanaRecord(JObject record)
+        {
+            if (record == null)
+            {
+                return null;
+            }
+
+            var item = record["object"] as JObject ?? record;
+            var proxies = item["proxies"] as JArray;
+            var proxy = proxies?.OfType<JObject>().FirstOrDefault(x => (bool?)x["europeanaProxy"] == false)
+                ?? proxies?.OfType<JObject>().FirstOrDefault();
+            var aggregation = (item["aggregations"] as JArray)?.OfType<JObject>().FirstOrDefault();
+            var recordId = (string)item["about"] ?? (string)record["id"] ?? (string)record["about"];
+            if (recordId?.StartsWith("http://data.europeana.eu/item/", StringComparison.OrdinalIgnoreCase) == true ||
+                recordId?.StartsWith("https://data.europeana.eu/item/", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                recordId = new Uri(recordId).AbsolutePath;
+            }
+
+            var recordType = (string)record["type"] ?? (string)item["type"];
+            if (!recordType.IsNullOrWhiteSpace() && !recordType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var title = GetFirstString(record["title"]) ?? GetFirstString(proxy?["dcTitle"]);
+            var author = GetFirstString(record["dcCreator"]) ?? GetFirstString(proxy?["dcCreator"])
+                ?? GetFirstString(record["dcContributor"]) ?? GetFirstString(proxy?["dcContributor"]);
+            var description = GetFirstString(record["dcDescription"]) ?? GetFirstString(proxy?["dcDescription"]);
+            var publisher = GetFirstString(record["dcPublisher"]) ?? GetFirstString(proxy?["dcPublisher"]);
+            var language = GetFirstString(record["language"]) ?? GetFirstString(proxy?["dcLanguage"]);
+            var date = GetFirstString(record["year"]) ?? GetFirstString(proxy?["dcDate"]);
+            var image = GetFirstString(record["edmPreview"]) ?? GetFirstString(aggregation?["edmPreview"]);
+            var identifiers = new JArray(GetStringValues(record["dcIdentifier"] ?? proxy?["dcIdentifier"])
+                .Where(Isbn13IsValid));
+            var url = recordId.IsNullOrWhiteSpace()
+                ? "https://www.europeana.eu/"
+                : "https://www.europeana.eu/item/" + recordId.Trim('/');
+
+            return BuildBook(
+                Europeana,
+                Encode(recordId ?? string.Empty),
+                title,
+                author,
+                description,
+                publisher,
+                language,
+                date,
+                null,
+                image,
+                identifiers,
+                url);
+        }
+
+        private static string GetFirstString(JToken value) =>
+            value is JArray array ? array.Values<string>().FirstOrDefault(x => !x.IsNullOrWhiteSpace()) : value?.ToString();
+
+        private static IEnumerable<string> GetStringValues(JToken value) =>
+            value is JArray array ? array.Values<string>() : value == null ? Enumerable.Empty<string>() : new[] { value.ToString() };
 
         private Book BuildBook(
             string provider,
@@ -424,6 +543,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var host = uri.Host.ToLowerInvariant();
             return provider == GoogleBooks ? host == "books.google.com" || host.EndsWith(".googleusercontent.com") :
                 provider == LibraryOfCongress ? host == "loc.gov" || host.EndsWith(".loc.gov") :
+                provider == Europeana ? host == "europeana.eu" || host.EndsWith(".europeana.eu") :
                 host == "goodreads.com" || host.EndsWith(".gr-assets.com") || host.EndsWith(".ssl-images-amazon.com");
         }
 

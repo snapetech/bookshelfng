@@ -6,7 +6,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public static class AdditionalMetadataSources
     {
-        public static HashSet<string> GetEnabledSources(string configuredSources, string googleBooksApiKey)
+        public static HashSet<string> GetEnabledSources(
+            string configuredSources,
+            string googleBooksApiKey,
+            string europeanaApiKey)
         {
             var sources = configuredSources;
 
@@ -17,6 +20,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 if (!string.IsNullOrWhiteSpace(googleBooksApiKey))
                 {
                     sources += ",googlebooks";
+                }
+
+                if (!string.IsNullOrWhiteSpace(europeanaApiKey))
+                {
+                    sources += ",europeana";
                 }
             }
 
