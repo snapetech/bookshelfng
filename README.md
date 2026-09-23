@@ -120,18 +120,26 @@ the limit.
 
 ### Optional additional runtime catalogs
 
-The Hardcover image can merge configured Google Books, Library of Congress,
-and Apify Goodreads-compatible results into normal book searches. Hardcover
-remains the primary default source. Additional providers are opt-in and are
-selected with `BOOKSHELF_METADATA_SOURCES`; supported values are
-`googlebooks`, `loc`, and `apify-goodreads`.
+The Hardcover image keeps Hardcover as its primary metadata source and merges
+public catalog results into normal book searches. Library of Congress is
+enabled by default. Google Books is enabled automatically when
+`GOOGLE_BOOKS_API_KEY` is set. The Goodreads-compatible Apify adapter remains
+opt-in because Actor usage may be metered. Supported values for
+`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, and `apify-goodreads`.
+When set, this variable replaces the defaults; an empty value disables all
+additional catalogs.
 
 ```env
 HARDCOVER=true
 HARDCOVER_AUTH=Bearer your-hardcover-api-token
-BOOKSHELF_METADATA_SOURCES=googlebooks,loc
 GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 ```
+
+With this configuration Google Books and Library of Congress are both
+queried alongside Hardcover. Without a Google API key, Library of Congress
+still runs and Google Books is skipped. To keep only LOC, set
+`BOOKSHELF_METADATA_SOURCES=loc`; to disable the additions, set
+`BOOKSHELF_METADATA_SOURCES=`.
 
 To add a Goodreads-compatible Apify Actor:
 
@@ -144,7 +152,10 @@ HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE={"searchQueries":[{{query}}],"maxItems"
 ```
 
 Google Books public searches require a Google API key; user OAuth is not
-needed. Library of Congress search is public and rate limited. The optional
+needed. Library of Congress search is public and rate limited. Requests are
+paced to one per 3.2 seconds per Bookshelf process and successful responses
+are cached for one day. If multiple Bookshelf processes share an outbound IP,
+set a source list that avoids querying LOC from every process. The optional
 Apify adapter runs a user-selected Actor, whose schema, availability, terms,
 and pricing are controlled by its publisher. The default Actor input is
 `{"searchQueries":[{{query}}],"maxItems":10}`; a custom JSON template must
@@ -162,10 +173,9 @@ minutes, Google Books and LOC responses for one day, and Apify result sets for
 one day. Provider failures are logged independently; other configured sources
 continue to return results.
 
-To use only the selected primary source, leave `BOOKSHELF_METADATA_SOURCES`
-unset. This variable applies to the `hardcover` and `softcover` images. It does
+The source setting applies to the `hardcover` and `softcover` images. It does
 not rewrite IDs already stored in the library, and it does not combine remote
-catalog results into Hardcover itself.
+catalog records into Hardcover itself.
 
 ### Goodreads-compatible metadata and proxies
 

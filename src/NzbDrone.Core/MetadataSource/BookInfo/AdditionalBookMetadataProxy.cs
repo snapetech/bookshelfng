@@ -41,6 +41,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private readonly ICached<List<JObject>> _apifyCache;
         private readonly Logger _logger;
 
+        private static readonly TimeSpan LocRequestRateLimit = TimeSpan.FromMilliseconds(3200);
+
         public AdditionalBookMetadataProxy(
             IHttpClient httpClient,
             ICachedHttpResponseService cachedHttpClient,
@@ -54,11 +56,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             _logger = logger;
         }
 
-        private static HashSet<string> EnabledSources => new (
-            (Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES") ?? "")
-                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim().ToLowerInvariant()),
-            StringComparer.OrdinalIgnoreCase);
+        private static HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledSources(
+            Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
+            Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY"));
 
         private static bool IsEnabled(string provider) => EnabledSources.Contains(provider);
 
@@ -132,7 +132,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 var itemUrl = DecodeLocUrl(id);
                 var uri = new UriBuilder(itemUrl) { Query = "fo=json" };
-                record = _cachedHttpClient.Get<JObject>(new HttpRequestBuilder(uri.Uri.ToString()).Build(), false, TimeSpan.FromDays(1)).Resource;
+                record = _cachedHttpClient.Get<JObject>(
+                    new HttpRequestBuilder(uri.Uri.ToString())
+                        .WithRateLimit(LocRequestRateLimit.TotalSeconds)
+                        .Build(),
+                    true,
+                    TimeSpan.FromDays(1)).Resource;
                 record = record["item"] as JObject ?? record;
             }
             else if (provider == ApifyGoodreads)
@@ -185,7 +190,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .AddQueryParam("maxResults", "10")
                 .AddQueryParam("key", key)
                 .Build();
-            var response = _cachedHttpClient.Get<JObject>(request, false, TimeSpan.FromDays(1)).Resource;
+            var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
             return (response["items"] as JArray ?? new JArray())
                 .OfType<JObject>().Select(MapGoogleVolume).Where(x => x != null).ToList();
         }
@@ -196,8 +201,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .AddQueryParam("q", query)
                 .AddQueryParam("fo", "json")
                 .AddQueryParam("c", "10")
+                .WithRateLimit(LocRequestRateLimit.TotalSeconds)
                 .Build();
-            var response = _cachedHttpClient.Get<JObject>(request, false, TimeSpan.FromDays(1)).Resource;
+            var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
             return (response["results"] as JArray ?? new JArray())
                 .OfType<JObject>().Select(MapLocRecord).Where(x => x != null).ToList();
         }
