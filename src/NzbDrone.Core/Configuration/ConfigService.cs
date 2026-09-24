@@ -230,7 +230,7 @@ namespace NzbDrone.Core.Configuration
 
         public int BookImportMinimumMatchPercent
         {
-            get { return GetValueInt("BookImportMinimumMatchPercent", 50); }
+            get { return GetValueInt("BookImportMinimumMatchPercent", 70); }
 
             set { SetValue("BookImportMinimumMatchPercent", value); }
         }
