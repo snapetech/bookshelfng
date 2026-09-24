@@ -68,6 +68,10 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetAuthorInfo(It.IsAny<string>(), true))
                 .Callback(() => { throw new AuthorNotFoundException(_author.ForeignAuthorId); });
 
+            Mocker.GetMock<ICheckIfAuthorShouldBeRefreshed>()
+                .Setup(s => s.ShouldRefresh(It.IsAny<Author>()))
+                .Returns(true);
+
             Mocker.GetMock<IMediaFileService>()
                 .Setup(x => x.GetFilesByAuthor(It.IsAny<int>()))
                 .Returns(new List<BookFile>());
@@ -176,6 +180,19 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IMonitorNewBookService>()
                 .Verify(x => x.ShouldMonitorNewBook(newBook, _books, _author.MonitorNewItems), Times.Once());
+        }
+
+        [Test]
+        public void should_skip_automatic_refresh_when_author_metadata_is_not_due()
+        {
+            Mocker.GetMock<ICheckIfAuthorShouldBeRefreshed>()
+                .Setup(s => s.ShouldRefresh(_author))
+                .Returns(false);
+
+            Subject.Execute(new RefreshAuthorCommand(_author.Id));
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(s => s.GetAuthorInfo(It.IsAny<string>(), true), Times.Never());
         }
 
         [Test]

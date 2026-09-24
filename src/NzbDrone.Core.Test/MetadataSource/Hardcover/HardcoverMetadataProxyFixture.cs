@@ -73,10 +73,12 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
                     requests.Add(request);
                     var payload = JObject.Parse(Encoding.UTF8.GetString(request.ContentData));
                     var operation = payload["operationName"].Value<string>();
+                    var response = operation == "Search" ? SearchResponse :
+                        operation == "GetWorksByIds" ? CreateWorksByIdsResponse(WorkResponse) : WorkResponse;
 
                     return new HttpResponse(request,
                         new HttpHeader { { "Content-Type", "application/json" } },
-                        operation == "Search" ? SearchResponse : WorkResponse);
+                        response);
                 });
 
             var result = Subject.Search("Foundation");
@@ -109,10 +111,13 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
                     requests.Add(request);
                     var payload = JObject.Parse(Encoding.UTF8.GetString(request.ContentData));
                     var operation = payload["operationName"].Value<string>();
+                    var sparseWorkResponse = CreateSparseWorkResponse();
+                    var response = operation == "Search" ? SearchResponse :
+                        operation == "GetWorksByIds" ? CreateWorksByIdsResponse(sparseWorkResponse) : sparseWorkResponse;
 
                     return new HttpResponse(request,
                         new HttpHeader { { "Content-Type", "application/json" } },
-                        operation == "Search" ? SearchResponse : CreateSparseWorkResponse());
+                        response);
                 });
 
             var result = Subject.Search("Foundation");
@@ -230,6 +235,19 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
             edition["language"] = JValue.CreateNull();
             edition["publisher"] = JValue.CreateNull();
             return response.ToString();
+        }
+
+        private static string CreateWorksByIdsResponse(string workResponse)
+        {
+            var work = JObject.Parse(workResponse)["data"]["books_by_pk"].DeepClone();
+
+            return new JObject
+            {
+                ["data"] = new JObject
+                {
+                    ["books"] = new JArray(work)
+                }
+            }.ToString();
         }
 
         private const string SearchResponse = @"{
