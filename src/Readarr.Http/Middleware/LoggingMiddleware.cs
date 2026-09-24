@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -42,9 +44,14 @@ namespace Readarr.Http.Middleware
             context.Items["ApiRequestSequenceID"] = id;
             context.Items["ApiRequestStartTime"] = DateTime.UtcNow;
 
-            var reqPath = SanitizeLogValue(GetRequestPathAndQuery(context.Request));
+            var reqPath = SanitizeLogValue(GetRequestPathAndQuery(context.Request))
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
+            var origin = SanitizeLogValue(GetOrigin(context))
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
 
-            _loggerHttp.Trace("Req: {0} [{1}] {2} (from {3})", id, context.Request.Method, reqPath, SanitizeLogValue(GetOrigin(context)));
+            _loggerHttp.Trace("Req: {0} [{1}] {2} (from {3})", id, context.Request.Method, reqPath, origin);
         }
 
         private void LogEnd(HttpContext context)
@@ -55,7 +62,9 @@ namespace Readarr.Http.Middleware
             var endTime = DateTime.UtcNow;
             var duration = endTime - startTime;
 
-            var reqPath = SanitizeLogValue(GetRequestPathAndQuery(context.Request));
+            var reqPath = SanitizeLogValue(GetRequestPathAndQuery(context.Request))
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
 
             _loggerHttp.Trace("Res: {0} [{1}] {2}: {3}.{4} ({5} ms)", id, context.Request.Method, reqPath, context.Response.StatusCode, (HttpStatusCode)context.Response.StatusCode, (int)duration.TotalMilliseconds);
 
@@ -91,7 +100,24 @@ namespace Readarr.Http.Middleware
 
         private static string SanitizeLogValue(string value)
         {
-            return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            var sanitized = new StringBuilder(value.Length);
+            foreach (var character in value)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(character);
+                if (char.IsControl(character) ||
+                    category == UnicodeCategory.Format ||
+                    category == UnicodeCategory.LineSeparator ||
+                    category == UnicodeCategory.ParagraphSeparator)
+                {
+                    sanitized.Append(' ');
+                }
+                else
+                {
+                    sanitized.Append(character);
+                }
+            }
+
+            return sanitized.ToString();
         }
     }
 }
