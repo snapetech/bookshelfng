@@ -36,7 +36,14 @@ jobs:
         run: |
           set -euo pipefail
           body_file="$RUNNER_TEMP/pr-body.md"
-          printf '%s' "$PR_BODY" > "$body_file"
+          if [[ "$GITHUB_EVENT_NAME" == 'push' ]] &&
+             ! git diff --quiet --diff-filter=A "$BASE_SHA" "$HEAD_SHA" -- release-notes; then
+            # A push can contain both user-facing commits and internal commits
+            # marked release-note: none. Added fragments cover the whole push.
+            : > "$body_file"
+          else
+            printf '%s' "$PR_BODY" > "$body_file"
+          fi
           node scripts/check-release-notes.mjs \
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
