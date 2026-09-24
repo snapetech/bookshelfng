@@ -4,6 +4,6 @@ Access the web interface through the Service:
   kubectl port-forward svc/{{ include "bookshelfng.fullname" . }} 8787:{{ .Values.service.port }}
   open http://localhost:8787
 
-The default image tag selects Hardcover metadata defaults. Set image.tag=softcover
-to use the Softcover image profile. Catalog providers can also be changed from
-BookshelfNG Settings after installation.
+The release chart pins the Hardcover image digest produced by that release. To
+select the Softcover profile, clear image.digest and set image.tag=softcover.
+Catalog providers can also be changed from BookshelfNG Settings after install.
