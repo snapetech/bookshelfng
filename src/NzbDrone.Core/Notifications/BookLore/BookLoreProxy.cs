@@ -121,7 +121,12 @@ namespace NzbDrone.Core.Notifications.BookLore
             request.ContentSummary = $"file={Path.GetFileName(path)} ({fileStream.Length} bytes)";
             request.SetContent(formContent);
 
-            _httpClient.Execute(request);
+            var response = _httpClient.Execute(request);
+            if ((int)response.StatusCode < 200 || (int)response.StatusCode >= 300)
+            {
+                throw new WebException("BookLore did not confirm the file upload.", WebExceptionStatus.ProtocolError);
+            }
+
             _logger.Info("Uploaded {0} to BookLore BookDrop", Path.GetFileName(path));
         }
     }
