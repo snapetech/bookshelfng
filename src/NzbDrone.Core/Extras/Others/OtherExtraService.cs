@@ -112,7 +112,20 @@ namespace NzbDrone.Core.Extras.Others
 
                 var destinationDirectory = destinations[0];
 
-                foreach (var path in _sidecarDiskProvider.GetFiles(sourceDirectory, false))
+                if (!_sidecarDiskProvider.FolderExists(sourceDirectory))
+                {
+                    continue;
+                }
+
+                var sourceFiles = _sidecarDiskProvider.GetFiles(sourceDirectory, false).ToList();
+
+                if (sourceFiles.Any(path => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(path))))
+                {
+                    _sidecarLogger.Debug("Leaving extra files in {0} because an audio file remains there", sourceDirectory);
+                    continue;
+                }
+
+                foreach (var path in sourceFiles)
                 {
                     if (!extensions.Contains(Path.GetExtension(path)))
                     {
