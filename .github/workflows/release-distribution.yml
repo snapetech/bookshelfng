@@ -610,6 +610,16 @@ jobs:
           path.write_text(updated)
           PY
           bash packaging/scripts/validate-aur-pkgbuild-hashes.sh "$work/PKGBUILD"
+          # Keep AUR metadata in sync with the release-specific PKGBUILD.
+          docker run --rm \
+            --user 65534:65534 \
+            --volume "$work:/pkg:ro" \
+            --workdir /pkg \
+            --env HOME=/tmp \
+            archlinux:base-devel \
+            bash -euc 'makepkg --printsrcinfo' > "$work/.SRCINFO"
+          grep -Fqx "pkgbase = bookshelfng-bin" "$work/.SRCINFO"
+          grep -Fqx "pkgver = ${VERSION}" "$work/.SRCINFO"
           key="$RUNNER_TEMP/aur-key"
           printf '%s\n' "$AUR_SSH_KEY" > "$key"
           chmod 0600 "$key"
@@ -641,6 +651,7 @@ jobs:
           cd "$work/repo"
           git remote set-url --push origin ssh://aur@aur.archlinux.org/bookshelfng-bin.git
           cp "$work/PKGBUILD" PKGBUILD
+          cp "$work/.SRCINFO" .SRCINFO
           cp "$work/bookshelfng.install" .
           cp "$work"/bookshelfng.{service,env,sysusers,tmpfiles} .
           git config user.name 'BookshelfNG Release Automation'
