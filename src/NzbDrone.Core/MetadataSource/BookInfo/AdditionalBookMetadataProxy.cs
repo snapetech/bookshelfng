@@ -316,8 +316,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     if (
                         source.IsNullOrWhiteSpace() ||
                         !AdditionalMetadataSources.IsSupportedSource(source) ||
-                        !enabledSources.Contains(source)
-                    )
+                        !enabledSources.Contains(source))
                     {
                         continue;
                     }
@@ -581,8 +580,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     "q",
                     isbn != null
                         ? "mediatype:texts AND isbn:" + isbn
-                        : "mediatype:texts AND " + string.Join(" AND ", terms)
-                )
+                        : "mediatype:texts AND " + string.Join(" AND ", terms))
                 .AddQueryParam("fl[]", "identifier")
                 .AddQueryParam("fl[]", "title")
                 .AddQueryParam("fl[]", "creator")
@@ -1023,8 +1021,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var compact = System.Text.RegularExpressions.Regex.Replace(
                 value ?? string.Empty,
                 "[^0-9Xx]",
-                string.Empty
-            ).ToUpperInvariant();
+                string.Empty).ToUpperInvariant();
             if (Isbn13IsValid(compact))
             {
                 return compact;
@@ -1162,6 +1159,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             return checksum % 11 == 0;
         }
+
         private static string GetIdentifierValue(JToken item) => item is JObject obj ? (string)obj["identifier"] : item?.ToString();
         private static string GetApifyStableId(JObject record) => (string)record["goodreadsId"] ?? (string)record["goodreads_id"] ?? (string)record["bookId"] ?? (string)record["id"] ?? (string)record["isbn13"] ?? (string)record["isbn_13"];
         private static bool HasPrefix(string value, string provider) => value?.StartsWith(provider + ":", StringComparison.OrdinalIgnoreCase) == true;
