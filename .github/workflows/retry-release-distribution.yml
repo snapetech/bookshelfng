@@ -1,0 +1,42 @@
+name: Retry Standalone Release Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Verified BookshelfNG main release tag
+        required: true
+        type: string
+      softcover_digest:
+        description: Published Softcover container digest
+        required: true
+        type: string
+      hardcover_digest:
+        description: Published Hardcover container digest
+        required: true
+        type: string
+      runtime_pack_run_id:
+        description: Optional successful runtime-pack artifact run for a retry
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  distribute:
+    name: Build and publish standalone release channels
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/release-distribution.yml
+    with:
+      tag: ${{ inputs.tag }}
+      softcover_digest: ${{ inputs.softcover_digest }}
+      hardcover_digest: ${{ inputs.hardcover_digest }}
+      runtime_pack_run_id: ${{ inputs.runtime_pack_run_id }}
+    secrets: inherit
