@@ -18,6 +18,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             "apify-goodreads"
         };
 
+        public static bool IsSupportedSource(string source) =>
+            !string.IsNullOrWhiteSpace(source) && SupportedSources.Contains(source.Trim());
+
+        public static bool IsValidFieldPreference(string source) =>
+            string.IsNullOrWhiteSpace(source) || IsSupportedSource(source);
+
         private static readonly HashSet<string> ManagedDefaultLists = new HashSet<string>(StringComparer.Ordinal)
         {
             "europeana,googlebooks",

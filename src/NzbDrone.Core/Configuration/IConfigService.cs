@@ -69,6 +69,14 @@ namespace NzbDrone.Core.Configuration
         string MetadataSource { get; set; }
         string HardcoverAuth { get; set; }
         string AdditionalMetadataSources { get; set; }
+        string MetadataTitleSourcePreference { get; set; }
+        string MetadataDescriptionSourcePreference { get; set; }
+        string MetadataPublisherSourcePreference { get; set; }
+        string MetadataLanguageSourcePreference { get; set; }
+        string MetadataReleaseDateSourcePreference { get; set; }
+        string MetadataPageCountSourcePreference { get; set; }
+        string MetadataCoverSourcePreference { get; set; }
+        string MetadataGenresSourcePreference { get; set; }
         string GoogleBooksApiKey { get; set; }
         string EuropeanaApiKey { get; set; }
         string ApifyGoodreadsActor { get; set; }

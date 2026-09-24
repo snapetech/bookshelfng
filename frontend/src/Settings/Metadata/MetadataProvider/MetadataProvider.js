@@ -59,13 +59,32 @@ const writeBookTagOptions = [
 ];
 
 const additionalMetadataSources = [
-  { name: 'enableGoogleBooks', label: 'Google Books', help: 'GoogleBooksSourceHelp' },
-  { name: 'enableLoc', label: 'Library of Congress', help: 'LocSourceHelp' },
-  { name: 'enableGutendex', label: 'Gutendex / Project Gutenberg', help: 'GutendexSourceHelp' },
-  { name: 'enableInternetArchive', label: 'Internet Archive', help: 'InternetArchiveSourceHelp' },
-  { name: 'enableNdl', label: 'NDL Search', help: 'NdlSourceHelp' },
-  { name: 'enableEuropeana', label: 'Europeana', help: 'EuropeanaSourceHelp' },
-  { name: 'enableApifyGoodreads', label: 'Apify Goodreads-compatible Actor', help: 'ApifyGoodreadsSourceHelp' }
+  { id: 'googlebooks', name: 'enableGoogleBooks', label: 'Google Books', help: 'GoogleBooksSourceHelp' },
+  { id: 'loc', name: 'enableLoc', label: 'Library of Congress', help: 'LocSourceHelp' },
+  { id: 'gutendex', name: 'enableGutendex', label: 'Gutendex / Project Gutenberg', help: 'GutendexSourceHelp' },
+  { id: 'internetarchive', name: 'enableInternetArchive', label: 'Internet Archive', help: 'InternetArchiveSourceHelp' },
+  { id: 'ndl', name: 'enableNdl', label: 'NDL Search', help: 'NdlSourceHelp' },
+  { id: 'europeana', name: 'enableEuropeana', label: 'Europeana', help: 'EuropeanaSourceHelp' },
+  { id: 'apify-goodreads', name: 'enableApifyGoodreads', label: 'Apify Goodreads-compatible Actor', help: 'ApifyGoodreadsSourceHelp' }
+];
+
+const metadataFieldPreferences = [
+  { name: 'metadataTitleSourcePreference', label: 'MetadataTitleSourcePreference' },
+  { name: 'metadataDescriptionSourcePreference', label: 'MetadataDescriptionSourcePreference' },
+  { name: 'metadataPublisherSourcePreference', label: 'MetadataPublisherSourcePreference' },
+  { name: 'metadataLanguageSourcePreference', label: 'MetadataLanguageSourcePreference' },
+  { name: 'metadataReleaseDateSourcePreference', label: 'MetadataReleaseDateSourcePreference' },
+  { name: 'metadataPageCountSourcePreference', label: 'MetadataPageCountSourcePreference' },
+  { name: 'metadataCoverSourcePreference', label: 'MetadataCoverSourcePreference' },
+  { name: 'metadataGenresSourcePreference', label: 'MetadataGenresSourcePreference' }
+];
+
+const metadataFieldSourceOptions = [
+  { key: '', value: translate('UseSelectedMetadataSource') },
+  ...additionalMetadataSources.map((source) => ({
+    key: source.id,
+    value: source.label
+  }))
 ];
 
 function MetadataProvider(props) {
@@ -325,6 +344,24 @@ function MetadataProvider(props) {
                   <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
                 )}
               </FormGroup>
+            </FieldSet>
+
+            <FieldSet legend={translate('MetadataFieldSourcePreferences')}>
+              <p className="helpText">
+                {translate('MetadataFieldSourcePreferencesHelpText')}
+              </p>
+              {metadataFieldPreferences.map((field) => (
+                <FormGroup key={field.name}>
+                  <FormLabel>{translate(field.label)}</FormLabel>
+                  <FormInputGroup
+                    type={inputTypes.SELECT}
+                    name={field.name}
+                    values={metadataFieldSourceOptions}
+                    onChange={onInputChange}
+                    {...settings[field.name]}
+                  />
+                </FormGroup>
+              ))}
             </FieldSet>
 
             <FieldSet legend={translate('AudioFileMetadata')}>

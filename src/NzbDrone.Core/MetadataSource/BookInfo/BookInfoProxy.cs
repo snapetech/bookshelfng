@@ -146,7 +146,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             if (_additionalBookMetadataProxy.HandlesBookId(foreignBookId))
             {
-                return _additionalBookMetadataProxy.GetBook(foreignBookId);
+                return ApplyFieldSourcePreferences(_additionalBookMetadataProxy.GetBook(foreignBookId));
             }
 
             if (_hardcoverMetadataProxy.IsNativeEnabled)
@@ -158,18 +158,28 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 MapSeriesLinks(resource.Series.Select(MapSeries).ToList(), new List<Book> { book }, resource.Series);
 
-                return Tuple.Create(authorId, book, metadata);
+                return ApplyFieldSourcePreferences(Tuple.Create(authorId, book, metadata));
             }
 
             try
             {
-                return PollBook(foreignBookId);
+                return ApplyFieldSourcePreferences(PollBook(foreignBookId));
             }
             catch (BookInfoException e)
             {
                 _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId.ReplaceLineEndings(""));
                 throw;
             }
+        }
+
+        private Tuple<string, Book, List<AuthorMetadata>> ApplyFieldSourcePreferences(Tuple<string, Book, List<AuthorMetadata>> bookInfo)
+        {
+            if (bookInfo?.Item2 != null)
+            {
+                _additionalBookMetadataProxy.ApplyFieldSourcePreferences(bookInfo.Item2);
+            }
+
+            return bookInfo;
         }
 
         public List<object> SearchForNewEntity(string title)

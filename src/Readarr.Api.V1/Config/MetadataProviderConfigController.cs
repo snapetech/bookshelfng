@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Http.REST.Attributes;
 using Readarr.Http;
 
@@ -71,6 +72,34 @@ namespace Readarr.Api.V1.Config
             }
 
             var dictionary = new Dictionary<string, object>();
+
+            var fieldSourcePreferences = new Dictionary<string, string>
+            {
+                ["MetadataTitleSourcePreference"] = resource.MetadataTitleSourcePreference,
+                ["MetadataDescriptionSourcePreference"] = resource.MetadataDescriptionSourcePreference,
+                ["MetadataPublisherSourcePreference"] = resource.MetadataPublisherSourcePreference,
+                ["MetadataLanguageSourcePreference"] = resource.MetadataLanguageSourcePreference,
+                ["MetadataReleaseDateSourcePreference"] = resource.MetadataReleaseDateSourcePreference,
+                ["MetadataPageCountSourcePreference"] = resource.MetadataPageCountSourcePreference,
+                ["MetadataCoverSourcePreference"] = resource.MetadataCoverSourcePreference,
+                ["MetadataGenresSourcePreference"] = resource.MetadataGenresSourcePreference
+            };
+
+            if (fieldSourcePreferences.Values.Any(value => value != null))
+            {
+                foreach (var preference in fieldSourcePreferences)
+                {
+                    if (preference.Value != null && !AdditionalMetadataSources.IsValidFieldPreference(preference.Value))
+                    {
+                        return BadRequest("Metadata field source preference is not supported.");
+                    }
+
+                    if (preference.Value != null)
+                    {
+                        dictionary[preference.Key] = preference.Value;
+                    }
+                }
+            }
 
             // Older UI/API clients do not send these fields. Leave an existing
             // provider selection untouched for those clients.

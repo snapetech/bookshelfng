@@ -299,6 +299,54 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AdditionalMetadataSources", value ?? string.Empty); }
         }
 
+        public string MetadataTitleSourcePreference
+        {
+            get { return GetValue("MetadataTitleSourcePreference", string.Empty); }
+            set { SetValue("MetadataTitleSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataDescriptionSourcePreference
+        {
+            get { return GetValue("MetadataDescriptionSourcePreference", string.Empty); }
+            set { SetValue("MetadataDescriptionSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataPublisherSourcePreference
+        {
+            get { return GetValue("MetadataPublisherSourcePreference", string.Empty); }
+            set { SetValue("MetadataPublisherSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataLanguageSourcePreference
+        {
+            get { return GetValue("MetadataLanguageSourcePreference", string.Empty); }
+            set { SetValue("MetadataLanguageSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataReleaseDateSourcePreference
+        {
+            get { return GetValue("MetadataReleaseDateSourcePreference", string.Empty); }
+            set { SetValue("MetadataReleaseDateSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataPageCountSourcePreference
+        {
+            get { return GetValue("MetadataPageCountSourcePreference", string.Empty); }
+            set { SetValue("MetadataPageCountSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataCoverSourcePreference
+        {
+            get { return GetValue("MetadataCoverSourcePreference", string.Empty); }
+            set { SetValue("MetadataCoverSourcePreference", value ?? string.Empty); }
+        }
+
+        public string MetadataGenresSourcePreference
+        {
+            get { return GetValue("MetadataGenresSourcePreference", string.Empty); }
+            set { SetValue("MetadataGenresSourcePreference", value ?? string.Empty); }
+        }
+
         public string GoogleBooksApiKey
         {
             get { return GetValue("GoogleBooksApiKey", string.Empty); }
@@ -531,7 +579,7 @@ namespace NzbDrone.Core.Configuration
         {
             key = key.ToLowerInvariant();
 
-            _logger.Trace("Writing Setting to database. Key:'{0}' Value:'{1}'", key, value);
+            _logger.Trace("Writing Setting to database. Key:'{0}' Value:'{1}'", key.Replace("\r", string.Empty).Replace("\n", string.Empty), value.Replace("\r", string.Empty).Replace("\n", string.Empty));
             _repository.Upsert(key, value);
 
             ClearCache();

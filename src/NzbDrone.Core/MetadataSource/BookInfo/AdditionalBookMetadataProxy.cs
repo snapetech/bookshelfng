@@ -26,6 +26,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         bool HandlesAuthorId(string foreignAuthorId);
         Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId);
         Author GetAuthor(string foreignAuthorId);
+        Book ApplyFieldSourcePreferences(Book book);
     }
 
     /// <summary>
@@ -273,6 +274,213 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return Tuple.Create(metadata.ForeignAuthorId, book, new List<AuthorMetadata> { metadata });
         }
 
+        public Book ApplyFieldSourcePreferences(Book book)
+        {
+            if (book == null)
+            {
+                return null;
+            }
+
+            var editions = book.Editions?.Value;
+            if (editions == null || editions.Count == 0)
+            {
+                return book;
+            }
+
+            var preferences = new[]
+            {
+                new { Field = "title", Source = _configService.MetadataTitleSourcePreference },
+                new { Field = "description", Source = _configService.MetadataDescriptionSourcePreference },
+                new { Field = "publisher", Source = _configService.MetadataPublisherSourcePreference },
+                new { Field = "language", Source = _configService.MetadataLanguageSourcePreference },
+                new { Field = "release date", Source = _configService.MetadataReleaseDateSourcePreference },
+                new { Field = "page count", Source = _configService.MetadataPageCountSourcePreference },
+                new { Field = "cover", Source = _configService.MetadataCoverSourcePreference },
+                new { Field = "genres", Source = _configService.MetadataGenresSourcePreference }
+            };
+            var enabledSources = EnabledSources;
+            var records = new Dictionary<string, Book>(StringComparer.OrdinalIgnoreCase);
+            var originalSource = GetSourceFromForeignId(book.ForeignBookId);
+
+            foreach (var targetEdition in editions)
+            {
+                var isbn = NormalizeIsbn13(targetEdition.Isbn13);
+                if (isbn == null)
+                {
+                    continue;
+                }
+
+                foreach (var preference in preferences)
+                {
+                    var source = preference.Source?.Trim().ToLowerInvariant();
+                    if (
+                        source.IsNullOrWhiteSpace() ||
+                        !AdditionalMetadataSources.IsSupportedSource(source) ||
+                        !enabledSources.Contains(source)
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (source.Equals(originalSource, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var recordKey = source + ":" + isbn;
+                    if (!records.TryGetValue(recordKey, out var sourceBook))
+                    {
+                        try
+                        {
+                            var candidate = SearchByProvider(source, isbn)
+                                .FirstOrDefault(x => HasMatchingIsbn(x, isbn));
+                            if (candidate == null)
+                            {
+                                records[recordKey] = null;
+                                continue;
+                            }
+
+                            var details = GetBook(candidate.ForeignBookId)?.Item2;
+                            sourceBook = HasMatchingIsbn(details, isbn) ? details : candidate;
+                            records[recordKey] = sourceBook;
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.Warn(e, "Could not apply {0} metadata preference from {1} for ISBN {2}", preference.Field, source, isbn);
+                            records[recordKey] = null;
+                            continue;
+                        }
+                    }
+
+                    if (sourceBook == null || !HasMatchingIsbn(sourceBook, isbn))
+                    {
+                        continue;
+                    }
+
+                    var sourceEdition = sourceBook.Editions?.Value?.FirstOrDefault(x => NormalizeIsbn13(x.Isbn13) == isbn);
+                    if (sourceEdition == null)
+                    {
+                        continue;
+                    }
+
+                    switch (preference.Field)
+                    {
+                        case "title":
+                            if (!sourceBook.Title.IsNullOrWhiteSpace())
+                            {
+                                book.Title = sourceBook.Title;
+                                book.CleanTitle = Parser.Parser.CleanAuthorName(sourceBook.Title);
+                                targetEdition.Title = sourceEdition.Title.IsNullOrWhiteSpace() ? sourceBook.Title : sourceEdition.Title;
+                            }
+
+                            break;
+                        case "description":
+                            if (!sourceEdition.Overview.IsNullOrWhiteSpace())
+                            {
+                                targetEdition.Overview = sourceEdition.Overview;
+                            }
+
+                            break;
+                        case "publisher":
+                            if (!sourceEdition.Publisher.IsNullOrWhiteSpace())
+                            {
+                                targetEdition.Publisher = sourceEdition.Publisher;
+                            }
+
+                            break;
+                        case "language":
+                            if (!sourceEdition.Language.IsNullOrWhiteSpace())
+                            {
+                                targetEdition.Language = sourceEdition.Language;
+                            }
+
+                            break;
+                        case "release date":
+                            if (sourceEdition.ReleaseDate.HasValue)
+                            {
+                                targetEdition.ReleaseDate = sourceEdition.ReleaseDate;
+                                book.ReleaseDate = sourceBook.ReleaseDate ?? sourceEdition.ReleaseDate;
+                            }
+
+                            break;
+                        case "page count":
+                            if (sourceEdition.PageCount > 0)
+                            {
+                                targetEdition.PageCount = sourceEdition.PageCount;
+                            }
+
+                            break;
+                        case "cover":
+                            if (sourceEdition.Images != null && sourceEdition.Images.Count > 0)
+                            {
+                                targetEdition.Images = new List<MediaCover.MediaCover>(sourceEdition.Images);
+                            }
+
+                            break;
+                        case "genres":
+                            if (sourceBook.Genres != null && sourceBook.Genres.Count > 0)
+                            {
+                                book.Genres = new List<string>(sourceBook.Genres);
+                            }
+
+                            break;
+                    }
+                }
+            }
+
+            return book;
+        }
+
+        private List<Book> SearchByProvider(string provider, string isbn)
+        {
+            var query = "isbn:" + isbn;
+            if (provider == GoogleBooks)
+            {
+                return SearchGoogleBooks(query);
+            }
+
+            if (provider == LibraryOfCongress)
+            {
+                return SearchLoc(query);
+            }
+
+            if (provider == Europeana)
+            {
+                return SearchEuropeana(query);
+            }
+
+            if (provider == Gutendex)
+            {
+                return SearchGutendex(isbn);
+            }
+
+            if (provider == InternetArchive)
+            {
+                return SearchInternetArchive(isbn);
+            }
+
+            if (provider == NdlSearch)
+            {
+                return SearchNdl(isbn);
+            }
+
+            if (provider == ApifyGoodreads)
+            {
+                return SearchApify(isbn);
+            }
+
+            return new List<Book>();
+        }
+
+        private static bool HasMatchingIsbn(Book book, string isbn) =>
+            book?.Editions?.Value?.Any(x => NormalizeIsbn13(x.Isbn13) == isbn) == true;
+
+        private static string GetSourceFromForeignId(string foreignBookId)
+        {
+            var separator = foreignBookId?.IndexOf(':') ?? -1;
+            return separator > 0 ? foreignBookId[..separator] : string.Empty;
+        }
+
         public Author GetAuthor(string foreignAuthorId)
         {
             var (provider, encodedName) = ParseId(foreignAuthorId);
@@ -356,19 +564,25 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> SearchInternetArchive(string query)
         {
+            var isbn = NormalizeIsbn13(query);
             var terms = query.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Take(20)
                 .Select(EscapeLuceneTerm)
                 .Where(x => !x.IsNullOrWhiteSpace())
                 .Select(x => $"(title:\"{x}\" OR creator:\"{x}\")")
                 .ToList();
-            if (terms.Count == 0)
+            if (isbn == null && terms.Count == 0)
             {
                 return new List<Book>();
             }
 
             var request = new HttpRequestBuilder("https://archive.org/advancedsearch.php")
-                .AddQueryParam("q", "mediatype:texts AND " + string.Join(" AND ", terms))
+                .AddQueryParam(
+                    "q",
+                    isbn != null
+                        ? "mediatype:texts AND isbn:" + isbn
+                        : "mediatype:texts AND " + string.Join(" AND ", terms)
+                )
                 .AddQueryParam("fl[]", "identifier")
                 .AddQueryParam("fl[]", "title")
                 .AddQueryParam("fl[]", "creator")
@@ -377,6 +591,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .AddQueryParam("fl[]", "language")
                 .AddQueryParam("fl[]", "publisher")
                 .AddQueryParam("fl[]", "isbn")
+                .AddQueryParam("fl[]", "numberofpages")
+                .AddQueryParam("fl[]", "page_count")
+                .AddQueryParam("fl[]", "subject")
                 .AddQueryParam("rows", "10")
                 .AddQueryParam("page", "1")
                 .AddQueryParam("output", "json")
@@ -435,7 +652,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .Where(x => x.Name.LocalName == "identifier")
                 .Where(x => ((string)x.Attribute(XName.Get("type", "http://www.w3.org/2001/XMLSchema-instance")) is string type && type.IndexOf("ISBN", StringComparison.OrdinalIgnoreCase) >= 0) ||
                     System.Text.RegularExpressions.Regex.IsMatch(x.Value.Trim(), "^(?:97[89][0-9]{10}|[0-9]{9}[0-9Xx])$"))
-                .Select(x => NormalizeEuropeanaIsbn13(x.Value))
+                .Select(x => NormalizeIsbn13(x.Value))
                 .Where(x => x != null)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
@@ -449,6 +666,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 ["date"] = FindNdlText(element, "issued") ?? FindNdlText(element, "date"),
                 ["description"] = FindNdlText(element, "abstract") ?? FindNdlText(element, "description"),
                 ["extent"] = FindNdlText(element, "extent"),
+                ["subject"] = new JArray(FindNdlTexts(element, "subject")),
                 ["isbn"] = new JArray(identifiers)
             };
         }
@@ -544,7 +762,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 (int?)info["pageCount"],
                 (string)info["imageLinks"]?["thumbnail"] ?? (string)info["imageLinks"]?["smallThumbnail"],
                 info["industryIdentifiers"] as JArray,
-                "https://books.google.com/books?id=" + Uri.EscapeDataString(id));
+                "https://books.google.com/books?id=" + Uri.EscapeDataString(id),
+                GetGenreValues(info["categories"]));
         }
 
         private Book MapLocRecord(JObject record)
@@ -568,7 +787,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 null,
                 (string)record["image_url"],
                 record["identifiers"] as JArray,
-                uri.ToString());
+                uri.ToString(),
+                GetGenreValues(record["subjects"] ?? record["subject"]));
         }
 
         private Book MapGutendexRecord(JObject record)
@@ -596,7 +816,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 null,
                 image,
                 identifiers,
-                "https://www.gutenberg.org/ebooks/" + idText);
+                "https://www.gutenberg.org/ebooks/" + idText,
+                GetGenreValues(record["subjects"]));
         }
 
         private Book MapInternetArchiveRecord(JObject record)
@@ -619,7 +840,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var title = GetFirstString(record["title"]);
             var author = GetFirstString(record["creator"]);
             var isbnValues = GetStringValues(record["isbn"])
-                .Select(NormalizeEuropeanaIsbn13)
+                .Select(NormalizeIsbn13)
                 .Where(x => x != null)
                 .Distinct(StringComparer.Ordinal);
             var identifiers = new JArray(isbnValues);
@@ -641,7 +862,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 pageCount,
                 image,
                 identifiers,
-                "https://archive.org/details/" + Uri.EscapeDataString(identifier));
+                "https://archive.org/details/" + Uri.EscapeDataString(identifier),
+                GetGenreValues(record["subject"]));
         }
 
         private Book MapNdlRecord(JObject record)
@@ -662,7 +884,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             var isbnIdentifiers = new JArray(GetStringValues(record["isbn"])
-                .Select(NormalizeEuropeanaIsbn13)
+                .Select(NormalizeIsbn13)
                 .Where(x => x != null)
                 .Distinct(StringComparer.Ordinal));
             var extent = (string)record["extent"];
@@ -683,7 +905,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 pageCount,
                 null,
                 isbnIdentifiers,
-                "https://ndlsearch.ndl.go.jp/books/" + Uri.EscapeDataString(recordId));
+                "https://ndlsearch.ndl.go.jp/books/" + Uri.EscapeDataString(recordId),
+                GetGenreValues(record["subject"]));
         }
 
         private Book MapApifyRecord(JObject record)
@@ -711,7 +934,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 (int?)record["pages"] ?? (int?)record["pageCount"],
                 (string)record["coverImage"] ?? (string)record["cover_image"] ?? (string)record["imageUrl"],
                 identifiers,
-                (string)record["url"] ?? "https://www.goodreads.com/");
+                (string)record["url"] ?? "https://www.goodreads.com/",
+                GetGenreValues(record["genres"] ?? record["genre"] ?? record["subjects"] ?? record["tags"]));
         }
 
         private Book MapEuropeanaRecord(JObject record)
@@ -748,7 +972,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var date = GetFirstString(item["year"]) ?? GetFirstString(proxy?["dcDate"]);
             var image = GetFirstString(item["edmPreview"]) ?? GetFirstString(aggregation?["edmPreview"]);
             var identifiers = new JArray(GetStringValues(item["dcIdentifier"] ?? proxy?["dcIdentifier"])
-                .Select(NormalizeEuropeanaIsbn13)
+                .Select(NormalizeIsbn13)
                 .Where(x => x != null)
                 .Distinct(StringComparer.Ordinal));
             var url = recordId.IsNullOrWhiteSpace()
@@ -767,7 +991,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 null,
                 image,
                 identifiers,
-                url);
+                url,
+                GetGenreValues(item["dcSubject"] ?? proxy?["dcSubject"]));
         }
 
         private static string GetFirstString(JToken value) =>
@@ -776,10 +1001,48 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private static IEnumerable<string> GetStringValues(JToken value) =>
             value is JArray array ? array.Values<string>() : value == null ? Enumerable.Empty<string>() : new[] { value.ToString() };
 
-        private static string NormalizeEuropeanaIsbn13(string value)
+        private static List<string> GetGenreValues(JToken value)
         {
-            var digits = System.Text.RegularExpressions.Regex.Replace(value ?? string.Empty, "[^0-9]", string.Empty);
-            return Isbn13IsValid(digits) ? digits : null;
+            if (value is JArray array)
+            {
+                return array.SelectMany(GetGenreValues).ToList();
+            }
+
+            if (value is JObject obj)
+            {
+                var text = (string)obj["name"] ?? (string)obj["value"] ?? (string)obj["label"] ?? (string)obj["topic"] ?? (string)obj["title"];
+                return text.IsNullOrWhiteSpace() ? new List<string>() : new List<string> { text.Trim() };
+            }
+
+            var textValue = value?.Type == JTokenType.String ? value.ToString().Trim() : null;
+            return textValue.IsNullOrWhiteSpace() ? new List<string>() : new List<string> { textValue };
+        }
+
+        private static string NormalizeIsbn13(string value)
+        {
+            var compact = System.Text.RegularExpressions.Regex.Replace(
+                value ?? string.Empty,
+                "[^0-9Xx]",
+                string.Empty
+            ).ToUpperInvariant();
+            if (Isbn13IsValid(compact))
+            {
+                return compact;
+            }
+
+            if (!Isbn10IsValid(compact))
+            {
+                return null;
+            }
+
+            var isbn13Prefix = "978" + compact.Substring(0, 9);
+            var checksum = 0;
+            for (var index = 0; index < isbn13Prefix.Length; index++)
+            {
+                checksum += (isbn13Prefix[index] - '0') * (index % 2 == 0 ? 1 : 3);
+            }
+
+            return isbn13Prefix + ((10 - (checksum % 10)) % 10).ToString(CultureInfo.InvariantCulture);
         }
 
         private Book BuildBook(
@@ -794,7 +1057,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             int? pages,
             string image,
             JArray identifiers,
-            string url)
+            string url,
+            IEnumerable<string> genres = null)
         {
             if (title.IsNullOrWhiteSpace() || author.IsNullOrWhiteSpace() || id.IsNullOrWhiteSpace())
             {
@@ -805,7 +1069,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var authorId = provider + "-author:" + Encode(author);
             var dateValue = DateTime.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsedDate)
                 ? parsedDate : (DateTime?)null;
-            var isbn = identifiers?.Select(GetIdentifierValue).FirstOrDefault(Isbn13IsValid);
+            var isbn = identifiers?.Select(GetIdentifierValue).Select(NormalizeIsbn13).FirstOrDefault(x => x != null);
             var authorMetadata = MakeAuthorMetadata(authorId, author, null, null);
             var edition = new Edition
             {
@@ -832,6 +1096,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 Title = title.CleanSpaces(),
                 CleanTitle = Parser.Parser.CleanAuthorName(title),
                 ReleaseDate = dateValue,
+                Genres = genres?.Where(x => !x.IsNullOrWhiteSpace()).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>(),
                 AnyEditionOk = true,
                 Editions = new List<Edition> { edition },
                 AuthorMetadata = authorMetadata,
@@ -879,7 +1144,24 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 host == "goodreads.com" || host.EndsWith(".gr-assets.com") || host.EndsWith(".ssl-images-amazon.com");
         }
 
-        private static bool Isbn13IsValid(string value) => value != null && System.Text.RegularExpressions.Regex.IsMatch(value, "^97[89][0-9]{10}$");
+        private static bool Isbn13IsValid(string value) =>
+            value != null && System.Text.RegularExpressions.Regex.IsMatch(value, "^97[89][0-9]{10}$");
+        private static bool Isbn10IsValid(string value)
+        {
+            if (value == null || !System.Text.RegularExpressions.Regex.IsMatch(value, "^[0-9]{9}[0-9X]$"))
+            {
+                return false;
+            }
+
+            var checksum = 0;
+            for (var index = 0; index < value.Length; index++)
+            {
+                var digit = value[index] == 'X' ? 10 : value[index] - '0';
+                checksum += digit * (10 - index);
+            }
+
+            return checksum % 11 == 0;
+        }
         private static string GetIdentifierValue(JToken item) => item is JObject obj ? (string)obj["identifier"] : item?.ToString();
         private static string GetApifyStableId(JObject record) => (string)record["goodreadsId"] ?? (string)record["goodreads_id"] ?? (string)record["bookId"] ?? (string)record["id"] ?? (string)record["isbn13"] ?? (string)record["isbn_13"];
         private static bool HasPrefix(string value, string provider) => value?.StartsWith(provider + ":", StringComparison.OrdinalIgnoreCase) == true;

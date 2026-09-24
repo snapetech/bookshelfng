@@ -26,6 +26,15 @@ namespace Readarr.Api.V1.Config
         public bool? EnableApifyGoodreads { get; set; }
         public bool SourcesFromEnvironment { get; set; }
 
+        public string MetadataTitleSourcePreference { get; set; }
+        public string MetadataDescriptionSourcePreference { get; set; }
+        public string MetadataPublisherSourcePreference { get; set; }
+        public string MetadataLanguageSourcePreference { get; set; }
+        public string MetadataReleaseDateSourcePreference { get; set; }
+        public string MetadataPageCountSourcePreference { get; set; }
+        public string MetadataCoverSourcePreference { get; set; }
+        public string MetadataGenresSourcePreference { get; set; }
+
         // Credential inputs are write-only: GET returns an empty input plus a
         // presence flag so saved API keys and tokens never leave the server.
         public string GoogleBooksApiKey { get; set; }
@@ -94,6 +103,14 @@ namespace Readarr.Api.V1.Config
                 EnableEuropeana = configuredSources.Contains("europeana"),
                 EnableApifyGoodreads = configuredSources.Contains("apify-goodreads"),
                 SourcesFromEnvironment = AdditionalMetadataSources.IsEnvironmentOverride(environmentSources),
+                MetadataTitleSourcePreference = model.MetadataTitleSourcePreference,
+                MetadataDescriptionSourcePreference = model.MetadataDescriptionSourcePreference,
+                MetadataPublisherSourcePreference = model.MetadataPublisherSourcePreference,
+                MetadataLanguageSourcePreference = model.MetadataLanguageSourcePreference,
+                MetadataReleaseDateSourcePreference = model.MetadataReleaseDateSourcePreference,
+                MetadataPageCountSourcePreference = model.MetadataPageCountSourcePreference,
+                MetadataCoverSourcePreference = model.MetadataCoverSourcePreference,
+                MetadataGenresSourcePreference = model.MetadataGenresSourcePreference,
                 GoogleBooksApiKey = string.Empty,
                 HasGoogleBooksApiKey = !string.IsNullOrWhiteSpace(googleBooksApiKey),
                 GoogleBooksApiKeyFromEnvironment = !string.IsNullOrWhiteSpace(googleBooksApiKeyFromEnvironment),
