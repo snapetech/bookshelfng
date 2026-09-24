@@ -349,6 +349,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Reusing a runtime-pack artifact intentionally skips that build job. Keep
+  # downstream release jobs eligible with explicit checks for their real inputs.
   build-linux-packages:
     name: Build Debian, RPM, AppImage, and Flatpak packages
     if: >-
