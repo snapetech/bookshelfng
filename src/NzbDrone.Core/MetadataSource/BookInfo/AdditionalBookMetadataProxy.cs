@@ -22,6 +22,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     public interface IAdditionalBookMetadataProxy
     {
         List<Book> Search(string query);
+        List<Book> SearchProvider(string query, string provider);
+        HashSet<string> GetEnabledCatalogSources(string defaultPrimarySource, bool hardcoverConfigured);
         bool HandlesBookId(string foreignBookId);
         bool HandlesAuthorId(string foreignAuthorId);
         Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId);
@@ -30,8 +32,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     }
 
     /// <summary>
-    /// Additional Google Books, Library of Congress, Europeana, Gutendex,
-    /// Internet Archive, and Apify catalogs.
+    /// Additional Open Library, Google Books, Library of Congress, Europeana,
+    /// Gutendex, Internet Archive, and Apify catalogs.
     /// Provider-qualified foreign IDs are retained in Bookshelf so subsequent
     /// book and author refreshes resolve through the same catalog.
     /// </summary>
@@ -49,6 +51,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private readonly ICached<List<Book>> _searchCache;
         private readonly ICached<List<JObject>> _apifyCache;
         private readonly IConfigService _configService;
+        private readonly IOpenLibraryMetadataProxy _openLibraryMetadataProxy;
         private readonly Logger _logger;
 
         private static readonly TimeSpan LocRequestRateLimit = TimeSpan.FromMilliseconds(3200);
@@ -65,6 +68,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             _searchCache = cacheManager.GetCache<List<Book>>(GetType(), "search");
             _apifyCache = cacheManager.GetCache<List<JObject>>(GetType(), "apify");
             _configService = configService;
+            _openLibraryMetadataProxy = new OpenLibraryMetadataProxy(cachedHttpClient, cacheManager, configService, logger);
             _logger = logger;
         }
 
@@ -74,14 +78,32 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private string ApifyToken => GetConfiguredValue("HARDCOVER_APIFY_TOKEN", _configService.ApifyToken);
         private string ApifyGoodreadsInputTemplate => GetConfiguredValue("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE", _configService.ApifyGoodreadsInputTemplate);
 
-        private HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledSources(
+        private HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledRuntimeSources(
             Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
+            _configService.MetadataCatalogSources,
+            _configService.IsDefined("MetadataCatalogSources"),
             _configService.AdditionalMetadataSources,
             _configService.IsDefined("AdditionalMetadataSources"),
             GoogleBooksApiKey,
             EuropeanaApiKey,
             ApifyGoodreadsActor,
-            ApifyToken);
+            ApifyToken,
+            null,
+            false);
+
+        public HashSet<string> GetEnabledCatalogSources(string defaultPrimarySource, bool hardcoverConfigured) =>
+            AdditionalMetadataSources.GetEnabledRuntimeSources(
+                Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
+                _configService.MetadataCatalogSources,
+                _configService.IsDefined("MetadataCatalogSources"),
+                _configService.AdditionalMetadataSources,
+                _configService.IsDefined("AdditionalMetadataSources"),
+                GoogleBooksApiKey,
+                EuropeanaApiKey,
+                ApifyGoodreadsActor,
+                ApifyToken,
+                defaultPrimarySource,
+                hardcoverConfigured);
 
         private bool IsEnabled(string provider) => EnabledSources.Contains(provider);
 
@@ -93,14 +115,35 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Book> Search(string query)
         {
-            var cacheKey = "AdditionalMetadata:" + string.Join(",", EnabledSources.OrderBy(x => x)) + ":" + query.Trim().ToLowerInvariant();
-            return _searchCache.Get(cacheKey, () => SearchUncached(query), TimeSpan.FromMinutes(10));
+            return SearchSources(query, EnabledSources.Where(AdditionalMetadataSources.IsSupportedSource)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
         }
 
-        private List<Book> SearchUncached(string query)
+        public List<Book> SearchProvider(string query, string provider)
+        {
+            if (!AdditionalMetadataSources.IsSupportedSource(provider) || !EnabledSources.Contains(provider))
+            {
+                return new List<Book>();
+            }
+
+            return SearchSources(query, new HashSet<string>(new[] { provider }, StringComparer.OrdinalIgnoreCase));
+        }
+
+        private List<Book> SearchSources(string query, HashSet<string> sources)
+        {
+            if (query.IsNullOrWhiteSpace() || sources.Count == 0)
+            {
+                return new List<Book>();
+            }
+
+            var cacheKey = "AdditionalMetadata:" + string.Join(",", sources.OrderBy(x => x)) + ":" + query.Trim().ToLowerInvariant();
+            return _searchCache.Get(cacheKey, () => SearchUncached(query, sources), TimeSpan.FromMinutes(10));
+        }
+
+        private List<Book> SearchUncached(string query, HashSet<string> sources)
         {
             var books = new List<Book>();
-            foreach (var provider in EnabledSources
+            foreach (var provider in sources
                 .OrderBy(x => x == GoogleBooks ? 0 : x == Gutendex ? 1 : x == InternetArchive ? 2 : x == Europeana ? 3 : x == LibraryOfCongress ? 4 : x == NdlSearch ? 5 : x == ApifyGoodreads ? 6 : 7)
                 .ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
             {
@@ -109,6 +152,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     if (provider == GoogleBooks)
                     {
                         books.AddRange(SearchGoogleBooks(query));
+                    }
+                    else if (provider == AdditionalMetadataSources.OpenLibrary)
+                    {
+                        books.AddRange(_openLibraryMetadataProxy.Search(query));
                     }
                     else if (provider == LibraryOfCongress)
                     {
@@ -148,6 +195,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         }
 
         public bool HandlesBookId(string foreignBookId) =>
+            _openLibraryMetadataProxy.HandlesBookId(foreignBookId) ||
             HasPrefix(foreignBookId, GoogleBooks) ||
             HasPrefix(foreignBookId, LibraryOfCongress) ||
             HasPrefix(foreignBookId, Europeana) ||
@@ -157,6 +205,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             HasPrefix(foreignBookId, ApifyGoodreads);
 
         public bool HandlesAuthorId(string foreignAuthorId) =>
+            _openLibraryMetadataProxy.HandlesAuthorId(foreignAuthorId) ||
             HasPrefix(foreignAuthorId, GoogleBooks + "-author") ||
             HasPrefix(foreignAuthorId, LibraryOfCongress + "-author") ||
             HasPrefix(foreignAuthorId, Europeana + "-author") ||
@@ -167,6 +216,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId)
         {
+            if (_openLibraryMetadataProxy.HandlesBookId(foreignBookId))
+            {
+                return _openLibraryMetadataProxy.GetBook(foreignBookId);
+            }
+
             var (provider, id) = ParseId(foreignBookId);
             JObject record;
             if (provider == GoogleBooks)
@@ -468,6 +522,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return SearchApify(isbn);
             }
 
+            if (provider == AdditionalMetadataSources.OpenLibrary)
+            {
+                return _openLibraryMetadataProxy.Search(isbn);
+            }
+
             return new List<Book>();
         }
 
@@ -482,6 +541,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Author GetAuthor(string foreignAuthorId)
         {
+            if (_openLibraryMetadataProxy.HandlesAuthorId(foreignAuthorId))
+            {
+                return _openLibraryMetadataProxy.GetAuthor(foreignAuthorId);
+            }
+
             var (provider, encodedName) = ParseId(foreignAuthorId);
             var name = Decode(encodedName);
             var books = Search(name).Where(x =>

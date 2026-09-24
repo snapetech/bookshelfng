@@ -24,7 +24,7 @@ namespace Readarr.Api.V1.Config
         [RestPutById]
         public override ActionResult<MetadataProviderConfigResource> SaveConfig(MetadataProviderConfigResource resource)
         {
-            var sourceValues = new[]
+            var legacySourceValues = new[]
             {
                 resource.EnableGoogleBooks,
                 resource.EnableLoc,
@@ -33,6 +33,12 @@ namespace Readarr.Api.V1.Config
                 resource.EnableNdl,
                 resource.EnableEuropeana,
                 resource.EnableApifyGoodreads
+            };
+            var runtimeSourceValues = new[]
+            {
+                resource.EnableOpenLibrary,
+                resource.EnableHardcover,
+                resource.EnableMetadataApi
             };
             var sources = new List<string>();
 
@@ -71,6 +77,21 @@ namespace Readarr.Api.V1.Config
                 sources.Add("apify-goodreads");
             }
 
+            if (resource.EnableOpenLibrary == true)
+            {
+                sources.Add(AdditionalMetadataSources.OpenLibrary);
+            }
+
+            if (resource.EnableHardcover == true)
+            {
+                sources.Add(AdditionalMetadataSources.Hardcover);
+            }
+
+            if (resource.EnableMetadataApi == true)
+            {
+                sources.Add(AdditionalMetadataSources.MetadataApi);
+            }
+
             var dictionary = new Dictionary<string, object>();
 
             var fieldSourcePreferences = new Dictionary<string, string>
@@ -103,7 +124,11 @@ namespace Readarr.Api.V1.Config
 
             // Older UI/API clients do not send these fields. Leave an existing
             // provider selection untouched for those clients.
-            if (sourceValues.Any(value => value.HasValue))
+            if (runtimeSourceValues.Any(value => value.HasValue))
+            {
+                dictionary["MetadataCatalogSources"] = string.Join(",", sources);
+            }
+            else if (!_configService.IsDefined("MetadataCatalogSources") && legacySourceValues.Any(value => value.HasValue))
             {
                 dictionary["AdditionalMetadataSources"] = string.Join(",", sources);
             }
@@ -121,6 +146,11 @@ namespace Readarr.Api.V1.Config
             if (resource.ApifyGoodreadsInputTemplate != null && !resource.ApifyGoodreadsInputTemplateFromEnvironment)
             {
                 dictionary["ApifyGoodreadsInputTemplate"] = resource.ApifyGoodreadsInputTemplate;
+            }
+
+            if (resource.OpenLibraryContactEmail != null && !resource.OpenLibraryContactEmailFromEnvironment)
+            {
+                dictionary["OpenLibraryContactEmail"] = resource.OpenLibraryContactEmail.Trim();
             }
 
             _configService.SaveConfigDictionary(dictionary);

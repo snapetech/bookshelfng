@@ -68,7 +68,9 @@ namespace NzbDrone.Core.Configuration
         //Metadata
         string MetadataSource { get; set; }
         string HardcoverAuth { get; set; }
+        string MetadataCatalogSources { get; set; }
         string AdditionalMetadataSources { get; set; }
+        string OpenLibraryContactEmail { get; set; }
         string MetadataTitleSourcePreference { get; set; }
         string MetadataDescriptionSourcePreference { get; set; }
         string MetadataPublisherSourcePreference { get; set; }

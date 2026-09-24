@@ -58,14 +58,17 @@ const writeBookTagOptions = [
   }
 ];
 
-const additionalMetadataSources = [
-  { id: 'googlebooks', name: 'enableGoogleBooks', label: 'Google Books', help: 'GoogleBooksSourceHelp' },
-  { id: 'loc', name: 'enableLoc', label: 'Library of Congress', help: 'LocSourceHelp' },
-  { id: 'gutendex', name: 'enableGutendex', label: 'Gutendex / Project Gutenberg', help: 'GutendexSourceHelp' },
-  { id: 'internetarchive', name: 'enableInternetArchive', label: 'Internet Archive', help: 'InternetArchiveSourceHelp' },
-  { id: 'ndl', name: 'enableNdl', label: 'NDL Search', help: 'NdlSourceHelp' },
-  { id: 'europeana', name: 'enableEuropeana', label: 'Europeana', help: 'EuropeanaSourceHelp' },
-  { id: 'apify-goodreads', name: 'enableApifyGoodreads', label: 'Apify Goodreads-compatible Actor', help: 'ApifyGoodreadsSourceHelp' }
+const metadataCatalogSources = [
+  { id: 'hardcover', name: 'enableHardcover', label: 'Hardcover', help: 'HardcoverCatalogSourceHelp' },
+  { id: 'metadata-api', name: 'enableMetadataApi', label: 'Readarr-compatible Metadata API', help: 'MetadataApiCatalogSourceHelp' },
+  { id: 'openlibrary', name: 'enableOpenLibrary', label: 'Open Library', help: 'OpenLibrarySourceHelp', fieldPreference: true },
+  { id: 'googlebooks', name: 'enableGoogleBooks', label: 'Google Books', help: 'GoogleBooksSourceHelp', fieldPreference: true },
+  { id: 'loc', name: 'enableLoc', label: 'Library of Congress', help: 'LocSourceHelp', fieldPreference: true },
+  { id: 'gutendex', name: 'enableGutendex', label: 'Gutendex / Project Gutenberg', help: 'GutendexSourceHelp', fieldPreference: true },
+  { id: 'internetarchive', name: 'enableInternetArchive', label: 'Internet Archive', help: 'InternetArchiveSourceHelp', fieldPreference: true },
+  { id: 'ndl', name: 'enableNdl', label: 'NDL Search', help: 'NdlSourceHelp', fieldPreference: true },
+  { id: 'europeana', name: 'enableEuropeana', label: 'Europeana', help: 'EuropeanaSourceHelp', fieldPreference: true },
+  { id: 'apify-goodreads', name: 'enableApifyGoodreads', label: 'Apify Goodreads-compatible Actor', help: 'ApifyGoodreadsSourceHelp', fieldPreference: true }
 ];
 
 const metadataFieldPreferences = [
@@ -81,7 +84,7 @@ const metadataFieldPreferences = [
 
 const metadataFieldSourceOptions = [
   { key: '', value: translate('UseSelectedMetadataSource') },
-  ...additionalMetadataSources.map((source) => ({
+  ...metadataCatalogSources.filter((source) => source.fieldPreference).map((source) => ({
     key: source.id,
     value: source.label
   }))
@@ -103,6 +106,7 @@ function MetadataProvider(props) {
   const apifyActorFromEnvironment = settings.apifyGoodreadsActorFromEnvironment?.value;
   const apifyTokenFromEnvironment = settings.apifyTokenFromEnvironment?.value;
   const apifyTemplateFromEnvironment = settings.apifyGoodreadsInputTemplateFromEnvironment?.value;
+  const openLibraryEmailFromEnvironment = settings.openLibraryContactEmailFromEnvironment?.value;
 
   return (
 
@@ -169,7 +173,7 @@ function MetadataProvider(props) {
 
             </FieldSet>
 
-            <FieldSet legend={translate('PrimaryMetadataProvider')}>
+            <FieldSet legend={translate('HardcoverApiAccess')}>
               <FormGroup>
                 <FormLabel>{translate('HardcoverApiToken')}</FormLabel>
                 <FormInputGroup
@@ -200,14 +204,14 @@ function MetadataProvider(props) {
               </FormGroup>
             </FieldSet>
 
-            <FieldSet legend={translate('AdditionalMetadataSources')}>
+            <FieldSet legend={translate('RuntimeCatalogSources')}>
               <p className="helpText">
                 {sourcesFromEnvironment
                   ? translate('AdditionalMetadataSourcesEnvironmentOverride')
-                  : translate('AdditionalMetadataSourcesHelpText')}
+                  : translate('RuntimeCatalogSourcesHelpText')}
               </p>
 
-              {additionalMetadataSources.map((source) => (
+              {metadataCatalogSources.map((source) => (
                 <FormGroup key={source.name}>
                   <FormLabel>{source.label}</FormLabel>
                   <FormInputGroup
@@ -220,6 +224,20 @@ function MetadataProvider(props) {
                   />
                 </FormGroup>
               ))}
+
+              <FormGroup>
+                <FormLabel>{translate('OpenLibraryContactEmail')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.TEXT}
+                  name="openLibraryContactEmail"
+                  onChange={onInputChange}
+                  {...settings.openLibraryContactEmail}
+                  isDisabled={openLibraryEmailFromEnvironment}
+                />
+                {openLibraryEmailFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
 
               <FormGroup>
                 <FormLabel>{translate('GoogleBooksApiKey')}</FormLabel>

@@ -24,7 +24,12 @@ namespace Readarr.Api.V1.Config
         public bool? EnableNdl { get; set; }
         public bool? EnableEuropeana { get; set; }
         public bool? EnableApifyGoodreads { get; set; }
+        public bool? EnableOpenLibrary { get; set; }
+        public bool? EnableHardcover { get; set; }
+        public bool? EnableMetadataApi { get; set; }
         public bool SourcesFromEnvironment { get; set; }
+        public string OpenLibraryContactEmail { get; set; }
+        public bool OpenLibraryContactEmailFromEnvironment { get; set; }
 
         public string MetadataTitleSourcePreference { get; set; }
         public string MetadataDescriptionSourcePreference { get; set; }
@@ -68,6 +73,7 @@ namespace Readarr.Api.V1.Config
             var apifyActorFromEnvironment = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_ACTOR");
             var apifyTokenFromEnvironment = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_TOKEN");
             var apifyInputTemplateFromEnvironment = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE");
+            var openLibraryEmailFromEnvironment = Environment.GetEnvironmentVariable("OPEN_LIBRARY_CONTACT_EMAIL");
             var googleBooksApiKey = EffectiveValue(googleBooksApiKeyFromEnvironment, model.GoogleBooksApiKey);
             var europeanaApiKey = EffectiveValue(europeanaApiKeyFromEnvironment, model.EuropeanaApiKey);
             var hardcoverAuth = EffectiveValue(
@@ -75,14 +81,23 @@ namespace Readarr.Api.V1.Config
                 EffectiveValue(hardcoverApiKeyFromEnvironment, model.HardcoverAuth));
             var apifyActor = EffectiveValue(apifyActorFromEnvironment, model.ApifyGoodreadsActor);
             var apifyToken = EffectiveValue(apifyTokenFromEnvironment, model.ApifyToken);
-            var configuredSources = AdditionalMetadataSources.GetConfiguredSources(
+            var nativeHardcoverEnabled =
+                string.Equals(Environment.GetEnvironmentVariable("HARDCOVER"), "true", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(Environment.GetEnvironmentVariable("HARDCOVER_NATIVE"), "false", StringComparison.OrdinalIgnoreCase);
+            var defaultPrimarySource = nativeHardcoverEnabled
+                ? AdditionalMetadataSources.Hardcover
+                : AdditionalMetadataSources.MetadataApi;
+            var configuredSources = AdditionalMetadataSources.GetConfiguredRuntimeSources(
                 environmentSources,
+                model.MetadataCatalogSources,
+                model.IsDefined("MetadataCatalogSources"),
                 model.AdditionalMetadataSources,
                 model.IsDefined("AdditionalMetadataSources"),
                 googleBooksApiKey,
                 europeanaApiKey,
                 apifyActor,
-                apifyToken);
+                apifyToken,
+                defaultPrimarySource);
 
             return new MetadataProviderConfigResource
             {
@@ -102,7 +117,12 @@ namespace Readarr.Api.V1.Config
                 EnableNdl = configuredSources.Contains("ndl"),
                 EnableEuropeana = configuredSources.Contains("europeana"),
                 EnableApifyGoodreads = configuredSources.Contains("apify-goodreads"),
+                EnableOpenLibrary = configuredSources.Contains(AdditionalMetadataSources.OpenLibrary),
+                EnableHardcover = configuredSources.Contains(AdditionalMetadataSources.Hardcover),
+                EnableMetadataApi = configuredSources.Contains(AdditionalMetadataSources.MetadataApi),
                 SourcesFromEnvironment = AdditionalMetadataSources.IsEnvironmentOverride(environmentSources),
+                OpenLibraryContactEmail = EffectiveValue(openLibraryEmailFromEnvironment, model.OpenLibraryContactEmail),
+                OpenLibraryContactEmailFromEnvironment = !string.IsNullOrWhiteSpace(openLibraryEmailFromEnvironment),
                 MetadataTitleSourcePreference = model.MetadataTitleSourcePreference,
                 MetadataDescriptionSourcePreference = model.MetadataDescriptionSourcePreference,
                 MetadataPublisherSourcePreference = model.MetadataPublisherSourcePreference,

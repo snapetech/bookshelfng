@@ -109,6 +109,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return _additionalBookMetadataProxy.GetAuthor(foreignAuthorId);
             }
 
+            if (TryGetNamespacedId(foreignAuthorId, "metadata-api-author:", out var metadataApiAuthorId))
+            {
+                return NamespaceMetadataApiAuthor(PollAuthorUncached(metadataApiAuthorId));
+            }
+
+            if (TryGetNamespacedId(foreignAuthorId, "hardcover-author:", out var hardcoverAuthorId))
+            {
+                return NamespaceHardcoverAuthor(MapAuthor(_hardcoverMetadataProxy.GetAuthor(hardcoverAuthorId)));
+            }
+
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
                 return MapAuthor(_hardcoverMetadataProxy.GetAuthor(foreignAuthorId));
@@ -147,6 +157,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (_additionalBookMetadataProxy.HandlesBookId(foreignBookId))
             {
                 return ApplyFieldSourcePreferences(_additionalBookMetadataProxy.GetBook(foreignBookId));
+            }
+
+            if (TryGetNamespacedId(foreignBookId, "metadata-api:", out var metadataApiBookId))
+            {
+                return ApplyFieldSourcePreferences(NamespaceMetadataApiBook(PollBook(metadataApiBookId)));
+            }
+
+            if (TryGetNamespacedId(foreignBookId, "hardcover:", out var hardcoverBookId))
+            {
+                return ApplyFieldSourcePreferences(GetHardcoverBook(hardcoverBookId));
             }
 
             if (_hardcoverMetadataProxy.IsNativeEnabled)
@@ -217,6 +237,23 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (_additionalBookMetadataProxy.HandlesBookId(title))
             {
                 return new List<Book> { _additionalBookMetadataProxy.GetBook(title).Item2 };
+            }
+
+            if (TryGetNamespacedId(title, "metadata-api:", out _) ||
+                TryGetNamespacedId(title, "hardcover:", out _))
+            {
+                return new List<Book> { GetBookInfo(title).Item2 };
+            }
+
+            if (_additionalBookMetadataProxy.HandlesAuthorId(title))
+            {
+                return _additionalBookMetadataProxy.GetAuthor(title).Books.Value;
+            }
+
+            if (TryGetNamespacedId(title, "metadata-api-author:", out _) ||
+                TryGetNamespacedId(title, "hardcover-author:", out _))
+            {
+                return GetAuthorInfo(title).Books.Value;
             }
 
             var q = title.ToLower().Trim();
@@ -295,17 +332,305 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> SearchWithAdditional(string query, bool getAllEditions)
         {
-            var books = Search(query, getAllEditions);
-            try
+            var defaultPrimarySource = _hardcoverMetadataProxy.IsNativeEnabled
+                ? AdditionalMetadataSources.Hardcover
+                : AdditionalMetadataSources.MetadataApi;
+            var sources = _additionalBookMetadataProxy.GetEnabledCatalogSources(
+                defaultPrimarySource,
+                _hardcoverMetadataProxy.IsConfigured);
+
+            // Keep compatibility with old mocks and proxy implementations that
+            // predate runtime catalog selection.
+            if (sources == null)
             {
-                books.AddRange(_additionalBookMetadataProxy.Search(query));
-            }
-            catch (Exception e)
-            {
-                _logger.Warn(e, "Additional book metadata search failed for {0}", query?.ReplaceLineEndings(""));
+                var legacyBooks = Search(query, getAllEditions);
+                try
+                {
+                    legacyBooks.AddRange(_additionalBookMetadataProxy.Search(query));
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Additional book metadata search failed for {0}", query?.ReplaceLineEndings(""));
+                }
+
+                return legacyBooks.DistinctBy(x => x.ForeignBookId).ToList();
             }
 
-            return books.DistinctBy(x => x.ForeignBookId).ToList();
+            var books = new List<Book>();
+            foreach (var provider in sources
+                .OrderBy(x => GetCatalogSearchPriority(x, defaultPrimarySource))
+                .ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (provider == AdditionalMetadataSources.Hardcover)
+                    {
+                        books.AddRange(SearchHardcoverCatalog(query, provider != defaultPrimarySource));
+                    }
+                    else if (provider == AdditionalMetadataSources.MetadataApi)
+                    {
+                        books.AddRange(SearchMetadataApiCatalog(query, getAllEditions, provider != defaultPrimarySource));
+                    }
+                    else
+                    {
+                        books.AddRange(_additionalBookMetadataProxy.SearchProvider(query, provider));
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Metadata catalog provider {0} failed for {1}", provider, query?.ReplaceLineEndings(""));
+                }
+            }
+
+            return books.Where(x => !x.ForeignBookId.IsNullOrWhiteSpace())
+                .DistinctBy(x => x.ForeignBookId)
+                .ToList();
+        }
+
+        private static int GetCatalogSearchPriority(string provider, string defaultPrimarySource)
+        {
+            if (string.Equals(provider, defaultPrimarySource, StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (provider == AdditionalMetadataSources.Hardcover || provider == AdditionalMetadataSources.MetadataApi)
+            {
+                return 1;
+            }
+
+            return provider switch
+            {
+                AdditionalMetadataSources.OpenLibrary => 2,
+                "googlebooks" => 3,
+                "gutendex" => 4,
+                "internetarchive" => 5,
+                "europeana" => 6,
+                "loc" => 7,
+                "ndl" => 8,
+                "apify-goodreads" => 9,
+                _ => 10
+            };
+        }
+
+        private List<Book> SearchMetadataApiCatalog(string query, bool getAllEditions, bool namespaceIds)
+        {
+            var results = _goodreadsSearchProxy.SearchMetadataApi(query) ?? new List<SearchJsonResource>();
+            if (results.Count == 0)
+            {
+                return new List<Book>();
+            }
+
+            if (getAllEditions)
+            {
+                var books = new List<Book>();
+                foreach (var authorResults in results
+                    .Where(x => x.Author != null && x.Author.Id > 0 && x.WorkId > 0)
+                    .GroupBy(x => x.Author.Id))
+                {
+                    try
+                    {
+                        var authorId = authorResults.Key.ToString();
+                        var requestedWorkIds = authorResults.Select(x => x.WorkId.ToString()).ToHashSet(StringComparer.Ordinal);
+                        var author = PollAuthorUncached(authorId);
+                        var authors = new Dictionary<string, AuthorMetadata>
+                        {
+                            [authorId] = author.Metadata.Value
+                        };
+
+                        foreach (var book in author.Books.Value.Where(x => requestedWorkIds.Contains(x.ForeignBookId)))
+                        {
+                            if (!namespaceIds)
+                            {
+                                AddDbIds(authorId, book, authors);
+                            }
+
+                            var bookInfo = Tuple.Create(
+                                authorId,
+                                book,
+                                new List<AuthorMetadata> { book.AuthorMetadata.Value });
+                            books.Add(namespaceIds ? NamespaceMetadataApiBook(bookInfo).Item2 : book);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.Warn(e, "Readarr-compatible metadata catalog author {0} failed", authorResults.Key);
+                    }
+                }
+
+                return books;
+            }
+
+            var editionIds = results.Select(x => x.BookId).Where(x => x > 0).Distinct().ToList();
+            if (editionIds.Count == 0)
+            {
+                return new List<Book>();
+            }
+
+            if (editionIds.Count == 1)
+            {
+                var book = GetEditionInfo(editionIds[0], false, false, !namespaceIds);
+                return new List<Book>
+                {
+                    namespaceIds
+                        ? NamespaceMetadataApiBook(Tuple.Create(
+                            book.AuthorMetadata.Value.ForeignAuthorId,
+                            book,
+                            new List<AuthorMetadata> { book.AuthorMetadata.Value })).Item2
+                        : book
+                };
+            }
+
+            return MapSearchResult(editionIds, !namespaceIds)
+                .Select(book => namespaceIds
+                    ? NamespaceMetadataApiBook(Tuple.Create(
+                        book.AuthorMetadata.Value.ForeignAuthorId,
+                        book,
+                        new List<AuthorMetadata> { book.AuthorMetadata.Value })).Item2
+                    : book)
+                .ToList();
+        }
+
+        private List<Book> SearchHardcoverCatalog(string query, bool namespaceIds)
+        {
+            var books = new List<Book>();
+            var results = _hardcoverMetadataProxy.Search(query) ?? new List<SearchJsonResource>();
+            foreach (var result in results.Where(x => x.WorkId > 0).DistinctBy(x => x.WorkId))
+            {
+                try
+                {
+                    books.Add(GetHardcoverBook(result.WorkId.ToString(), namespaceIds).Item2);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Hardcover catalog work {0} failed", result.WorkId);
+                }
+            }
+
+            return books;
+        }
+
+        private Tuple<string, Book, List<AuthorMetadata>> GetHardcoverBook(string workId, bool namespaceIds = true)
+        {
+            var resource = _hardcoverMetadataProxy.GetWork(workId);
+            var book = MapBook(resource);
+            var authors = resource.Authors.Select(MapAuthorMetadata).ToList();
+            var authorId = GetAuthorId(resource).ToString();
+            var author = authors.FirstOrDefault(x => x.ForeignAuthorId == authorId) ?? authors.FirstOrDefault();
+
+            if (author == null)
+            {
+                throw new AuthorNotFoundException(authorId);
+            }
+
+            book.AuthorMetadata = author;
+            book.Author.Value.Metadata = author;
+            MapSeriesLinks(resource.Series.Select(MapSeries).ToList(), new List<Book> { book }, resource.Series);
+
+            var bookInfo = Tuple.Create(authorId, book, authors);
+            if (!namespaceIds)
+            {
+                AddDbIds(authorId, book, authors.ToDictionary(x => x.ForeignAuthorId));
+                return bookInfo;
+            }
+
+            return NamespaceHardcoverBook(bookInfo);
+        }
+
+        private static Tuple<string, Book, List<AuthorMetadata>> NamespaceMetadataApiBook(
+            Tuple<string, Book, List<AuthorMetadata>> bookInfo)
+        {
+            return NamespaceBookInfo(bookInfo, "metadata-api:", "metadata-api-author:");
+        }
+
+        private static Tuple<string, Book, List<AuthorMetadata>> NamespaceHardcoverBook(
+            Tuple<string, Book, List<AuthorMetadata>> bookInfo)
+        {
+            return NamespaceBookInfo(bookInfo, "hardcover:", "hardcover-author:");
+        }
+
+        private static Tuple<string, Book, List<AuthorMetadata>> NamespaceBookInfo(
+            Tuple<string, Book, List<AuthorMetadata>> bookInfo,
+            string bookPrefix,
+            string authorPrefix)
+        {
+            var book = bookInfo.Item2;
+            var authors = bookInfo.Item3 ?? new List<AuthorMetadata>();
+            var primaryAuthor = book.AuthorMetadata?.Value;
+            if (primaryAuthor != null && !authors.Contains(primaryAuthor))
+            {
+                authors.Add(primaryAuthor);
+            }
+
+            foreach (var author in authors)
+            {
+                author.ForeignAuthorId = AddIdPrefix(author.ForeignAuthorId, authorPrefix);
+                author.TitleSlug = AddIdPrefix(author.TitleSlug, authorPrefix);
+            }
+
+            var authorMetadata = primaryAuthor ?? authors.FirstOrDefault();
+            if (authorMetadata != null)
+            {
+                book.AuthorMetadata = authorMetadata;
+                book.Author = new Author
+                {
+                    Metadata = authorMetadata,
+                    CleanName = Parser.Parser.CleanAuthorName(authorMetadata.Name),
+                    Books = new List<Book>(),
+                    Series = new List<Series>()
+                };
+            }
+
+            book.ForeignBookId = AddIdPrefix(book.ForeignBookId, bookPrefix);
+            book.TitleSlug = book.ForeignBookId;
+
+            return Tuple.Create(
+                AddIdPrefix(bookInfo.Item1, authorPrefix),
+                book,
+                authors);
+        }
+
+        private static Author NamespaceMetadataApiAuthor(Author author) => NamespaceAuthor(author, "metadata-api:", "metadata-api-author:");
+
+        private static Author NamespaceHardcoverAuthor(Author author) => NamespaceAuthor(author, "hardcover:", "hardcover-author:");
+
+        private static Author NamespaceAuthor(Author author, string bookPrefix, string authorPrefix)
+        {
+            var metadata = author.Metadata.Value;
+            metadata.ForeignAuthorId = AddIdPrefix(metadata.ForeignAuthorId, authorPrefix);
+            metadata.TitleSlug = AddIdPrefix(metadata.TitleSlug, authorPrefix);
+            author.Metadata = metadata;
+
+            foreach (var book in author.Books.Value)
+            {
+                book.ForeignBookId = AddIdPrefix(book.ForeignBookId, bookPrefix);
+                book.TitleSlug = book.ForeignBookId;
+                book.AuthorMetadata = metadata;
+                book.Author = new Author
+                {
+                    Metadata = metadata,
+                    CleanName = Parser.Parser.CleanAuthorName(metadata.Name),
+                    Books = new List<Book>(),
+                    Series = new List<Series>()
+                };
+            }
+
+            return author;
+        }
+
+        private static string AddIdPrefix(string id, string prefix) =>
+            id.IsNullOrWhiteSpace() || id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? id : prefix + id;
+
+        private static bool TryGetNamespacedId(string value, string prefix, out string id)
+        {
+            id = null;
+            if (value?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) != true)
+            {
+                return false;
+            }
+
+            id = value.Substring(prefix.Length);
+            return !id.IsNullOrWhiteSpace();
         }
 
         private List<Book> Search(string query, bool getAllEditions)
@@ -453,9 +778,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        private Book GetEditionInfo(int id, bool getAllEditions)
+        private Book GetEditionInfo(
+            int id,
+            bool getAllEditions,
+            bool useNativeHardcover = true,
+            bool attachDatabaseEntities = true)
         {
-            if (_hardcoverMetadataProxy.IsNativeEnabled)
+            if (useNativeHardcover && _hardcoverMetadataProxy.IsNativeEnabled)
             {
                 var resource = _hardcoverMetadataProxy.GetEdition(id.ToString());
                 var nativeBook = MapBook(resource);
@@ -571,13 +900,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 book = trimmed;
             }
 
-            var authorDict = authors.ToDictionary(x => x.ForeignAuthorId);
-            AddDbIds(book.AuthorMetadata.Value.ForeignAuthorId, book, authorDict);
+            if (attachDatabaseEntities)
+            {
+                var authorDict = authors.ToDictionary(x => x.ForeignAuthorId);
+                AddDbIds(book.AuthorMetadata.Value.ForeignAuthorId, book, authorDict);
+            }
 
             return book;
         }
 
-        private List<Book> MapSearchResult(List<int> ids)
+        private List<Book> MapSearchResult(List<int> ids, bool attachDatabaseEntities = true)
         {
             HttpResponse<BulkBookResource> httpResponse;
 
@@ -606,10 +938,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }
             }
 
-            return MapBulkBook(httpResponse.Resource);
+            return MapBulkBook(httpResponse.Resource, attachDatabaseEntities);
         }
 
-        private List<Book> MapBulkBook(BulkBookResource resource)
+        private List<Book> MapBulkBook(BulkBookResource resource, bool attachDatabaseEntities = true)
         {
             var books = new List<Book>();
 
@@ -626,7 +958,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 var book = MapBook(work);
                 var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
 
-                AddDbIds(authorId, book, authors);
+                if (attachDatabaseEntities)
+                {
+                    AddDbIds(authorId, book, authors);
+                }
+                else if (authors.TryGetValue(authorId, out var metadata))
+                {
+                    book.AuthorMetadata = metadata;
+                    book.Author = new Author
+                    {
+                        Metadata = metadata,
+                        CleanName = Parser.Parser.CleanAuthorName(metadata.Name),
+                        Books = new List<Book>(),
+                        Series = new List<Series>()
+                    };
+                }
 
                 books.Add(book);
             }

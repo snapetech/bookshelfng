@@ -293,10 +293,22 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("HardcoverAuth", value ?? string.Empty); }
         }
 
+        public string MetadataCatalogSources
+        {
+            get { return GetValue("MetadataCatalogSources", string.Empty); }
+            set { SetValue("MetadataCatalogSources", value ?? string.Empty); }
+        }
+
         public string AdditionalMetadataSources
         {
             get { return GetValue("AdditionalMetadataSources", string.Empty); }
             set { SetValue("AdditionalMetadataSources", value ?? string.Empty); }
+        }
+
+        public string OpenLibraryContactEmail
+        {
+            get { return GetValue("OpenLibraryContactEmail", string.Empty); }
+            set { SetValue("OpenLibraryContactEmail", value ?? string.Empty); }
         }
 
         public string MetadataTitleSourcePreference

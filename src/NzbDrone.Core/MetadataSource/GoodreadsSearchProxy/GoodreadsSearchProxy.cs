@@ -11,6 +11,7 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
     public interface IGoodreadsSearchProxy
     {
         public List<SearchJsonResource> Search(string query);
+        public List<SearchJsonResource> SearchMetadataApi(string query);
     }
 
     public class GoodreadsSearchProxy : IGoodreadsSearchProxy
@@ -36,6 +37,16 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
                 return _hardcoverMetadataProxy.Search(query);
+            }
+
+            return SearchMetadataApi(query);
+        }
+
+        public List<SearchJsonResource> SearchMetadataApi(string query)
+        {
+            if (query == null)
+            {
+                return new List<SearchJsonResource>();
             }
 
             try

@@ -7,18 +7,11 @@ library. BookshelfNG is a complete app on its own. It does not require SeerrNG
 or a metadata proxy.
 
 BookshelfNG is for people who want Readarr-style book automation with a choice
-of metadata sources: Goodreads-compatible metadata for existing libraries,
-Hardcover metadata fetched directly from Hardcover, or a compatible hosted or
-self-hosted metadata service.
-
-Google Books, Library of Congress, and Europeana can be queried as supplemental
-runtime catalogs in both images. The Goodreads-compatible Apify adapter is
-optional. Open Library is a native SeerrNG runtime catalog, not a BookshelfNG
-runtime provider; SeerrNG can also use it during migration recovery. See
-[Metadata sources](#metadata-sources) and the
-[SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
-for the boundary between BookshelfNG provider requests, SeerrNG searches, and
-migration recovery.
+of metadata providers. Goodreads-compatible metadata services and native
+Hardcover remain available for primary library refreshes. Runtime catalog
+search is independently selectable across those providers, Open Library, and
+the other public catalogs. See [Metadata sources](#metadata-sources) for
+provider behavior and settings.
 
 ## Capabilities
 
@@ -183,27 +176,34 @@ stops sending further requests from this process until the reported reset and
 returns an error for calls made during that cooldown instead of retrying into
 the limit.
 
-### Optional additional runtime catalogs
+### Selectable runtime catalogs
 
-The Hardcover image keeps Hardcover as its primary metadata source and merges
-public catalog results into normal book searches. Library of Congress and
-Gutendex are enabled by default. Google Books and Europeana are enabled
-automatically when their API keys are set. Internet Archive and NDL Search are
-available as opt-in sources; NDL reuse terms vary by contributing catalog and
-require visible API credit. The Goodreads-compatible Apify adapter remains
-opt-in because Actor usage may be metered. Supported values for
-`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, `gutendex`,
-`internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. When set, this
-variable replaces the defaults; an empty value disables all additional
-catalogs. These providers can also be enabled in **Settings > Metadata >
-Additional Metadata Sources**, where Google Books, Europeana, and Apify
-credentials can be entered without editing deployment files. Saved credentials
-are stored in the BookshelfNG configuration database and returned as presence
-flags only. Non-empty credential environment variables take precedence over
-saved values. A custom `BOOKSHELF_METADATA_SOURCES` environment value remains
-authoritative and disables catalog selection in the UI; the installer-managed
-default lists are recognized as defaults so saved UI selections can replace
-them.
+Every provider used for runtime book discovery can be turned on or off
+independently in **Settings > Metadata > Runtime Catalog Sources**. This
+selection controls title, ISBN, ASIN, and import searches. It does not change
+how existing library records refresh. Results from an alternate catalog retain
+a provider-qualified ID and continue to resolve through that provider. Results
+from the configured primary catalog keep its existing ID format so current
+libraries continue to match them; older unqualified IDs also keep using the
+configured primary provider.
+
+The selectable sources are Hardcover, the configured Readarr-compatible
+metadata API, Open Library, Google Books, Library of Congress, Gutendex,
+Internet Archive, NDL Search, Europeana, and the Goodreads-compatible Apify
+adapter. With no saved source selection, Bookshelf enables LOC, Gutendex, and
+the currently configured primary provider. Open Library, Internet Archive,
+NDL Search, and Apify are opt-in. Google Books and Europeana are enabled when
+their keys are set. Hardcover needs its API token. All sources can be disabled,
+including the configured primary provider's catalog search.
+
+`BOOKSHELF_METADATA_SOURCES` accepts `hardcover`, `metadata-api`,
+`openlibrary`, `googlebooks`, `loc`, `gutendex`, `internetarchive`, `ndl`,
+`europeana`, and `apify-goodreads`. A custom value replaces the saved UI
+selection; an empty value disables all runtime catalog searches. The
+environment setting remains authoritative and disables catalog selection in
+the UI. Saved credentials are stored in the BookshelfNG configuration database
+and returned as presence flags only. Non-empty credential environment values
+take precedence over saved values.
 
 ```env
 HARDCOVER=true
@@ -213,12 +213,25 @@ EUROPEANA_API_KEY=your-europeana-api-key
 ```
 
 With these keys, Google Books and Europeana results are also queried alongside
-Hardcover. Library of Congress and Gutendex run without keys. Gutendex covers
+the other selected sources. Library of Congress and Gutendex run without keys. Gutendex covers
 Project Gutenberg's literature catalog, including multiple languages, and is
 not a current commercial-book catalog. Google Books and Europeana are skipped
 when their keys are absent. To keep only the default public catalogs, set
-`BOOKSHELF_METADATA_SOURCES=loc,gutendex`; to disable additions, set
+`BOOKSHELF_METADATA_SOURCES=loc,gutendex,openlibrary`; to disable all catalog
+searches, set
 `BOOKSHELF_METADATA_SOURCES=`.
+
+Open Library can be enabled in **Settings > Metadata > Runtime Catalog
+Sources**. It uses its public Search, Work, Edition, and Author APIs. Requests
+identify BookshelfNG with its User-Agent, are paced to one per second, and are
+cached for one day. Add a contact email in the same settings page or set
+`OPEN_LIBRARY_CONTACT_EMAIL` so Open Library can identify the installation.
+Open Library Work IDs and Author IDs stay namespaced in BookshelfNG, and its
+edition mapping validates and normalizes ISBN-10 values to ISBN-13. Covers are
+loaded from Open Library's Covers API when available. Read Open Library's
+[API usage policy](https://openlibrary.org/developers/api),
+[Search API](https://openlibrary.org/dev/docs/api/search), and
+[Covers API](https://openlibrary.org/dev/docs/api/covers) documentation.
 
 Internet Archive searches its text collection and resolves records by stable
 item identifier. Catalog records and edition metadata vary, so treat it as an
@@ -232,7 +245,9 @@ commercial or continuous use. See NDL's [thumbnail service notice](https://ndlse
 To add a Goodreads-compatible Apify Actor:
 
 ```env
-BOOKSHELF_METADATA_SOURCES=googlebooks,loc,gutendex,internetarchive,ndl,europeana,apify-goodreads
+# Include only the providers you want; use metadata-api instead of hardcover
+# when the Readarr-compatible metadata API should be searched.
+BOOKSHELF_METADATA_SOURCES=hardcover,googlebooks,loc,gutendex,internetarchive,ndl,europeana,apify-goodreads
 HARDCOVER_APIFY_GOODREADS_ACTOR=publisher~goodreads-scraper
 HARDCOVER_APIFY_TOKEN=your-apify-token
 # Override only when the Actor does not use searchQueries and maxItems:
@@ -257,16 +272,17 @@ include the literal `{{query}}` placeholder, which Bookshelf replaces with a
 JSON-escaped search string. Actor output is normalized from common Goodreads
 scraper fields, and results missing a title or author are skipped.
 
-Each provider result receives a namespaced foreign ID such as
+Results from alternate providers receive a namespaced foreign ID such as
+`hardcover:123`, `metadata-api:123`, `openlibrary:OL...W`,
 `googlebooks:volume-id`, `loc:<encoded-record-url>`,
 `europeana:<encoded-record-id>`, or `apify-goodreads:<encoded-record-key>`.
 Bookshelf uses those same IDs for subsequent book and author metadata lookups;
 it does not coerce them into numeric Goodreads IDs. The selected provider
 names and credentials must remain
 available when the library is refreshed. Search results are cached for 10
-minutes; Google Books, LOC, and Europeana responses and Apify result sets are
-cached for one day. Provider failures are logged independently; other
-configured sources continue to return results.
+minutes; Open Library, Google Books, LOC, and Europeana responses and Apify
+result sets are cached for one day. Provider failures are logged independently;
+other configured sources continue to return results.
 
 The source checkboxes and optional credentials are managed separately by each
 BookshelfNG instance. For an ebook/audiobook pair, configure the two instances
@@ -301,7 +317,7 @@ aggregator. It can point to a service that itself translates or combines
 providers, but BookshelfNG expects that service to return stable IDs and
 compatible detail responses. Goodreads work and edition IDs, Hardcover IDs,
 Google Books volume IDs, Open Library keys, and LOC identifiers are not
-interchangeable. The optional additional catalogs documented above provide
+interchangeable. The optional runtime catalogs documented above provide
 parallel search results and provider-specific detail lookups; they do not
 rewrite IDs already stored in the library or silently replace a failed primary
 provider.
