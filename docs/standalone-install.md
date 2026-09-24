@@ -75,7 +75,7 @@ your libraries are on removable or mounted external storage.
 ## Flatpak bundle
 
 The `.flatpak` file is a single-file bundle for direct installation. It uses
-the Freedesktop 25.08 runtime, which Flatpak installs from Flathub if it is not
+the Freedesktop 26.08 runtime, which Flatpak installs from Flathub if it is not
 already present. Grant access only to the directories that contain your book
 and download libraries; for example:
 

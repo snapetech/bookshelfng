@@ -22,6 +22,8 @@ on:
         required: false
       COPR_TOKEN:
         required: false
+      COPR_USERNAME:
+        required: false
       GPG_PRIVATE_KEY:
         required: false
       LAUNCHPAD_PPA:
@@ -272,6 +274,7 @@ jobs:
           cp -a /usr/lib/x86_64-linux-gnu/libssl.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
             /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 "$appdir/usr/lib/"
           ln -s ../lib/bookshelfng/Readarr "$appdir/usr/bin/Readarr"
+          ln -s Readarr "$appdir/usr/bin/BookshelfNG"
           cp packaging/appimage/AppRun "$appdir/AppRun"
           chmod 0755 "$appdir/AppRun"
           cp packaging/appimage/com.snapetech.bookshelfng.desktop "$appdir/BookshelfNG.desktop"
@@ -297,10 +300,13 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub \
+            org.freedesktop.Platform//26.08 \
+            org.freedesktop.Sdk//26.08
           mkdir -p packaging/flatpak/src
           cp -a dist/. packaging/flatpak/src/
-          flatpak-builder --force-clean --user --install-deps-from=flathub \
+          flatpak-builder --force-clean \
             --repo="$RUNNER_TEMP/bookshelfng-flatpak-repo" \
             "$RUNNER_TEMP/bookshelfng-flatpak-build" packaging/flatpak/com.snapetech.BookshelfNG.yml
           flatpak build-bundle "$RUNNER_TEMP/bookshelfng-flatpak-repo" \
@@ -396,9 +402,15 @@ jobs:
         env:
           VERSION: ${{ needs.validate.outputs.version }}
           CHART_VERSION: ${{ needs.validate.outputs.chart_version }}
+          HARDCOVER_DIGEST: ${{ inputs.hardcover_digest }}
         run: |
           set -euo pipefail
           sed -i "s/^version:.*/version: ${CHART_VERSION}/; s/^appVersion:.*/appVersion: \"${VERSION}\"/" charts/bookshelfng/Chart.yaml
+          [[ "$HARDCOVER_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo 'The release Hardcover image digest is invalid.' >&2
+            exit 1
+          }
+          sed -i "s#^  digest:.*#  digest: \"${HARDCOVER_DIGEST}\"#" charts/bookshelfng/values.yaml
           helm lint charts/bookshelfng
           helm package charts/bookshelfng --destination dist-release
           for chart in dist-release/*.tgz; do
@@ -484,7 +496,7 @@ jobs:
           COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA }}
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA || 'ppa:keefshape/bookshelfng' }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
         run: |
@@ -639,10 +651,11 @@ jobs:
         env:
           COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
-          COPR_USERNAME: ${{ vars.COPR_USERNAME || 'snapetech' }}
+          COPR_USERNAME: ${{ secrets.COPR_USERNAME || 'slskdn' }}
+          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
         run: |
           set -euo pipefail
-          mkdir -p ~/.config
+          install -d -m 0700 ~/.config
           cat > ~/.config/copr <<EOF
           [copr-cli]
           login = ${COPR_LOGIN}
@@ -650,19 +663,55 @@ jobs:
           token = ${COPR_TOKEN}
           copr_url = https://copr.fedorainfracloud.org
           EOF
+          chmod 0600 ~/.config/copr
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv
           python3 -m venv "$RUNNER_TEMP/copr"
-          "$RUNNER_TEMP/copr/bin/pip" install copr-cli
+          "$RUNNER_TEMP/copr/bin/python" -m pip install --upgrade pip copr-cli
           echo "$RUNNER_TEMP/copr/bin" >> "$GITHUB_PATH"
+          copr-cli whoami
+
+      - name: Ensure COPR project exists
+        env:
+          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
+        run: |
+          set -euo pipefail
+          owner="$(copr-cli whoami)"
+          project="${COPR_PROJECT:-bookshelfng}"
+          [[ "$project" != */* ]] || {
+            echo 'COPR_PROJECT must be a project name without an owner prefix.' >&2
+            exit 2
+          }
+          full_name="${owner}/${project}"
+          instructions="dnf copr enable ${full_name} && dnf install bookshelfng"
+          chroots=(fedora-44-x86_64 fedora-rawhide-x86_64)
+          copr_args=()
+          for chroot in "${chroots[@]}"; do
+            copr_args+=(--chroot "$chroot")
+          done
+          if copr-cli get "$project" >/dev/null 2>&1; then
+            copr-cli modify "$project" \
+              "${copr_args[@]}" \
+              --description "BookshelfNG RPM builds" \
+              --instructions "$instructions"
+          else
+            copr-cli create "$project" \
+              "${copr_args[@]}" \
+              --description "BookshelfNG RPM builds" \
+              --instructions "$instructions"
+          fi
 
       - name: Submit SRPM to COPR
         env:
-          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'snapetech/bookshelfng' }}
+          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
         run: |
           set -euo pipefail
           srpm="$(find "$RUNNER_TEMP/rpmbuild/SRPMS" -maxdepth 1 -name '*.src.rpm' -print -quit)"
-          copr-cli build "$COPR_PROJECT" "$srpm" --nowait
+          copr-cli build \
+            --chroot fedora-44-x86_64 \
+            --chroot fedora-rawhide-x86_64 \
+            --nowait \
+            "$COPR_PROJECT" "$srpm"
 
   publish-ppa:
     name: Publish signed Launchpad PPA source package
@@ -689,7 +738,7 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper devscripts dpkg-dev gnupg dput
           gh release download "$TAG" --pattern "BookshelfNG-${TAG}-linux-x64.tar.gz" --dir "$RUNNER_TEMP"
-          package_root="$RUNNER_TEMP/bookshelfng-ppa"
+          package_root="$RUNNER_TEMP/bookshelfng-${VERSION}"
           mkdir -p "$package_root/debian" "$package_root/packaging" "$package_root/dist"
           cp -a packaging/debian/. "$package_root/debian/"
           cp -a packaging/systemd "$package_root/packaging/"
@@ -714,7 +763,7 @@ jobs:
 
       - name: Upload to configured Launchpad PPA
         env:
-          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA }}
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA || 'ppa:keefshape/bookshelfng' }}
         run: |
           set -euo pipefail
           [[ "$LAUNCHPAD_PPA" =~ ^ppa:[^/]+/[^/]+$ ]] || {
@@ -809,7 +858,8 @@ jobs:
           $installScript = Join-Path $packageDir 'tools/chocolateyinstall.ps1'
           $script = Get-Content $installScript -Raw
           $archiveRoot = "BookshelfNG-$env:TAG-win-x64"
-          $script = $script.Replace('TAG', $env:TAG).Replace('ARCHIVE_ROOT', $archiveRoot).Replace('ARCHIVE', $archive).Replace('SHA256', $checksum)
+          $script = $script.Replace('__RELEASE_TAG__', $env:TAG).Replace('__ARCHIVE_ROOT__', $archiveRoot).Replace('__ARCHIVE__', $archive).Replace('__SHA256__', $checksum)
+          if ($script -match '__[A-Z_]+__') { throw 'The Chocolatey install script still has an unresolved release placeholder.' }
           Set-Content -NoNewline $installScript $script
           choco pack $nuspec --outputdirectory $packageDir
           $package = Get-ChildItem $packageDir -Filter '*.nupkg' | Select-Object -First 1
@@ -846,8 +896,14 @@ jobs:
           echo "$GH_TOKEN" | helm registry login ghcr.io --username "$GH_ACTOR" --password-stdin
           chart="dist-release/bookshelfng-${CHART_VERSION}.tgz"
           test -f "$chart"
-          helm push "$chart" "oci://ghcr.io/${GITHUB_REPOSITORY}"
-          cosign sign "ghcr.io/${GITHUB_REPOSITORY}/bookshelfng:${CHART_VERSION}"
+          push_output="$RUNNER_TEMP/helm-push.txt"
+          helm push "$chart" "oci://ghcr.io/${GITHUB_REPOSITORY}" | tee "$push_output"
+          digest="$(awk '$1 == "Digest:" {print $2}' "$push_output")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo 'Helm did not return a valid OCI digest.' >&2
+            exit 1
+          }
+          cosign sign "ghcr.io/${GITHUB_REPOSITORY}/bookshelfng@${digest}"
 
   announce:
     name: Announce completed release
@@ -864,13 +920,7 @@ jobs:
     if: >-
       ${{
         always() &&
-        needs.publish-github-release.result == 'success' &&
-        needs.publish-aur.result != 'failure' &&
-        needs.publish-copr.result != 'failure' &&
-        needs.publish-ppa.result != 'failure' &&
-        needs.publish-snap.result != 'failure' &&
-        needs.publish-chocolatey.result != 'failure' &&
-        needs.publish-helm.result != 'failure'
+        needs.publish-github-release.result == 'success'
       }}
     runs-on: ubuntu-latest
     permissions:
@@ -884,6 +934,12 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
           SOFTCOVER_DIGEST: ${{ inputs.softcover_digest }}
           HARDCOVER_DIGEST: ${{ inputs.hardcover_digest }}
+          AUR_RESULT: ${{ needs.publish-aur.result }}
+          COPR_RESULT: ${{ needs.publish-copr.result }}
+          PPA_RESULT: ${{ needs.publish-ppa.result }}
+          SNAP_RESULT: ${{ needs.publish-snap.result }}
+          CHOCOLATEY_RESULT: ${{ needs.publish-chocolatey.result }}
+          HELM_RESULT: ${{ needs.publish-helm.result }}
         run: |
           set -euo pipefail
           test -n "$DISCORD_WEBHOOK" || {
@@ -897,6 +953,19 @@ jobs:
           if (( ${#release_body} > 3500 )); then
             release_body="${release_body:0:3497}…"
           fi
+          failed_publishers=()
+          for channel in AUR COPR PPA SNAP CHOCOLATEY HELM; do
+            result_var="${channel}_RESULT"
+            result="${!result_var}"
+            if [[ "$result" == failure ]]; then
+              failed_publishers+=("$channel")
+            fi
+          done
+          if (( ${#failed_publishers[@]} > 0 )); then
+            channel_status="Some optional package uploads failed (${failed_publishers[*]}). See the release workflow for details."
+          else
+            channel_status='Configured package uploads succeeded or were skipped.'
+          fi
           release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
           workflow_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           jq -n \
@@ -907,6 +976,7 @@ jobs:
             --arg softcover_digest "$SOFTCOVER_DIGEST" \
             --arg hardcover "ghcr.io/${GITHUB_REPOSITORY}:hardcover" \
             --arg hardcover_digest "$HARDCOVER_DIGEST" \
+            --arg channel_status "$channel_status" \
             --arg workflow "$workflow_url" \
             '{
               username: "BookshelfNG Releases",
@@ -921,6 +991,7 @@ jobs:
                   { name: "Hardcover image", value: ("`" + $hardcover + "`"), inline: false },
                   { name: "Hardcover digest", value: ("`" + $hardcover_digest + "`"), inline: false },
                   { name: "Downloads", value: $url, inline: false },
+                  { name: "Package channel status", value: $channel_status, inline: false },
                   { name: "Build", value: $workflow, inline: false }
                 ]
               }]

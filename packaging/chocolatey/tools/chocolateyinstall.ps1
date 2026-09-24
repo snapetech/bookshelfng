@@ -3,16 +3,15 @@ $ErrorActionPreference = 'Stop'
 $packageArgs = @{
   packageName    = 'bookshelfng'
   fileType       = 'zip'
-  url64bit       = 'https://github.com/snapetech/bookshelfng/releases/download/TAG/ARCHIVE'
-  checksum64     = 'SHA256'
+  url64bit       = 'https://github.com/snapetech/bookshelfng/releases/download/__RELEASE_TAG__/__ARCHIVE__'
+  checksum64     = '__SHA256__'
   checksumType64 = 'sha256'
   unzipLocation  = Join-Path $env:ProgramData 'BookshelfNG\app'
-  archiveFolder  = 'ARCHIVE_ROOT'
 }
 
 Install-ChocolateyZipPackage @packageArgs
 
-$installDir = Join-Path $packageArgs.unzipLocation $packageArgs.archiveFolder
+$installDir = Join-Path $packageArgs.unzipLocation '__ARCHIVE_ROOT__'
 $exePath = Join-Path $installDir 'Readarr.exe'
 $dataDir = Join-Path $env:ProgramData 'BookshelfNG\data'
 $nssm = Get-Command nssm.exe -ErrorAction SilentlyContinue

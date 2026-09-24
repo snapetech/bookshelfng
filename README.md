@@ -123,6 +123,12 @@ On Windows, run `Readarr.exe` and set a persistent data path under
 [standalone installation guide](docs/standalone-install.md) covers platform
 archives, data migration, system services, and package-specific setup.
 
+The release pipeline builds `.deb`, RPM, Snap, Flatpak bundle, AppImage,
+Chocolatey, and Helm artifacts, and supports AUR, COPR, and Ubuntu PPA
+publishing when those publisher accounts are connected. See the
+[distribution channels guide](docs/distribution.md) for package links,
+repository setup, and release details.
+
 ## Optional audiobook M4B merging
 
 To combine a multi-track audiobook download into a single chaptered M4B, set
