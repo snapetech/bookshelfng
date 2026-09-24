@@ -11506,6 +11506,9 @@
           "importExtraFiles": {
             "type": "boolean"
           },
+          "moveExtraFilesOnRename": {
+            "type": "boolean"
+          },
           "extraFileExtensions": {
             "type": "string",
             "nullable": true

@@ -442,6 +442,8 @@
   "IllRestartLater": "I'll restart later",
   "Implementation": "Implementation",
   "ImportExtraFiles": "Import Extra Files",
+  "MoveExtraFilesOnRename": "Move Extra Files on Rename",
+  "MoveExtraFilesOnRenameHelpText": "Move files with the configured extra-file extensions when a renamed book folder no longer contains tracked book files.",
   "ImportExtraFilesHelpText": "Import matching extra files (subtitles, nfo, etc) after importing an book file",
   "ImportFailedInterp": "Import failed: {0}",
   "ImportFailures": "Import failures",

@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Configuration
         int MinimumFreeSpaceWhenImporting { get; set; }
         bool CopyUsingHardlinks { get; set; }
         bool ImportExtraFiles { get; set; }
+        bool MoveExtraFilesOnRename { get; set; }
         string ExtraFileExtensions { get; set; }
         int BookImportMinimumMatchPercent { get; set; }
         bool WatchLibraryForChanges { get; set; }

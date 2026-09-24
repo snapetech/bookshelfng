@@ -214,6 +214,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("ImportExtraFiles", value); }
         }
 
+        public bool MoveExtraFilesOnRename
+        {
+            get { return GetValueBoolean("MoveExtraFilesOnRename", false); }
+
+            set { SetValue("MoveExtraFilesOnRename", value); }
+        }
+
         public string ExtraFileExtensions
         {
             get { return GetValue("ExtraFileExtensions", "srt"); }

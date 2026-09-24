@@ -17,7 +17,7 @@ namespace NzbDrone.Core.Extras.Files
         IEnumerable<ExtraFile> CreateAfterAuthorScan(Author author, List<BookFile> bookFiles);
         IEnumerable<ExtraFile> CreateAfterBookImport(Author author, BookFile bookFile);
         IEnumerable<ExtraFile> CreateAfterBookImport(Author author, Book book, string authorFolder, string bookFolder);
-        IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles);
+        IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles, List<RenamedBookFile> renamedFiles);
         ExtraFile Import(Author author, BookFile bookFile, string path, string extension, bool readOnly);
     }
 
@@ -44,7 +44,7 @@ namespace NzbDrone.Core.Extras.Files
         public abstract IEnumerable<ExtraFile> CreateAfterAuthorScan(Author author, List<BookFile> bookFiles);
         public abstract IEnumerable<ExtraFile> CreateAfterBookImport(Author author, BookFile bookFile);
         public abstract IEnumerable<ExtraFile> CreateAfterBookImport(Author author, Book book, string authorFolder, string bookFolder);
-        public abstract IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles);
+        public abstract IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles, List<RenamedBookFile> renamedFiles);
         public abstract ExtraFile Import(Author author, BookFile bookFile, string path, string extension, bool readOnly);
 
         protected TExtraFile ImportFile(Author author, BookFile bookFile, string path, bool readOnly, string extension, string fileNameSuffix = null)

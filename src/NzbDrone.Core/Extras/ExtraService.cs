@@ -157,7 +157,7 @@ namespace NzbDrone.Core.Extras
 
             foreach (var extraFileManager in _extraFileManagers)
             {
-                extraFileManager.MoveFilesAfterRename(author, bookFiles);
+                extraFileManager.MoveFilesAfterRename(author, bookFiles, message.RenamedFiles);
             }
         }
 

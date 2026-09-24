@@ -131,7 +131,7 @@ namespace NzbDrone.Core.Extras.Metadata
             return files;
         }
 
-        public override IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles)
+        public override IEnumerable<ExtraFile> MoveFilesAfterRename(Author author, List<BookFile> bookFiles, List<RenamedBookFile> renamedFiles)
         {
             var metadataFiles = _metadataFileService.GetFilesByAuthor(author.Id);
             var movedFiles = new List<MetadataFile>();
