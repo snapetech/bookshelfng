@@ -5,7 +5,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Test.Common;
 
-namespace NzbDrone.Core.Test.Books
+namespace NzbDrone.Core.Test.BookTests
 {
     [TestFixture]
     public class SeriesBookLinkExtensionsFixture : TestBase
