@@ -83,6 +83,7 @@ namespace NzbDrone.Core.Notifications.BookLore
                 password = settings.Password
             }));
             request.RequestTimeout = TimeSpan.FromSeconds(30);
+            request.AllowAutoRedirect = false;
 
             var response = _httpClient.Execute(request);
             var accessToken = JObject.Parse(response.Content)["accessToken"]?.Value<string>();
