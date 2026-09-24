@@ -114,7 +114,7 @@ namespace NzbDrone.Core.MediaFiles
                     // while publisher is handled by taglib, it seems to be mapped to 'ORGANIZATION' and not 'LABEL' like Picard is
                     // https://picard.musicbrainz.org/docs/mappings/
                     var flactag = (TagLib.Ogg.XiphComment)file.GetTag(TagLib.TagTypes.Xiph);
-                    Narrator = flactag.GetField("PERFORMER").ExclusiveOrDefault();
+                    Narrator = flactag.GetField("NARRATOR").ExclusiveOrDefault();
                     Media = flactag.GetField("MEDIA").ExclusiveOrDefault();
                     Date = DateTime.TryParse(flactag.GetField("DATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(flactag.GetField("ORIGINALDATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
@@ -361,8 +361,8 @@ namespace NzbDrone.Core.MediaFiles
 
                     var flactag = (TagLib.Ogg.XiphComment)file.GetTag(TagLib.TagTypes.Xiph);
 
-                    // Vorbis comments define PERFORMER as the reader of an audiobook.
-                    flactag.SetField("PERFORMER", Narrator);
+                    // Keep narrator metadata separate from the existing performer/author tags.
+                    flactag.SetField("NARRATOR", Narrator);
                     flactag.SetField("DATE", Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALDATE", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALYEAR", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null);
