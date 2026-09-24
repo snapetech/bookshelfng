@@ -104,6 +104,12 @@ also considered. BookshelfNG preserves provider search ordering so equally
 ranked search results remain predictable. The importer can still need manual
 review when file tags are sparse or several editions look alike.
 
+When BookshelfNG creates the initial `Standard` metadata profile, it sets the
+minimum popularity to 50 when `HARDCOVER=true` and 350 otherwise. The lower
+Hardcover default can keep more low-popularity books in catalog refreshes.
+This is only an initialization default: an existing metadata profile is not
+rewritten. Books with a future release date also pass the popularity filter.
+
 Europeana returns identifiers in forms such as `urn:isbn:978-3-16-148410-0`.
 BookshelfNG removes non-digit characters and keeps values with a 13-digit
 `978` or `979` ISBN shape before storing them as edition ISBNs. This
@@ -201,7 +207,7 @@ dependency updates and routine maintenance individually.
 
 | Period | Maintained work |
 | --- | --- |
-| 2025 | Updated Linux container packaging and multi-architecture publishing for amd64 and arm64, adopted the LinuxServer entrypoint, added build caching and GHCR image publication, added configurable self-hosted metadata endpoints and native MyAnonamouse support, preserved search ordering, and removed Servarr Sentry reporting. The current Bookshelf README also documents several of these capabilities. |
+| 2025 | Updated Linux container packaging and multi-architecture publishing for amd64 and arm64, adopted the LinuxServer entrypoint, added build caching and GHCR image publication, set a lower initial metadata-profile popularity threshold when `HARDCOVER=true`, added configurable self-hosted metadata endpoints and native MyAnonamouse support, preserved search ordering, and removed Servarr Sentry reporting. The current Bookshelf README also documents several of these capabilities. |
 | January 2026 | Added native Hardcover import lists and made the import sync only the list IDs selected in configuration. |
 | May–July 2026 | Enriched `/api/v1/book/lookup` with author and edition metadata, added tagged image publishing and downstream edge builds, and added qBittorrent 5.2 bearer API-key authentication. |
 | August 2026 | Added a native Hardcover GraphQL metadata client so the Hardcover image can search and resolve records directly without a metadata proxy. |

@@ -153,6 +153,12 @@ and [Hardcover author schema](https://github.com/hardcoverapp/hardcover-docs/blo
 for Hardcover's API reference. BookshelfNG does not silently switch to another
 metadata service after an API error.
 
+When BookshelfNG creates the initial `Standard` metadata profile on a database
+with no profiles, `HARDCOVER=true` selects a minimum popularity of 50; other
+modes use 350. This lower default can keep more low-popularity catalog books
+during refresh. Existing profiles are preserved and can be adjusted in the
+metadata profile settings.
+
 Text search fetches Hardcover's result IDs in one batched book query instead
 of making a separate detail request for every result. ISBN/ASIN searches and
 edition lookups fetch the parent work in the same GraphQL operation. API
