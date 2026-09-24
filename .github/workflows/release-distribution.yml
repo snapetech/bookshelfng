@@ -124,6 +124,14 @@ jobs:
           source_sha="$(git rev-parse "$TAG^{commit}")"
           run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID")"
           runtime_pack_sha="$(jq -r '.head_sha' <<<"$run_json")"
+          runtime_pack_workflow="$(jq -r '.path' <<<"$run_json")"
+          case "$runtime_pack_workflow" in
+            .github/workflows/build.yml|.github/workflows/release-distribution.yml) ;;
+            *)
+              echo "Runtime-pack artifact came from an unexpected workflow: $runtime_pack_workflow" >&2
+              exit 1
+              ;;
+          esac
           git merge-base --is-ancestor "$runtime_pack_sha" "$source_sha" || {
             echo "Runtime-pack artifact run is not from the release tag's history." >&2
             exit 1
@@ -145,9 +153,16 @@ jobs:
             exit 1
           }
           jobs_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID/jobs?per_page=100")"
-          jq -e 'any(.jobs[]; .name == "Build Linux x86 and FreeBSD .NET 10 runtime packs" and .conclusion == "success")' \
+          jq -e '
+            any(.jobs[];
+              (.name | endswith("Build Linux x86 and FreeBSD .NET 10 runtime packs")) and
+              (.conclusion == "success" or .conclusion == "cancelled") and
+              any(.steps[]; .name == "Build and verify platform packs" and .conclusion == "success") and
+              any(.steps[]; (.name | startswith("Run actions/upload-artifact@")) and .conclusion == "success")
+            )
+          ' \
             <<<"$jobs_json" >/dev/null || {
-              echo "Runtime-pack build did not succeed in run $RUNTIME_PACK_RUN_ID." >&2
+              echo "Runtime-pack build or artifact upload did not succeed in run $RUNTIME_PACK_RUN_ID." >&2
               exit 1
             }
           artifacts_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID/artifacts?per_page=100")"
