@@ -342,9 +342,9 @@ namespace NzbDrone.Core.Parser
                 var authorName = author.Name == "Various Authors" ? "VA" : author.Name.RemoveAccent();
 
                 Logger.Debug("Parsing string '{0}' using search criteria author: '{1}' books: '{2}'",
-                             title.ReplaceLineEndings(""),
-                             authorName.RemoveAccent().ReplaceLineEndings(""),
-                             string.Join(", ", books.Select(a => a.Title.RemoveAccent())).ReplaceLineEndings(""));
+                             title?.ReplaceLineEndings(""),
+                             authorName.RemoveAccent()?.ReplaceLineEndings(""),
+                             string.Join(", ", books.Select(a => a.Title.RemoveAccent()))?.ReplaceLineEndings(""));
 
                 var releaseTitle = RemoveFileExtension(title);
 
@@ -409,11 +409,11 @@ namespace NzbDrone.Core.Parser
             {
                 if (!title.ToLower().Contains("password") && !title.ToLower().Contains("yenc"))
                 {
-                    Logger.Error(e, "An error has occurred while trying to parse {0}", title.ReplaceLineEndings(""));
+                    Logger.Error(e, "An error has occurred while trying to parse {0}", title?.ReplaceLineEndings(""));
                 }
             }
 
-            Logger.Debug("Unable to parse {0}", title.ReplaceLineEndings(""));
+            Logger.Debug("Unable to parse {0}", title?.ReplaceLineEndings(""));
             return null;
         }
 
@@ -450,7 +450,7 @@ namespace NzbDrone.Core.Parser
                     return null;
                 }
 
-                Logger.Debug("Parsing string '{0}'", title.ReplaceLineEndings(""));
+                Logger.Debug("Parsing string '{0}'", title?.ReplaceLineEndings(""));
 
                 var releaseTitle = RemoveFileExtension(title);
 
@@ -530,11 +530,11 @@ namespace NzbDrone.Core.Parser
             {
                 if (!title.ToLower().Contains("password") && !title.ToLower().Contains("yenc"))
                 {
-                    Logger.Error(e, "An error has occurred while trying to parse {0}", title.ReplaceLineEndings(""));
+                    Logger.Error(e, "An error has occurred while trying to parse {0}", title?.ReplaceLineEndings(""));
                 }
             }
 
-            Logger.Debug("Unable to parse {0}", title.ReplaceLineEndings(""));
+            Logger.Debug("Unable to parse {0}", title?.ReplaceLineEndings(""));
             return null;
         }
 
@@ -847,7 +847,7 @@ namespace NzbDrone.Core.Parser
 
             if (RejectHashedReleasesRegex.Any(v => v.IsMatch(titleWithoutExtension)))
             {
-                Logger.Debug("Rejected Hashed Release Title: " + title.ReplaceLineEndings(""));
+                Logger.Debug("Rejected Hashed Release Title: " + title?.ReplaceLineEndings(""));
                 return false;
             }
 

@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Books
             newAuthor = AddSkyhookData(newAuthor);
             newAuthor = SetPropertiesAndValidate(newAuthor);
 
-            _logger.Info("Adding Author {0} Path: [{1}]", newAuthor.ToString().ReplaceLineEndings(""), newAuthor.Path.ReplaceLineEndings(""));
+            _logger.Info("Adding Author {0} Path: [{1}]", newAuthor.ToString()?.ReplaceLineEndings(""), newAuthor.Path?.ReplaceLineEndings(""));
 
             // add metadata
             _authorMetadataService.Upsert(newAuthor.Metadata.Value);
@@ -99,7 +99,7 @@ namespace NzbDrone.Core.Books
             }
             catch (AuthorNotFoundException)
             {
-                _logger.Error("ReadarrId {0} was not found, it may have been removed from Goodreads.", newAuthor.Metadata.Value.ForeignAuthorId.ReplaceLineEndings(""));
+                _logger.Error("ReadarrId {0} was not found, it may have been removed from Goodreads.", newAuthor.Metadata.Value.ForeignAuthorId?.ReplaceLineEndings(""));
 
                 throw new ValidationException(new List<ValidationFailure>
                 {

@@ -74,11 +74,11 @@ namespace Readarr.Http.ErrorManagement
                     }
                 }
 
-                _logger.Error(sqLiteException, "[{0} {1}]", context.Request.Method.ReplaceLineEndings(""), context.Request.Path.Value?.ReplaceLineEndings(""));
+                _logger.Error(sqLiteException, "[{0} {1}]", context.Request.Method?.ReplaceLineEndings(""), context.Request.Path.Value?.ReplaceLineEndings(""));
             }
             else
             {
-                _logger.Fatal(exception, "Request Failed. {0} {1}", context.Request.Method.ReplaceLineEndings(""), context.Request.Path.Value?.ReplaceLineEndings(""));
+                _logger.Fatal(exception, "Request Failed. {0} {1}", context.Request.Method?.ReplaceLineEndings(""), context.Request.Path.Value?.ReplaceLineEndings(""));
             }
 
             await errorModel.WriteToResponse(response, statusCode);

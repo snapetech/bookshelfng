@@ -296,15 +296,30 @@ namespace NzbDrone.Core.Datastore
             }
             else
             {
-                // Static method
-                // Must be Enumerable.Contains(source, item)
-                if (body.Method.DeclaringType != typeof(Enumerable) || body.Arguments.Count != 2)
+                if (body.Method.DeclaringType == typeof(Enumerable) && body.Arguments.Count == 2)
+                {
+                    list = body.Arguments[0];
+                    item = body.Arguments[1];
+                }
+                else if (body.Method.DeclaringType == typeof(MemoryExtensions) &&
+                         body.Method.Name == nameof(MemoryExtensions.Contains) &&
+                         (body.Arguments.Count == 2 ||
+                          (body.Arguments.Count == 3 && body.Arguments[2] is ConstantExpression { Value: null })) &&
+                         body.Arguments[0] is MethodCallExpression conversion &&
+                         conversion.Method.Name == "op_Implicit" &&
+                         conversion.Method.ReturnType.IsGenericType &&
+                         conversion.Method.ReturnType.GetGenericTypeDefinition() == typeof(ReadOnlySpan<>) &&
+                         conversion.Arguments.Count == 1)
+                {
+                    // .NET 10's compiler represents array.Contains as MemoryExtensions.Contains
+                    // over an implicit ReadOnlySpan conversion in expression trees.
+                    list = conversion.Arguments[0];
+                    item = body.Arguments[1];
+                }
+                else
                 {
                     throw new NotSupportedException("Unexpected form of Enumerable.Contains");
                 }
-
-                list = body.Arguments[0];
-                item = body.Arguments[1];
             }
 
             _sb.Append('(');

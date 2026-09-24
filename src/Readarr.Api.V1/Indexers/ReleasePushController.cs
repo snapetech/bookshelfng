@@ -105,13 +105,13 @@ namespace Readarr.Api.V1.Indexers
                 }
                 catch (ModelNotFoundException)
                 {
-                    _logger.Debug("Push Release {0} not associated with known indexer {1}.", release.Title.ReplaceLineEndings(""), release.IndexerId);
+                    _logger.Debug("Push Release {0} not associated with known indexer {1}.", release.Title?.ReplaceLineEndings(""), release.IndexerId);
                     release.IndexerId = 0;
                 }
             }
             else
             {
-                _logger.Debug("Push Release {0} not associated with an indexer.", release.Title.ReplaceLineEndings(""));
+                _logger.Debug("Push Release {0} not associated with an indexer.", release.Title?.ReplaceLineEndings(""));
             }
         }
 

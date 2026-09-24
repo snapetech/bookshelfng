@@ -53,37 +53,37 @@ namespace NzbDrone.Core.Download
 
                 nzbData = response.ResponseData;
 
-                _logger.Debug("Downloaded nzb for release '{0}' finished ({1} bytes from {2})", remoteBook.Release.Title.ReplaceLineEndings(""), nzbData.Length, url.ReplaceLineEndings(""));
+                _logger.Debug("Downloaded nzb for release '{0}' finished ({1} bytes from {2})", remoteBook.Release.Title?.ReplaceLineEndings(""), nzbData.Length, url?.ReplaceLineEndings(""));
             }
             catch (HttpException ex)
             {
                 if (ex.Response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    _logger.Error(ex, "Downloading nzb file for book '{0}' failed since it no longer exists ({1})", remoteBook.Release.Title.ReplaceLineEndings(""), url.ReplaceLineEndings(""));
+                    _logger.Error(ex, "Downloading nzb file for book '{0}' failed since it no longer exists ({1})", remoteBook.Release.Title?.ReplaceLineEndings(""), url?.ReplaceLineEndings(""));
                     throw new ReleaseUnavailableException(remoteBook.Release, "Downloading torrent failed", ex);
                 }
 
                 if ((int)ex.Response.StatusCode == 429)
                 {
-                    _logger.Error("API Grab Limit reached for {0}", url.ReplaceLineEndings(""));
+                    _logger.Error("API Grab Limit reached for {0}", url?.ReplaceLineEndings(""));
                 }
                 else
                 {
-                    _logger.Error(ex, "Downloading nzb for release '{0}' failed ({1})", remoteBook.Release.Title.ReplaceLineEndings(""), url.ReplaceLineEndings(""));
+                    _logger.Error(ex, "Downloading nzb for release '{0}' failed ({1})", remoteBook.Release.Title?.ReplaceLineEndings(""), url?.ReplaceLineEndings(""));
                 }
 
                 throw new ReleaseDownloadException(remoteBook.Release, "Downloading nzb failed", ex);
             }
             catch (WebException ex)
             {
-                _logger.Error(ex, "Downloading nzb for release '{0}' failed ({1})", remoteBook.Release.Title.ReplaceLineEndings(""), url.ReplaceLineEndings(""));
+                _logger.Error(ex, "Downloading nzb for release '{0}' failed ({1})", remoteBook.Release.Title?.ReplaceLineEndings(""), url?.ReplaceLineEndings(""));
 
                 throw new ReleaseDownloadException(remoteBook.Release, "Downloading nzb failed", ex);
             }
 
             _nzbValidationService.Validate(filename, nzbData);
 
-            _logger.Info("Adding report [{0}] to the queue.", remoteBook.Release.Title.ReplaceLineEndings(""));
+            _logger.Info("Adding report [{0}] to the queue.", remoteBook.Release.Title?.ReplaceLineEndings(""));
             return AddFromNzbFile(remoteBook, filename, nzbData);
         }
     }

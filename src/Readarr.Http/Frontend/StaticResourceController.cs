@@ -68,7 +68,7 @@ namespace Readarr.Http.Frontend
                 return NotFound();
             }
 
-            _logger.Warn("Couldn't find handler for {0}", path.ReplaceLineEndings(""));
+            _logger.Warn("Couldn't find handler for {0}", path?.ReplaceLineEndings(""));
 
             return NotFound();
         }

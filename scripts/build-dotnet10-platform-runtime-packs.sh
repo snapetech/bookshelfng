@@ -22,6 +22,15 @@ die() {
     exit 1
 }
 
+get_official_build_id() {
+    local build_id="${DOTNET_OFFICIAL_BUILD_ID:-}"
+    if [[ "$build_id" =~ ^20[0-9]{6}\.[0-9]+$ ]]; then
+        printf '%s\n' "$build_id"
+    else
+        printf '%s.1\n' "$(date -u +%Y%m%d)"
+    fi
+}
+
 require_sdk() {
     local version="$1"
     [ -x "$dotnet_root/dotnet" ] || die "dotnet was not found at $dotnet_root/dotnet"
@@ -130,7 +139,8 @@ PY
 }
 
 build_linux_x86_runtime() {
-    local official_build_id="${BUILD_BUILDID:-local}"
+    local official_build_id
+    official_build_id="$(get_official_build_id)"
     docker run --rm --init \
         -e DOTNET_INSTALL_DIR=/usr/share/dotnet \
         -e DOTNET_ROOT=/usr/share/dotnet \
@@ -170,7 +180,8 @@ PY
 }
 
 build_linux_x86_aspnetcore() {
-    local official_build_id="${BUILD_BUILDID:-local}"
+    local official_build_id
+    official_build_id="$(get_official_build_id)"
     (
         cd "$aspnet_repo"
         DOTNET_INSTALL_DIR="$dotnet_root" DOTNET_ROOT="$dotnet_root" DOTNET_SDK_VERSION="$aspnet_sdk" \

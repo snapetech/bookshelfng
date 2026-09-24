@@ -69,7 +69,7 @@ namespace NzbDrone.Core.DecisionEngine
             {
                 DownloadDecision decision = null;
                 _logger.ProgressTrace("Processing release {0}/{1}", reportNumber, reports.Count);
-                _logger.Debug("Processing release '{0}' from '{1}'", report.Title.ReplaceLineEndings(""), report.Indexer.ReplaceLineEndings(""));
+                _logger.Debug("Processing release '{0}' from '{1}'", report.Title?.ReplaceLineEndings(""), report.Indexer?.ReplaceLineEndings(""));
 
                 try
                 {
@@ -100,7 +100,7 @@ namespace NzbDrone.Core.DecisionEngine
                         // try parsing again using the search criteria, in case it parsed but parsed incorrectly
                         if ((remoteBook.Author == null || remoteBook.Books.Empty()) && searchCriteria != null)
                         {
-                            _logger.Debug("Author/Book null for {0}, reparsing with search criteria", report.Title.ReplaceLineEndings(""));
+                            _logger.Debug("Author/Book null for {0}, reparsing with search criteria", report.Title?.ReplaceLineEndings(""));
                             var parsedBookInfoWithCriteria = Parser.Parser.ParseBookTitleWithSearchCriteria(report.Title,
                                                                                                                 searchCriteria.Author,
                                                                                                                 searchCriteria.Books);
@@ -278,7 +278,7 @@ namespace NzbDrone.Core.DecisionEngine
             {
                 e.Data.Add("report", remoteBook.Release.ToJson());
                 e.Data.Add("parsed", remoteBook.ParsedBookInfo.ToJson());
-                _logger.Error(e, "Couldn't evaluate decision on {0}", remoteBook.Release.Title.ReplaceLineEndings(""));
+                _logger.Error(e, "Couldn't evaluate decision on {0}", remoteBook.Release.Title?.ReplaceLineEndings(""));
                 return new Rejection($"{spec.GetType().Name}: {e.Message}");
             }
 

@@ -23,7 +23,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         {
             if (_blocklistService.Blocklisted(subject.Author.Id, subject.Release))
             {
-                _logger.Debug("{0} is blocklisted, rejecting.", subject.Release.Title.ReplaceLineEndings(""));
+                _logger.Debug("{0} is blocklisted, rejecting.", subject.Release.Title?.ReplaceLineEndings(""));
                 return Decision.Reject("Release is blocklisted");
             }
 
