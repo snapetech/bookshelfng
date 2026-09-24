@@ -11,15 +11,15 @@ of metadata sources: Goodreads-compatible metadata for existing libraries,
 Hardcover metadata fetched directly from Hardcover, or a compatible hosted or
 self-hosted metadata service.
 
-Google Books, Open Library, Library of Congress, and Goodreads-compatible
-Apify Actors are not currently BookshelfNG runtime metadata providers. SeerrNG
-uses some of these catalogs only in its migration recovery helper; see the
-[SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
-for exact scope and configuration. A runtime provider must support search and
-the follow-up book, author, and edition lookups using its own IDs before it can
-be safely exposed in BookshelfNG.
+Google Books, Library of Congress, and Europeana can be queried as supplemental
+runtime catalogs in both images. The Goodreads-compatible Apify adapter is
+optional. Open Library is not a BookshelfNG runtime provider; SeerrNG uses it
+only in a separate migration recovery helper. See [Metadata sources](#metadata-sources)
+and the [SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
+for the boundary between normal BookshelfNG searches and SeerrNG migration
+recovery.
 
-## What makes BookshelfNG different
+## Capabilities
 
 - **Choose how book metadata is served.** The `hardcover` image includes a
   native Hardcover GraphQL provider. Search, author, work, edition, series,
@@ -35,10 +35,11 @@ be safely exposed in BookshelfNG.
   ISBN-13 check digits, and prefers ISBN-13 when an ebook provides multiple
   valid identifiers. ISBN and ASIN are also used for direct metadata searches
   and edition matching.
-- **Match real world releases more reliably.** Import identification considers
-  edition metadata and identifiers, uses improved title and author matching,
-  and can match title-only ebooks and audiobooks when author information is
-  absent. Search result ordering is preserved so results stay predictable.
+- **Find and compare likely releases.** Import identification searches by
+  ISBN, ASIN, and Goodreads ID before using author and title. If author
+  information is missing, it can search by title alone. Candidate editions
+  are ranked using identifiers and available edition details; ambiguous
+  matches can still need review. Search result ordering is preserved.
 - **Import books from the lists you use.** BookshelfNG supports Goodreads
   shelves, owned books, series, and Listopia lists, plus native Hardcover list
   imports. Hardcover imports honor the lists selected in configuration.
@@ -46,6 +47,10 @@ be safely exposed in BookshelfNG.
   use the tracker without adding Prowlarr as an intermediary.
 - **Connect current download clients.** BookshelfNG supports qBittorrent 5.2
   authentication alongside the download clients inherited from Readarr.
+- **Build chaptered audiobook files when needed.** Completed downloads with
+  multiple tracks for one edition can be merged into a single M4B when
+  `BOOKSHELF_M4B_MERGE=true` and an FFmpeg executable is available. This is
+  opt-in; the standard Docker image includes FFmpeg.
 - **Keep the familiar automation.** Monitor authors and books, search RSS
   feeds, apply quality and metadata profiles, manage download clients, scan
   and import existing files, and rename and upgrade releases automatically.
@@ -58,6 +63,11 @@ BookshelfNG retains the Readarr-compatible API and the broader Readarr
 library-management workflow. It supports one format per book in an instance;
 run separate ebook and audiobook instances if you want both formats of the
 same title.
+
+Some capabilities are part of the Bookshelf and Readarr lineage rather than
+unique BookshelfNG additions. The [capabilities and compatibility guide](docs/capabilities-and-compatibility.md)
+compares those upstream features with BookshelfNG's maintained changes and
+documents provider boundaries, migration limits, and implementation links.
 
 Author and book metadata are persisted in BookshelfNG's application database.
 Refreshing a book for an author already in the library reuses that local author
@@ -90,6 +100,26 @@ services:
 Start it with `docker compose up -d`, then open `http://localhost:8787` to set
 up your root folder, metadata source, indexers, and download clients. The
 `softcover` image is available for Goodreads-compatible libraries.
+
+## Optional audiobook M4B merging
+
+To combine a multi-track audiobook download into a single chaptered M4B, set
+`BOOKSHELF_M4B_MERGE=true`. This applies to completed downloads received from a
+download client. BookshelfNG groups approved tracks by book and edition,
+orders them using embedded disc and track numbers or filenames, creates a
+chapter for each track, and reruns the normal import checks on the merged
+file. If FFmpeg is unavailable, a merge fails, or the merged file fails import
+checks, BookshelfNG keeps the original tracks and continues the normal import.
+
+The standard Docker image includes FFmpeg. For native installs, provide an
+executable named `ffmpeg` on BookshelfNG's `PATH`, or set
+`BOOKSHELF_FFMPEG_PATH` to its path. The merge transcodes audio to stereo AAC
+at 44.1 kHz and 128 kbps by default.
+Set `BOOKSHELF_M4B_AAC_BITRATE_KBPS` to a value from 48 to 320 to choose a
+different bitrate. When the merged file imports successfully in move mode,
+the original tracks are removed; copy mode and downloads that cannot be moved
+retain their source tracks. See the [capabilities and compatibility guide](docs/capabilities-and-compatibility.md#audiobook-m4b-merging)
+for the exact behavior and implementation references.
 
 ## Metadata sources
 
@@ -170,7 +200,8 @@ Google Books public searches require a Google API key; user OAuth is not
 needed. Europeana requires a free key from a registered account and searches
 text records with open reuse status. It is a cultural heritage index rather
 than a complete current-book catalog, and per-record metadata and cover
-availability vary. See Europeana's [Search API documentation](https://pro.europeana.eu/resources/apis/search)
+availability vary. See Europeana's [Search API documentation](https://europeana.atlassian.net/wiki/spaces/EF/pages/2385739812/Search+API+Documentation),
+[Record API documentation](https://europeana.atlassian.net/wiki/spaces/EF/pages/2385674279/Record+API+Documentation),
 and [API key registration](https://pro.europeana.eu/page/get-api). Library of
 Congress search is public and rate limited. Requests are paced to one per 3.2
 seconds per Bookshelf process and successful responses are cached for one day.
@@ -184,14 +215,15 @@ JSON-escaped search string. Actor output is normalized from common Goodreads
 scraper fields, and results missing a title or author are skipped.
 
 Each provider result receives a namespaced foreign ID such as
-`googlebooks:volume-id`, `loc:<encoded-record-url>`, or
-`apify-goodreads:<encoded-record-key>`. Bookshelf uses those same IDs for
-subsequent book and author metadata lookups; it does not coerce them into
-numeric Goodreads IDs. The selected provider names and credentials must remain
+`googlebooks:volume-id`, `loc:<encoded-record-url>`,
+`europeana:<encoded-record-id>`, or `apify-goodreads:<encoded-record-key>`.
+Bookshelf uses those same IDs for subsequent book and author metadata lookups;
+it does not coerce them into numeric Goodreads IDs. The selected provider
+names and credentials must remain
 available when the library is refreshed. Search results are cached for 10
-minutes, Google Books and LOC responses for one day, and Apify result sets for
-one day. Provider failures are logged independently; other configured sources
-continue to return results.
+minutes; Google Books, LOC, and Europeana responses and Apify result sets are
+cached for one day. Provider failures are logged independently; other
+configured sources continue to return results.
 
 The source setting applies to the `hardcover` and `softcover` images. It does
 not rewrite IDs already stored in the library, and it does not combine remote
@@ -276,6 +308,8 @@ you can also authenticate with package read access.
 
 ## Documentation
 
+- [Capabilities, upstream comparison, and compatibility boundaries](docs/capabilities-and-compatibility.md)
+- [Optional audiobook M4B merging](docs/audiobook-m4b-merging.md)
 - [Metadata providers and configuration](#metadata-sources)
 - [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
 - [Author metadata storage, refresh policy, and troubleshooting](docs/author-metadata-refresh.md)
