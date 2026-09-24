@@ -48,7 +48,7 @@ namespace NzbDrone.Api.Test.Books
             };
 
             Mocker.GetMock<ISearchForNewBook>()
-                .Setup(s => s.SearchForNewBook("hobbit", null, true))
+                .Setup(s => s.SearchForNewBook("hobbit", null, true, true))
                 .Returns(new List<Book> { book });
 
             var result = ((IEnumerable<BookResource>)Subject.Search("hobbit")).ToList();
