@@ -31,8 +31,7 @@ namespace Readarr.Http.Middleware
                     return;
                 }
 
-                context.Response.Redirect(relativeUrl.ToString());
-                context.Response.StatusCode = 307;
+                await Results.LocalRedirect(relativeUrl.ToString(), preserveMethod: true).ExecuteAsync(context);
 
                 return;
             }

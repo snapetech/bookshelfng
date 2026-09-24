@@ -31,23 +31,68 @@ UpdateVersionNumber()
     fi
 }
 
-EnableExtraPlatformsInSDK()
+PrepareFreeBSDRuntimePacks()
 {
-    SDK_PATH=$(dotnet --list-sdks | grep -P '6\.\d\.\d+' | head -1 | sed 's/\(6\.[0-9]*\.[0-9]*\).*\[\(.*\)\]/\2\/\1/g')
-    BUNDLEDVERSIONS="${SDK_PATH}/Microsoft.NETCoreSdk.BundledVersions.props"
-    if grep -q freebsd-x64 $BUNDLEDVERSIONS; then
-        echo "Extra platforms already enabled"
-    else
-        echo "Enabling extra platform support"
-        sed -i.ORI 's/osx-x64/osx-x64;freebsd-x64;linux-x86/' $BUNDLEDVERSIONS
+    local packageFolder="_temp/freebsd-nuget"
+    local archive="_temp/freebsd-dotnet-10.0.12-source-built.tar.gz"
+    local url="https://github.com/Thefrank/dotnet-freebsd-crossbuild/releases/download/v10.0.112-amd64-freebsd-14/Private.SourceBuilt.Artifacts.10.0.112-servicing.26422.108.freebsd-x64.tar.gz"
+    local sha256="7e032c2024cfb17ac3bb27ab8d35234a6e74f5ede16e66ca8420bcf66028d978"
+    local packages=(
+        "Microsoft.NETCore.App.Host.freebsd-x64.10.0.12.nupkg"
+        "Microsoft.NETCore.App.Runtime.freebsd-x64.10.0.12.nupkg"
+        "Microsoft.AspNetCore.App.Runtime.freebsd-x64.10.0.12.nupkg"
+    )
+
+    mkdir -p "$packageFolder"
+
+    local package
+    local packagesReady=YES
+    for package in "${packages[@]}"; do
+        if [ ! -s "$packageFolder/$package" ]; then
+            packagesReady=NO
+            break
+        fi
+    done
+
+    if [ "$packagesReady" = "NO" ]; then
+        mkdir -p "$(dirname "$archive")"
+        echo "Downloading the pinned community-built .NET 10.0.12 FreeBSD runtime packs"
+        curl --fail --location --retry 3 --silent --show-error --output "$archive" "$url"
+
+        if command -v sha256sum >/dev/null 2>&1; then
+            if ! printf '%s  %s\n' "$sha256" "$archive" | sha256sum --check --status; then
+                echo "FreeBSD runtime pack archive SHA-256 verification failed" >&2
+                exit 1
+            fi
+        elif command -v shasum >/dev/null 2>&1; then
+            if ! printf '%s  %s\n' "$sha256" "$archive" | shasum -a 256 --check --status; then
+                echo "FreeBSD runtime pack archive SHA-256 verification failed" >&2
+                exit 1
+            fi
+        else
+            echo "No SHA-256 checksum utility is installed" >&2
+            exit 1
+        fi
+
+        tar -xzf "$archive" -C "$packageFolder" "${packages[@]}"
+        rm -f "$archive"
     fi
+
+    for package in "${packages[@]}"; do
+        if [ ! -s "$packageFolder/$package" ]; then
+            echo "Missing FreeBSD runtime package: $package" >&2
+            exit 1
+        fi
+    done
 }
 
-EnableExtraPlatforms()
+EnableFreeBSD()
 {
-    if grep -qv freebsd-x64 src/Directory.Build.props; then
-        sed -i'' -e "s^<RuntimeIdentifiers>\(.*\)</RuntimeIdentifiers>^<RuntimeIdentifiers>\1;freebsd-x64;linux-x86</RuntimeIdentifiers>^g" src/Directory.Build.props
+    if ! grep -q 'freebsd-x64</RuntimeIdentifiers>' src/Directory.Build.props; then
+        sed -i'' -e "s^<RuntimeIdentifiers>\(.*\)</RuntimeIdentifiers>^<RuntimeIdentifiers>\1;freebsd-x64</RuntimeIdentifiers>^" src/Directory.Build.props
     fi
+
+    PrepareFreeBSDRuntimePacks
 }
 
 LintUI()
@@ -141,7 +186,7 @@ PackageLinux()
 
     echo "Adding Readarr.Mono to UpdatePackage"
     cp $folder/Readarr.Mono.* $folder/Readarr.Update
-    if [ "$framework" = "net6.0" ]; then
+    if [ "$framework" = "net10.0" ]; then
         cp $folder/Mono.Posix.NETStandard.* $folder/Readarr.Update
         cp $folder/libMonoPosixHelper.* $folder/Readarr.Update
     fi
@@ -169,7 +214,7 @@ PackageMacOS()
 
     echo "Adding Readarr.Mono to UpdatePackage"
     cp $folder/Readarr.Mono.* $folder/Readarr.Update
-    if [ "$framework" = "net6.0" ]; then
+    if [ "$framework" = "net10.0" ]; then
         cp $folder/Mono.Posix.NETStandard.* $folder/Readarr.Update
         cp $folder/libMonoPosixHelper.* $folder/Readarr.Update
     fi
@@ -393,11 +438,11 @@ then
     Build
     if [[ -z "$RID" || -z "$FRAMEWORK" ]];
     then
-        PackageTests "net6.0" "linux-musl-x64"
+        PackageTests "net10.0" "linux-musl-x64"
         if [ "$ENABLE_EXTRA_PLATFORMS" = "YES" ];
         then
-            PackageTests "net6.0" "freebsd-x64"
-            PackageTests "net6.0" "linux-x86"
+            PackageTests "net10.0" "freebsd-x64"
+            PackageTests "net10.0" "linux-x86"
         fi
     else
         PackageTests "$FRAMEWORK" "$RID"
@@ -425,11 +470,11 @@ then
 
     if [[ -z "$RID" || -z "$FRAMEWORK" ]];
     then
-        Package "net6.0" "linux-musl-x64"
+        Package "net10.0" "linux-musl-x64"
         if [ "$ENABLE_EXTRA_PLATFORMS" = "YES" ];
         then
-            Package "net6.0" "freebsd-x64"
-            Package "net6.0" "linux-x86"
+            Package "net10.0" "freebsd-x64"
+            Package "net10.0" "linux-x86"
         fi
     else
         Package "$FRAMEWORK" "$RID"
@@ -439,7 +484,7 @@ fi
 if [ "$INSTALLER" = "YES" ];
 then
     InstallInno
-    BuildInstaller "net6.0" "win-x64"
-    BuildInstaller "net6.0" "win-x86"
+    BuildInstaller "net10.0" "win-x64"
+    BuildInstaller "net10.0" "win-x86"
     RemoveInno
 fi

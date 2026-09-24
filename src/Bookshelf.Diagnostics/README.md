@@ -35,7 +35,7 @@ the standard Linux container:
 
 ```sh
 mkdir -p /config/plugins
-cp _temp/bin/Release/Bookshelf.Diagnostics/net6.0/Bookshelf.Diagnostics.dll /config/plugins/
+cp _temp/bin/Release/Bookshelf.Diagnostics/net10.0/Bookshelf.Diagnostics.dll /config/plugins/
 ```
 
 Set:

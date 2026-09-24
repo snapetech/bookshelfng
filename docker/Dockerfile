@@ -27,11 +27,11 @@ RUN mkdir -p /app/readarr
 
 RUN --mount=type=bind,source=_output,target=_output \
     case "$TARGETPLATFORM" in \
-    "linux/amd64") cp -r /_output/net6.0/linux-musl-x64 /app/readarr/bin ;; \
-    "linux/arm64") cp -r /_output/net6.0/linux-musl-arm64 /app/readarr/bin ;; \
-    "darwin/amd64") cp -r /_output/net6.0/osx-x64 /app/readarr/bin ;; \
-    "darwin/arm64") cp -r /_output/net6.0/osx-arm64 /app/readarr/bin ;; \
-    "windows/amd64") cp -r /_output/net6.0/win-x64 /app/readarr/bin ;; \
+    "linux/amd64") cp -r /_output/net10.0/linux-musl-x64 /app/readarr/bin ;; \
+    "linux/arm64") cp -r /_output/net10.0/linux-musl-arm64 /app/readarr/bin ;; \
+    "darwin/amd64") cp -r /_output/net10.0/osx-x64 /app/readarr/bin ;; \
+    "darwin/arm64") cp -r /_output/net10.0/osx-arm64 /app/readarr/bin ;; \
+    "windows/amd64") cp -r /_output/net10.0/win-x64 /app/readarr/bin ;; \
     *) echo "Unknown platform: $TARGETPLATFORM" && exit 1 ;; \
     esac; \
     cp -r /_output/UI /app/readarr/bin/UI

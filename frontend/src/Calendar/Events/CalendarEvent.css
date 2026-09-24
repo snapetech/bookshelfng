@@ -47,7 +47,7 @@ $fullColorGradient: rgba(244, 245, 246, 0.2);
   border-left-color: var(--successColor) !important;
 
   &:global(.colorImpaired) {
-    border-left-color: color(#27c24c saturation(+15%)) !important;
+    border-left-color: color-mod(#27c24c saturation(+15%)) !important;
   }
 }
 
@@ -79,7 +79,7 @@ $fullColorGradient: rgba(244, 245, 246, 0.2);
   border-left-color: var(--dangerColor) !important;
 
   &:global(.colorImpaired) {
-    border-left-color: color(#f05050 saturation(+15%)) !important;
+    border-left-color: color-mod(#f05050 saturation(+15%)) !important;
     background: repeating-linear-gradient(90deg, var(--colorImpairedGradientDark), var(--colorImpairedGradientDark) 5px, var(--colorImpairedGradient) 5px, var(--colorImpairedGradient) 10px);
   }
 }

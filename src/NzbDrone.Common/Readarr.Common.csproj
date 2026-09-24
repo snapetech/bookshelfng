@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
     <NeutralLanguage>en</NeutralLanguage>
     <DefineConstants Condition="'$(RuntimeIdentifier)' == 'linux-musl-x64' or '$(RuntimeIdentifier)' == 'linux-musl-arm64'">ISMUSL</DefineConstants>
   </PropertyGroup>
@@ -14,13 +14,10 @@
     <PackageReference Include="NLog" />
     <PackageReference Include="SharpZipLib" />
     <PackageReference Include="System.IO.Abstractions" />
-    <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.ValueTuple" />
     <PackageReference Include="System.Data.SQLite.Core.Servarr" />
-    <PackageReference Include="System.Runtime.Loader" />
     <PackageReference Include="System.Configuration.ConfigurationManager" />
     <PackageReference Include="System.ServiceProcess.ServiceController" />
-    <PackageReference Include="Microsoft.Win32.Registry" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="EnsureThat\Resources\ExceptionMessages.Designer.cs">

@@ -1,13 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ImpromptuInterface" />
     <PackageReference Include="NLog" />
-    <PackageReference Include="System.Net.Http" PrivateAssets="all" />
-    <PackageReference Include="System.Text.RegularExpressions" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Core\Readarr.Core.csproj" />

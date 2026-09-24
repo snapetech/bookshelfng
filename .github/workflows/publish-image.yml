@@ -16,7 +16,7 @@ on:
       - "docs/**"
 
 env:
-  DOTNET_VERSION: "6.0.427"
+  DOTNET_VERSION: "10.0.401"
   READARR_VERSION: 0.4.20
   BUILD_SOURCEBRANCHNAME: ${{ github.head_ref || github.ref_name }}
 

@@ -84,7 +84,7 @@ namespace NzbDrone.Core.Housekeeping.Housekeepers
                     return false;
                 }
 
-                imageStream.Read(buffer, 0, buffer.Length);
+                imageStream.ReadExactly(buffer);
             }
 
             var text = System.Text.Encoding.Default.GetString(buffer);

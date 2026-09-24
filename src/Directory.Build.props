@@ -99,12 +99,6 @@
     <RootNamespace Condition="'$(ReadarrProject)'=='true'">$(MSBuildProjectName.Replace('Readarr','NzbDrone'))</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TestProject)'!='true'">
-    <!-- Annotates .NET assemblies with repository information including SHA -->
-    <!-- This is built-in on .NET 8 and can be removed once the project is updated -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" />
-  </ItemGroup>
-
   <!-- Standard testing packages -->
   <ItemGroup Condition="'$(TestProject)'=='true'">
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -112,11 +106,6 @@
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NunitXml.TestLogger" />
     <PackageReference Include="coverlet.collector" />
-  </ItemGroup>
-
-  <!-- Pin legacy transitive System packages to patched versions. -->
-  <ItemGroup Condition="'$(TestProject)'=='true' or '$(MSBuildProjectName)'=='Readarr.Test.Common'">
-    <PackageReference Include="System.Text.RegularExpressions" PrivateAssets="all" />
   </ItemGroup>
 
   <PropertyGroup>
