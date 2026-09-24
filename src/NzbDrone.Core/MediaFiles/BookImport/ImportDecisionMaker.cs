@@ -106,32 +106,46 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 _logger.ProgressInfo($"Reading file {i++}/{files.Count}");
 
-                var fileTrackInfo = _metadataTagService.ReadTags(file);
-
-                var localTrack = new LocalBook
-                {
-                    DownloadClientBookInfo = downloadClientItemInfo,
-                    FolderTrackInfo = folderInfo,
-                    Path = file.FullName,
-                    Part = fileTrackInfo.TrackNumbers.Any() ? fileTrackInfo.TrackNumbers.First() : 1,
-                    Size = file.Length,
-                    Modified = file.LastWriteTimeUtc,
-                    FileTrackInfo = fileTrackInfo,
-                    AdditionalFile = false
-                };
+                LocalBook localTrack = null;
 
                 try
                 {
+                    var fileTrackInfo = _metadataTagService.ReadTags(file);
+
+                    localTrack = new LocalBook
+                    {
+                        DownloadClientBookInfo = downloadClientItemInfo,
+                        FolderTrackInfo = folderInfo,
+                        Path = file.FullName,
+                        Part = fileTrackInfo.TrackNumbers.Any() ? fileTrackInfo.TrackNumbers.First() : 1,
+                        Size = file.Length,
+                        Modified = file.LastWriteTimeUtc,
+                        FileTrackInfo = fileTrackInfo,
+                        AdditionalFile = false
+                    };
+
                     // TODO fix otherfiles?
                     _augmentingService.Augment(localTrack, true);
                     localTracks.Add(localTrack);
                 }
                 catch (AugmentingFailedException)
                 {
+                    if (localTrack == null)
+                    {
+                        _logger.Warn("Skipping unreadable file. {0}", file.FullName);
+                        continue;
+                    }
+
                     decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("Unable to parse file")));
                 }
                 catch (Exception e)
                 {
+                    if (localTrack == null)
+                    {
+                        _logger.Warn(e, "Skipping unreadable file. {0}", file.FullName);
+                        continue;
+                    }
+
                     _logger.Error(e, "Couldn't import file. {0}", localTrack.Path);
 
                     decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("Unexpected error processing file")));

@@ -30,10 +30,22 @@ function createMapStateToProps() {
       } = bookFiles;
 
       const unmappedFiles = _.filter(items, { bookId: 0 });
+      const columns = bookFiles.columns.map((column) => {
+        if (column.name === 'select') {
+          return {
+            ...column,
+            isVisible: true,
+            isHidden: false
+          };
+        }
+
+        return column;
+      });
 
       return {
         items: unmappedFiles,
         ...otherProps,
+        columns,
         isScanningFolders,
         isSmallScreen: dimensionsState.isSmallScreen
       };

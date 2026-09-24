@@ -128,8 +128,7 @@ namespace NzbDrone.Core.MediaFiles
             if (filter == FilterFilesType.Known)
             {
                 unwanted = combined
-                    .Where(x => x.DiskFile.Length == x.DbFile.Size &&
-                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1)
+                    .Where(x => IsUnchanged(x.DiskFile, x.DbFile))
                     .Select(x => x.DiskFile)
                     .ToList();
                 _logger.Trace($"{unwanted.Count} unchanged existing files");
@@ -139,8 +138,7 @@ namespace NzbDrone.Core.MediaFiles
                 unwanted = combined
                     .Where(x =>
                     {
-                        var unchanged = x.DiskFile.Length == x.DbFile.Size &&
-                                        Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1;
+                        var unchanged = IsUnchanged(x.DiskFile, x.DbFile);
                         var matched = x.DbFile.Edition == null || (x.DbFile.Edition.IsLoaded && x.DbFile.Edition.Value != null);
                         var alreadyRemoteSearched = x.DbFile.LastRemoteSearchTime.HasValue;
 
@@ -158,6 +156,20 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return files.Except(unwanted).ToList();
+        }
+
+        private bool IsUnchanged(IFileInfo diskFile, BookFile dbFile)
+        {
+            try
+            {
+                return diskFile.Length == dbFile.Size &&
+                       Math.Abs((diskFile.LastWriteTimeUtc - dbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1;
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "Unable to read file metadata for {0}; it will be reconsidered during import", diskFile.FullName);
+                return false;
+            }
         }
 
         public BookFile Get(int id)
