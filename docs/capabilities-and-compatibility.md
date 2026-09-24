@@ -26,6 +26,21 @@ and audiobooks when both are needed. Persist `/config`; that volume contains
 the database, application settings, and provider identities needed to keep an
 existing library usable across container replacement.
 
+## Supported file formats
+
+BookshelfNG recognizes these file extensions for library scans and download
+imports:
+
+| Media type | File extensions |
+| --- | --- |
+| Ebook | `.azw3`, `.epub`, `.kepub`, `.mobi`, `.pdf` |
+| Audiobook | `.aac`, `.alac`, `.ape`, `.flac`, `.m4a`, `.m4b`, `.m4p`, `.mp2`, `.mp3`, `.mp4a`, `.oga`, `.ogg`, `.vorbis`, `.wav`, `.wavpack`, `.wma` |
+
+Some audio extensions share the same profile quality class. This table
+describes files BookshelfNG can recognize; it does not imply that every format
+stores all book metadata tags. See [media extension and quality mapping](../src/NzbDrone.Core/MediaFiles/MediaFileExtensions.cs)
+and [ebook metadata reading](../src/NzbDrone.Core/MediaFiles/EbookTagService.cs).
+
 ## Metadata modes and provider identity
 
 | Configuration | Primary metadata path | Suitable use | Identity constraint |

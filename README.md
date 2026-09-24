@@ -40,6 +40,9 @@ recovery.
   information is missing, it can search by title alone. Candidate editions
   are ranked using identifiers and available edition details; ambiguous
   matches can still need review. Search result ordering is preserved.
+- **Import common ebook and audiobook formats.** Recognized ebooks include
+  EPUB, KEPUB, MOBI, AZW3, and PDF. Audiobooks include M4B, MP3, FLAC, AAC,
+  M4A, OGG, and related formats; see the [complete extension list](docs/capabilities-and-compatibility.md#supported-file-formats).
 - **Import books from the lists you use.** BookshelfNG supports Goodreads
   shelves, owned books, series, and Listopia lists, plus native Hardcover list
   imports. Hardcover imports honor the lists selected in configuration.
