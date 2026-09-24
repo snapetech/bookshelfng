@@ -54,6 +54,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
         private void GivenSingleTrackWithSingleTrackFile()
         {
+            _localTrack.Path = Path.Combine(_rootPath, "Season 01", "incoming.azw3");
             _localTrack.Book = Builder<Book>.CreateNew()
                 .With(e => e.BookFiles = new LazyLoaded<List<BookFile>>(
                           new List<BookFile>
@@ -61,7 +62,7 @@ namespace NzbDrone.Core.Test.MediaFiles
                               new BookFile
                               {
                                   Id = 1,
-                                  Path = Path.Combine(_rootPath, "Season 01", "30.rock.s01e01.avi"),
+                                  Path = Path.Combine(_rootPath, "Season 01", "30.rock.s01e01.azw3"),
                               }
                           }))
                 .Build();
@@ -151,6 +152,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
         private void GivenExistingFileAt(string path)
         {
+            _localTrack.Path = Path.Combine(_rootPath, "incoming.azw3");
             _localTrack.Book = Builder<Book>.CreateNew()
                 .With(e => e.BookFiles = new LazyLoaded<List<BookFile>>(
                           new List<BookFile>
