@@ -1,0 +1,1 @@
+Metadata profiles can list preferred series names in order. Filename, Calibre, and Audiobookshelf metadata generation uses a matching preferred series first, then provider-marked primary series, then the lowest numbered series position. Unnumbered series no longer sort ahead of numbered series by default.

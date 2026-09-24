@@ -35,6 +35,8 @@
   "AllowedLanguages": "Allowed Languages",
   "PreferredEditionTerms": "Preferred Edition Terms",
   "PreferredEditionTermsHelpText": "Rank edition title, format, or publisher terms from strongest to weakest. Use one weight and term per line, such as 3|audible or 1|ebook.",
+  "PreferredSeries": "Preferred Series",
+  "PreferredSeriesHelpText": "List preferred series names in order, separated by commas or lines. A matching series is chosen before provider primary status and series position.",
   "AlreadyInYourLibrary": "Already in your library",
   "AlternateTitles": "Alternate Titles",
   "AnyEditionOkHelpText": "Readarr will automatically switch to the edition best matching downloaded files",

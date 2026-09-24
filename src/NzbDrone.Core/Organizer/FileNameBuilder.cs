@@ -265,10 +265,12 @@ namespace NzbDrone.Core.Organizer
             tokenHandlers["{Book CleanSubtitle}"] = m => CleanTitle(subtitle);
             tokenHandlers["{Book SubtitleThe}"] = m => TitleThe(subtitle);
 
-            var seriesLinks = edition.Book.Value.SeriesLinks.Value;
-            if (seriesLinks.Any())
+            var book = edition.Book.Value;
+            var seriesLinks = book.SeriesLinks.Value;
+            var preferredSeries = book.Author?.Value?.MetadataProfile?.Value?.PreferredSeries;
+            var primarySeries = seriesLinks.GetPreferredSeriesLink(preferredSeries);
+            if (primarySeries != null)
             {
-                var primarySeries = seriesLinks.OrderBy(x => x.SeriesPosition).First();
                 var seriesTitle = primarySeries.Series?.Value?.Title + (primarySeries.Position.IsNotNullOrWhiteSpace() ? $" #{primarySeries.Position}" : string.Empty);
 
                 tokenHandlers["{Book Series}"] = m => primarySeries.Series.Value.Title;

@@ -5,7 +5,6 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using NLog;
-using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Books;
@@ -206,7 +205,8 @@ namespace NzbDrone.Core.MediaFiles
             {
                 var edition = file.Edition.Value;
                 var book = edition.Book.Value;
-                var serieslink = book.SeriesLinks.Value.OrderBy(x => x.SeriesPosition).FirstOrDefault(x => x.Series.Value.Title.IsNotNullOrWhiteSpace());
+                var preferredSeries = book.Author?.Value?.MetadataProfile?.Value?.PreferredSeries;
+                var serieslink = book.SeriesLinks.Value.GetPreferredSeriesLink(preferredSeries);
 
                 var series = serieslink?.Series.Value;
                 double? seriesIndex = null;

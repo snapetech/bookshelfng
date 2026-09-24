@@ -13,7 +13,8 @@ namespace Readarr.Api.V1.Profiles.Metadata
             var profile = new MetadataProfile
             {
                 AllowedLanguages = "eng",
-                PreferredEditionTerms = string.Empty
+                PreferredEditionTerms = string.Empty,
+                PreferredSeries = string.Empty
             };
 
             return profile.ToResource();

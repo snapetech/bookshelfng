@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Xml;
 using NzbDrone.Core.Books;
@@ -178,11 +177,8 @@ namespace NzbDrone.Core.Extras.Metadata.Consumers
 
         private static void WriteSeries(XmlWriter writer, Book book)
         {
-            var seriesLink = (book.SeriesLinks?.Value ?? new List<SeriesBookLink>())
-                .Where(x => !string.IsNullOrWhiteSpace(x.Series?.Value?.Title))
-                .OrderByDescending(x => x.IsPrimary)
-                .ThenBy(x => x.SeriesPosition)
-                .FirstOrDefault();
+            var preferredSeries = book.Author?.Value?.MetadataProfile?.Value?.PreferredSeries;
+            var seriesLink = book.SeriesLinks?.Value.GetPreferredSeriesLink(preferredSeries);
 
             var seriesTitle = seriesLink?.Series?.Value?.Title;
             if (string.IsNullOrWhiteSpace(seriesTitle))

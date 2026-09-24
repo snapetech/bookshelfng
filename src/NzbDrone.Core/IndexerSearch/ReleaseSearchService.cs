@@ -129,7 +129,7 @@ namespace NzbDrone.Core.IndexerSearch
             var links = _seriesBookLinkService.GetLinksBySeriesAndAuthor(seriesId, author.ForeignAuthorId);
             var positions = links
                 .GroupBy(x => x.BookId)
-                .ToDictionary(x => x.Key, x => x.Min(link => link.SeriesPosition));
+                .ToDictionary(x => x.Key, x => x.Min(link => link.SeriesPosition > 0 ? link.SeriesPosition : int.MaxValue));
 
             return _bookService.GetBooks(positions.Keys)
                 .OrderBy(x => positions[x.Id])
