@@ -61,10 +61,18 @@ jobs:
       - uses: jdx/mise-action@v3
 
       - name: Setup Environment Variables
+        id: variables
         shell: bash
         run: |
           echo "SDK_PATH=${{ env.DOTNET_ROOT }}/sdk/${DOTNET_VERSION}" >> "$GITHUB_ENV"
           echo "DATE=$(date --rfc-3339=date)" >> "$GITHUB_ENV"
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "$GITHUB_REF_NAME" == main-v* ]]; then
+            build_version="${GITHUB_REF_NAME#main-v}"
+          else
+            build_version="${READARR_VERSION}.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "Resolved BookshelfNG version: $build_version"
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -106,7 +114,7 @@ jobs:
         shell: bash
         run: ./build.sh --backend --frontend
         env:
-          READARRVERSION: ${{ env.READARR_VERSION }}.${{ github.run_number }}
+          READARRVERSION: ${{ steps.variables.outputs.build_version }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -118,8 +126,8 @@ jobs:
             docker.io/snapetech/bookshelfng
           tags: |
             type=raw,value=softcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=softcover-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=softcover-v${{ steps.variables.outputs.build_version }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
             type=raw,value=softcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=softcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=softcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
@@ -132,8 +140,8 @@ jobs:
             docker.io/snapetech/bookshelfng
           tags: |
             type=raw,value=hardcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=hardcover-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
+            type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=hardcover-v${{ steps.variables.outputs.build_version }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
             type=raw,value=hardcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
