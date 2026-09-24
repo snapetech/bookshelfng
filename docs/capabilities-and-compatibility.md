@@ -231,6 +231,15 @@ Relevant implementation:
 - [qBittorrent v2 API authentication](../src/NzbDrone.Core/Download/Clients/QBittorrent/QBittorrentProxyV2.cs)
 - [Book lookup API response](../src/Readarr.Api.V1/Books/BookLookupController.cs)
 
+## Renamed book sidecar files
+
+The **Move Extra Files on Rename** setting in **Settings > Media Management**
+is off by default. When enabled, BookshelfNG checks directories vacated by an
+author rename for files whose extensions appear in **Extra File Extensions**.
+It moves those files to the corresponding new book directory when all books
+from the old directory were moved to the same destination. A destination file
+with the same name is left in place and logged as a warning.
+
 ## Audiobook M4B merging
 
 M4B merging is disabled by default. Set `BOOKSHELF_M4B_MERGE=true` to combine
@@ -264,7 +273,7 @@ dependency updates and routine maintenance individually.
 | January 2026 | Added native Hardcover import lists and made the import sync only the list IDs selected in configuration. |
 | May–July 2026 | Enriched `/api/v1/book/lookup` with author and edition metadata, added tagged image publishing and downstream edge builds, and added qBittorrent 5.2 bearer API-key authentication. |
 | August 2026 | Added a native Hardcover GraphQL metadata client so the Hardcover image can search and resolve records directly without a metadata proxy. |
-| September 2026 | Added title-only and normalized-filename search for imports without author metadata; added optional chaptered M4B generation for multi-track audiobook downloads; added independently selectable runtime catalogs for Hardcover, Readarr-compatible metadata APIs, Open Library, Google Books, LOC, Gutendex, Internet Archive, NDL, Europeana, and optional Apify results; batched Hardcover lookups and honored rate-limit resets; reused stored author records and introduced periodic freshness checks; added a separately installed diagnostics module; and added curated GitHub releases and Discord build announcements. |
+| September 2026 | Added title-only and normalized-filename search for imports without author metadata; added optional chaptered M4B generation for multi-track audiobook downloads; added independently selectable runtime catalogs for Hardcover, Readarr-compatible metadata APIs, Open Library, Google Books, LOC, Gutendex, Internet Archive, NDL, Europeana, and optional Apify results; batched Hardcover lookups and honored rate-limit resets; reused stored author records and introduced periodic freshness checks; added an option to move configured extra files after author renames; added a separately installed diagnostics module; and added curated GitHub releases and Discord build announcements. |
 
 BookshelfNG retains ebook identification behavior from the Readarr lineage:
 EPUB ISBN normalization and checksum checks, ISBN-13 preference, ASIN matching,

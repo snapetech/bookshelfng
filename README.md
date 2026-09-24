@@ -51,7 +51,9 @@ provider behavior and settings.
 - **Keep the familiar automation.** Monitor authors and books, watch indexer
   RSS feeds for releases, search for missing monitored books, apply quality
   and metadata profiles, manage download clients, scan and import existing
-  files, and rename or upgrade releases automatically.
+  files, and rename or upgrade releases automatically. Optionally move
+  configured extra files when author renaming moves books to a new folder; see
+  [sidecar rename behavior](docs/capabilities-and-compatibility.md#renamed-book-sidecar-files).
 - **Search and recover downloads.** Use interactive release search to choose
   an available release when an indexer supports it. BookshelfNG can search
   again after a failed download; automatic grabs and manually selected grabs
