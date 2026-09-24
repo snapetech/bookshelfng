@@ -35,6 +35,12 @@ namespace NzbDrone.Core.Test.Configuration
         }
 
         [Test]
+        public void book_import_minimum_match_percent_should_default_to_70()
+        {
+            Subject.BookImportMinimumMatchPercent.Should().Be(70);
+        }
+
+        [Test]
         public void get_value_with_persist_should_store_default_value()
         {
             var salt = Subject.HmacSalt;

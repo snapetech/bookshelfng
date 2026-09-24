@@ -235,6 +235,7 @@ namespace NzbDrone.Core.Parser
 
                     if (score > bestScore)
                     {
+                        bestScore = score;
                         bestAuthor = author;
                         bestBook = book;
                     }
@@ -256,6 +257,7 @@ namespace NzbDrone.Core.Parser
 
                     if (score > bestScore)
                     {
+                        bestScore = score;
                         bestAuthor = author;
                         bestBook = edition.Book.Value;
                     }
