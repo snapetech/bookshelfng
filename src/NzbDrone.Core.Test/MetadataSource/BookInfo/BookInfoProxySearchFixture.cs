@@ -28,6 +28,10 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
                 .Setup(x => x.Search(It.IsAny<string>()))
                 .Returns((string query) => BookInfoTestData.BookInfoSearchResults(query));
 
+            Mocker.GetMock<IAdditionalBookMetadataProxy>()
+                .Setup(x => x.Search(It.IsAny<string>()))
+                .Returns(new List<Book>());
+
             Mocker.GetMock<ICachedHttpResponseService>()
                 .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
                 .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => BookInfoTestData.DetailResponse(request));

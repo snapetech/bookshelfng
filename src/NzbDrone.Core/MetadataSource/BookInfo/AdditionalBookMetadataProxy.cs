@@ -52,8 +52,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             _httpClient = httpClient;
             _cachedHttpClient = cachedHttpClient;
-            _searchCache = cacheManager.GetCache<List<Book>>(GetType());
-            _apifyCache = cacheManager.GetCache<List<JObject>>(GetType());
+            _searchCache = cacheManager.GetCache<List<Book>>(GetType(), "search");
+            _apifyCache = cacheManager.GetCache<List<JObject>>(GetType(), "apify");
             _logger = logger;
         }
 
@@ -73,7 +73,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private List<Book> SearchUncached(string query)
         {
             var books = new List<Book>();
-            foreach (var provider in EnabledSources)
+            foreach (var provider in EnabledSources
+                .OrderBy(x => x == GoogleBooks ? 0 : x == Europeana ? 1 : x == LibraryOfCongress ? 2 : x == ApifyGoodreads ? 3 : 4)
+                .ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
             {
                 try
                 {
@@ -411,22 +413,24 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 recordId = new Uri(recordId).AbsolutePath;
             }
 
-            var recordType = (string)record["type"] ?? (string)item["type"];
+            var recordType = (string)item["type"] ?? (string)record["type"];
             if (!recordType.IsNullOrWhiteSpace() && !recordType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
 
-            var title = GetFirstString(record["title"]) ?? GetFirstString(proxy?["dcTitle"]);
-            var author = GetFirstString(record["dcCreator"]) ?? GetFirstString(proxy?["dcCreator"])
-                ?? GetFirstString(record["dcContributor"]) ?? GetFirstString(proxy?["dcContributor"]);
-            var description = GetFirstString(record["dcDescription"]) ?? GetFirstString(proxy?["dcDescription"]);
-            var publisher = GetFirstString(record["dcPublisher"]) ?? GetFirstString(proxy?["dcPublisher"]);
-            var language = GetFirstString(record["language"]) ?? GetFirstString(proxy?["dcLanguage"]);
-            var date = GetFirstString(record["year"]) ?? GetFirstString(proxy?["dcDate"]);
-            var image = GetFirstString(record["edmPreview"]) ?? GetFirstString(aggregation?["edmPreview"]);
-            var identifiers = new JArray(GetStringValues(record["dcIdentifier"] ?? proxy?["dcIdentifier"])
-                .Where(Isbn13IsValid));
+            var title = GetFirstString(item["title"]) ?? GetFirstString(proxy?["dcTitle"]);
+            var author = GetFirstString(item["dcCreator"]) ?? GetFirstString(proxy?["dcCreator"])
+                ?? GetFirstString(item["dcContributor"]) ?? GetFirstString(proxy?["dcContributor"]);
+            var description = GetFirstString(item["dcDescription"]) ?? GetFirstString(proxy?["dcDescription"]);
+            var publisher = GetFirstString(item["dcPublisher"]) ?? GetFirstString(proxy?["dcPublisher"]);
+            var language = GetFirstString(item["language"]) ?? GetFirstString(proxy?["dcLanguage"]);
+            var date = GetFirstString(item["year"]) ?? GetFirstString(proxy?["dcDate"]);
+            var image = GetFirstString(item["edmPreview"]) ?? GetFirstString(aggregation?["edmPreview"]);
+            var identifiers = new JArray(GetStringValues(item["dcIdentifier"] ?? proxy?["dcIdentifier"])
+                .Select(NormalizeEuropeanaIsbn13)
+                .Where(x => x != null)
+                .Distinct(StringComparer.Ordinal));
             var url = recordId.IsNullOrWhiteSpace()
                 ? "https://www.europeana.eu/"
                 : "https://www.europeana.eu/item/" + recordId.Trim('/');
@@ -451,6 +455,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static IEnumerable<string> GetStringValues(JToken value) =>
             value is JArray array ? array.Values<string>() : value == null ? Enumerable.Empty<string>() : new[] { value.ToString() };
+
+        private static string NormalizeEuropeanaIsbn13(string value)
+        {
+            var digits = System.Text.RegularExpressions.Regex.Replace(value ?? string.Empty, "[^0-9]", string.Empty);
+            return Isbn13IsValid(digits) ? digits : null;
+        }
 
         private Book BuildBook(
             string provider,
