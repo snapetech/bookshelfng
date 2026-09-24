@@ -114,8 +114,16 @@ namespace NzbDrone.Core.MediaFiles
                     // while publisher is handled by taglib, it seems to be mapped to 'ORGANIZATION' and not 'LABEL' like Picard is
                     // https://picard.musicbrainz.org/docs/mappings/
                     var flactag = (TagLib.Ogg.XiphComment)file.GetTag(TagLib.TagTypes.Xiph);
-                    Narrator = flactag.GetField("PERFORMER").ExclusiveOrDefault() ??
-                               flactag.GetField("NARRATOR").ExclusiveOrDefault();
+                    var narratorFields = flactag.GetField("PERFORMER")
+                        .Where(x => x.IsNotNullOrWhiteSpace())
+                        .ToArray();
+                    if (narratorFields.Length == 0)
+                    {
+                        narratorFields = flactag.GetField("NARRATOR")
+                            .Where(x => x.IsNotNullOrWhiteSpace())
+                            .ToArray();
+                    }
+                    Narrator = narratorFields.Length > 0 ? string.Join("; ", narratorFields) : null;
                     Media = flactag.GetField("MEDIA").ExclusiveOrDefault();
                     Date = DateTime.TryParse(flactag.GetField("DATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(flactag.GetField("ORIGINALDATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
