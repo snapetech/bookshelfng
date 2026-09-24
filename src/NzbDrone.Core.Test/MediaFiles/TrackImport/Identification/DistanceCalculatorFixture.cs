@@ -110,7 +110,7 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
             };
         }
 
-        private static Edition GivenEdition(string title, string author, string asin = null, string isbn = null)
+        private static Edition GivenEdition(string title, string author, string asin = null, string isbn = null, string format = null, string publisher = null)
         {
             var book = new Book
             {
@@ -124,8 +124,65 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
                 Title = title,
                 Asin = asin,
                 Isbn13 = isbn,
+                Format = format,
+                Publisher = publisher,
                 Book = new LazyLoaded<Book>(book)
             };
+        }
+
+        [Test]
+        public void should_prefer_higher_weighted_edition_terms()
+        {
+            var localBook = GivenLocalBook("Twisted Lies", "Ana Huang");
+            var audible = GivenEdition("Twisted Lies", "Ana Huang", format: "Audiobook", publisher: "Audible");
+            var recordedBooks = GivenEdition("Twisted Lies", "Ana Huang", format: "Audiobook", publisher: "Recorded Books");
+
+            var audibleDistance = DistanceCalculator.BookDistance(
+                new List<LocalBook> { localBook }, audible, "3|audible\n1|recorded books").NormalizedDistance();
+            var recordedBooksDistance = DistanceCalculator.BookDistance(
+                new List<LocalBook> { localBook }, recordedBooks, "3|audible\n1|recorded books").NormalizedDistance();
+
+            audibleDistance.Should().BeLessThan(recordedBooksDistance);
+        }
+
+        [TestCase("title")]
+        [TestCase("format")]
+        [TestCase("publisher")]
+        public void should_match_preferred_terms_in_edition_metadata(string metadataField)
+        {
+            var localBook = GivenLocalBook("Twisted Lies", "Ana Huang", asin: "B09TVV9NH2");
+            var edition = GivenEdition("Twisted Lies", "Ana Huang", asin: "B0B9FPHBD6");
+
+            switch (metadataField)
+            {
+                case "title":
+                    edition.Title = "Twisted Lies Audible Edition";
+                    break;
+                case "format":
+                    edition.Format = "Audible Audio";
+                    break;
+                case "publisher":
+                    edition.Publisher = "Audible";
+                    break;
+            }
+
+            var withoutPreference = DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, edition).NormalizedDistance();
+            var withPreference = DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, edition, "3|audible").NormalizedDistance();
+
+            withPreference.Should().BeLessThan(withoutPreference);
+        }
+
+        [Test]
+        public void should_ignore_invalid_preferred_edition_terms()
+        {
+            var localBook = GivenLocalBook("Twisted Lies", "Ana Huang", asin: "B09TVV9NH2");
+            var edition = GivenEdition("Twisted Lies", "Ana Huang", asin: "B0B9FPHBD6", publisher: "Audible");
+
+            var withoutPreferences = DistanceCalculator.BookDistance(new List<LocalBook> { localBook }, edition).NormalizedDistance();
+            var withInvalidPreferences = DistanceCalculator.BookDistance(
+                new List<LocalBook> { localBook }, edition, "audible|3\n0|audible\n2|").NormalizedDistance();
+
+            withInvalidPreferences.Should().Be(withoutPreferences);
         }
 
         [TestCase("a2f97540-d315-4ee6-a025-5325c852d261")]
