@@ -364,6 +364,7 @@ namespace NzbDrone.Core.MediaFiles
 
                     // Vorbis comments define PERFORMER as the reader of an audiobook.
                     flactag.SetField("PERFORMER", Narrator);
+                    flactag.SetField("NARRATOR", null);
                     flactag.SetField("DATE", Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALDATE", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALYEAR", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null);
