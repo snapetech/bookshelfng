@@ -35,6 +35,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
                     return Decision.Accept();
                 }
 
+                if (!MediaFileExtensions.AreCompatibleFormats(bookFile.Quality?.Quality,
+                                                              bookFile.Path,
+                                                              localBook.Quality?.Quality,
+                                                              localBook.Path))
+                {
+                    continue;
+                }
+
                 if (bookFile.Size == localBook.Size)
                 {
                     _logger.Debug("'{0}' Has the same filesize as existing file", localBook.Path);

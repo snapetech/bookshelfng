@@ -38,6 +38,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 
             foreach (var bookFile in files)
             {
+                if (!MediaFileExtensions.AreCompatibleFormats(bookFile.Quality?.Quality,
+                                                              bookFile.Path,
+                                                              item.Quality?.Quality,
+                                                              item.Path))
+                {
+                    continue;
+                }
+
                 var qualityCompare = qualityComparer.Compare(item.Quality.Quality, bookFile.Quality.Quality);
 
                 if (qualityCompare < 0)

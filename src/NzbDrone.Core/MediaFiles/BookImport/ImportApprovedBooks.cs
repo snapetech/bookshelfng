@@ -172,7 +172,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 try
                 {
                     //check if already imported
-                    if (importResults.Where(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id).Any(r => r.ImportDecision.Item.Part == localTrack.Part))
+                    if (importResults.Where(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id).Any(r =>
+                            r.ImportDecision.Item.Part == localTrack.Part &&
+                            MediaFileExtensions.AreCompatibleFormats(r.ImportDecision.Item.Quality?.Quality,
+                                                                     r.ImportDecision.Item.Path,
+                                                                     localTrack.Quality?.Quality,
+                                                                     localTrack.Path)))
                     {
                         importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
                         continue;

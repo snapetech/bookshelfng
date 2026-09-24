@@ -71,18 +71,25 @@ namespace NzbDrone.Core.MediaFiles
             // of this book being upgraded, it is a file that was attached to this book by mistake,
             // and deleting it would destroy an unrelated book.
             var destinationFolder = isCalibre ? null : GetDestinationFolder(bookFile, localBook);
+            var filesToReplace = existingFiles.Where(file => MediaFileExtensions.AreCompatibleFormats(file.Quality?.Quality,
+                                                                                                      file.Path,
+                                                                                                      bookFile.Quality?.Quality,
+                                                                                                      localBook.Path));
 
-            if (!isCalibre && existingFiles.Any() && destinationFolder == null)
+            if (!isCalibre && filesToReplace.Any() && destinationFolder == null)
             {
                 throw new InvalidOperationException("Cannot safely replace existing book files because the destination folder could not be determined.");
+            }
+
+            if (isCalibre)
+            {
+                bookFile.CalibreId = existingFiles.FirstOrDefault(file => file.CalibreId != 0)?.CalibreId ?? 0;
             }
 
             foreach (var file in existingFiles)
             {
                 var bookFilePath = file.Path;
                 var subfolder = rootFolderPath.GetRelativePath(_diskProvider.GetParentFolder(bookFilePath));
-
-                bookFile.CalibreId = file.CalibreId;
 
                 if (destinationFolder != null && !IsInFolder(bookFilePath, destinationFolder))
                 {
@@ -97,6 +104,14 @@ namespace NzbDrone.Core.MediaFiles
                     continue;
                 }
 
+                if (!MediaFileExtensions.AreCompatibleFormats(file.Quality?.Quality,
+                                                              file.Path,
+                                                              bookFile.Quality?.Quality,
+                                                              localBook.Path))
+                {
+                    continue;
+                }
+
                 if (_diskProvider.FileExists(bookFilePath))
                 {
                     _logger.Debug("Removing existing book file: {0} CalibreId: {1}", file, file.CalibreId);
@@ -108,7 +123,11 @@ namespace NzbDrone.Core.MediaFiles
                     else
                     {
                         var existing = _calibre.GetBook(file.CalibreId, settings);
-                        var existingFormats = existing.Formats.Keys;
+                        var incomingFormat = Path.GetExtension(localBook.Path).TrimStart('.');
+                        var existingFormats = existing.Formats.Keys
+                            .Where(format => format.Equals(incomingFormat, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+
                         _logger.Debug($"Removing existing formats {existingFormats.ConcatToString()} from calibre");
                         _calibre.RemoveFormats(file.CalibreId, existingFormats, settings);
                     }

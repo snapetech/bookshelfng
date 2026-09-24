@@ -3,6 +3,7 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.IndexerSearch.Definitions;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications
@@ -30,6 +31,13 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         {
             foreach (var file in subject.Books.SelectMany(c => c.BookFiles.Value))
             {
+                if (file != null &&
+                    !MediaFileExtensions.AreCompatibleQualities(file.Quality?.Quality,
+                                                               subject.ParsedBookInfo.Quality?.Quality))
+                {
+                    continue;
+                }
+
                 if (file == null)
                 {
                     return Decision.Accept();

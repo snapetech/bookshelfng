@@ -2,6 +2,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.IndexerSearch.Definitions;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications
@@ -30,6 +31,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
             foreach (var file in subject.Books.SelectMany(b => b.BookFiles.Value))
             {
+                if (!MediaFileExtensions.AreCompatibleQualities(file?.Quality?.Quality,
+                                                               subject.ParsedBookInfo.Quality?.Quality))
+                {
+                    continue;
+                }
+
                 if (file == null)
                 {
                     _logger.Debug("File is no longer available, skipping this file.");

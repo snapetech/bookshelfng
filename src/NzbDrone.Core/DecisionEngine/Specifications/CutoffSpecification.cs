@@ -4,6 +4,7 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.IndexerSearch.Definitions;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 
@@ -33,6 +34,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
             foreach (var file in subject.Books.SelectMany(b => b.BookFiles.Value))
             {
+                if (!MediaFileExtensions.AreCompatibleQualities(file?.Quality?.Quality,
+                                                               subject.ParsedBookInfo.Quality?.Quality))
+                {
+                    continue;
+                }
+
                 // Get a distinct list of all current track qualities for a given book
                 var currentQualities = new List<QualityModel> { file.Quality };
 

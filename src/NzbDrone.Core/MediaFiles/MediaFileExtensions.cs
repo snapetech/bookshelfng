@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NzbDrone.Core.Qualities;
 
@@ -59,6 +60,53 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return Quality.Unknown;
+        }
+
+        public static bool AreCompatibleQualities(Quality existing, Quality incoming)
+        {
+            var existingIsAudio = IsAudioQuality(existing);
+            var incomingIsAudio = IsAudioQuality(incoming);
+
+            if (existingIsAudio || incomingIsAudio)
+            {
+                return existingIsAudio && incomingIsAudio;
+            }
+
+            // Ebook quality IDs identify formats. An EPUB should neither block nor replace
+            // a MOBI/AZW3/PDF file, while an EPUB can still be upgraded by another EPUB.
+            return existing == incoming;
+        }
+
+        public static bool AreCompatibleFormats(Quality existingQuality,
+                                                string existingPath,
+                                                Quality incomingQuality,
+                                                string incomingPath)
+        {
+            var existingIsAudio = IsAudioFormat(existingQuality, existingPath);
+            var incomingIsAudio = IsAudioFormat(incomingQuality, incomingPath);
+
+            if (existingIsAudio || incomingIsAudio)
+            {
+                return existingIsAudio && incomingIsAudio;
+            }
+
+            return string.Equals(Path.GetExtension(existingPath),
+                                 Path.GetExtension(incomingPath),
+                                 StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsAudioQuality(Quality quality)
+        {
+            return quality == Quality.UnknownAudio ||
+                   quality == Quality.MP3 ||
+                   quality == Quality.M4B ||
+                   quality == Quality.FLAC;
+        }
+
+        private static bool IsAudioFormat(Quality quality, string path)
+        {
+            return IsAudioQuality(quality) ||
+                   (path != null && _audioExtensions.ContainsKey(Path.GetExtension(path)));
         }
     }
 }
