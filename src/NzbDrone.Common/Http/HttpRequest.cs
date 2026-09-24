@@ -37,6 +37,7 @@ namespace NzbDrone.Common.Http
         public HttpMethod Method { get; set; }
         public HttpHeader Headers { get; set; }
         public byte[] ContentData { get; set; }
+        public HttpContent Content { get; set; }
         public string ContentSummary { get; set; }
         public ICredentials Credentials { get; set; }
         public bool SuppressHttpError { get; set; }
@@ -81,13 +82,20 @@ namespace NzbDrone.Common.Http
 
         public void SetContent(byte[] data)
         {
+            Content = null;
             ContentData = data;
+        }
+
+        public void SetContent(HttpContent content)
+        {
+            ContentData = null;
+            Content = content;
         }
 
         public void SetContent(string data)
         {
             var encoding = HttpHeader.GetEncodingFromContentType(Headers.ContentType);
-            ContentData = encoding.GetBytes(data);
+            SetContent(encoding.GetBytes(data));
         }
     }
 }

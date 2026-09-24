@@ -99,7 +99,11 @@ namespace NzbDrone.Common.Http.Dispatchers
                 cts.CancelAfter(TimeSpan.FromSeconds(100));
             }
 
-            if (request.ContentData != null)
+            if (request.Content != null)
+            {
+                requestMessage.Content = request.Content;
+            }
+            else if (request.ContentData != null)
             {
                 requestMessage.Content = new ByteArrayContent(request.ContentData);
             }
