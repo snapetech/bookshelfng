@@ -351,6 +351,10 @@ jobs:
 
   build-linux-packages:
     name: Build Debian, RPM, AppImage, and Flatpak packages
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.build-release-assets.result == 'success'
     needs: [validate, build-release-assets]
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -497,6 +501,10 @@ jobs:
 
   build-snap:
     name: Build Snap
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.build-release-assets.result == 'success'
     needs: [validate, build-release-assets]
     runs-on: ubuntu-latest
     steps:
@@ -586,6 +594,13 @@ jobs:
 
   publish-github-release:
     name: Publish GitHub release assets
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.build-release-assets.result == 'success' &&
+      needs.build-linux-packages.result == 'success' &&
+      needs.build-snap.result == 'success' &&
+      needs.build-helm.result == 'success'
     needs: [validate, build-release-assets, build-linux-packages, build-snap, build-helm]
     runs-on: ubuntu-latest
     permissions:
@@ -681,7 +696,12 @@ jobs:
   publish-aur:
     name: Publish AUR package
     needs: [validate, publish-github-release, publisher-credentials]
-    if: needs.publisher-credentials.outputs.aur == 'true'
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.publish-github-release.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
+      needs.publisher-credentials.outputs.aur == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -792,7 +812,12 @@ jobs:
   publish-copr:
     name: Publish COPR build
     needs: [validate, publish-github-release, publisher-credentials]
-    if: needs.publisher-credentials.outputs.copr == 'true'
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.publish-github-release.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
+      needs.publisher-credentials.outputs.copr == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -895,7 +920,12 @@ jobs:
   publish-ppa:
     name: Publish signed Launchpad PPA source package
     needs: [validate, publish-github-release, publisher-credentials]
-    if: needs.publisher-credentials.outputs.ppa == 'true'
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.publish-github-release.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
+      needs.publisher-credentials.outputs.ppa == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -975,7 +1005,13 @@ jobs:
   publish-snap:
     name: Publish Snap to stable channel
     needs: [validate, build-snap, publish-github-release, publisher-credentials]
-    if: needs.publisher-credentials.outputs.snap == 'true'
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.build-snap.result == 'success' &&
+      needs.publish-github-release.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
+      needs.publisher-credentials.outputs.snap == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8b0e5a5461e7c # v8.0.1
@@ -1003,7 +1039,12 @@ jobs:
   publish-chocolatey:
     name: Publish Chocolatey package
     needs: [validate, publish-github-release, publisher-credentials]
-    if: needs.publisher-credentials.outputs.chocolatey == 'true'
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.publish-github-release.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
+      needs.publisher-credentials.outputs.chocolatey == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1049,6 +1090,11 @@ jobs:
   publish-helm:
     name: Publish signed Helm OCI chart
     needs: [validate, build-helm, publish-github-release]
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.build-helm.result == 'success' &&
+      needs.publish-github-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
