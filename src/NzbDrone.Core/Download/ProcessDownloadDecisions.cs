@@ -198,14 +198,14 @@ namespace NzbDrone.Core.Download
 
             try
             {
-                _logger.Trace("Grabbing from Indexer {0} at priority {1}.", remoteBook.Release.Indexer, remoteBook.Release.IndexerPriority);
+                _logger.Trace("Grabbing from Indexer {0} at priority {1}.", remoteBook.Release.Indexer.ReplaceLineEndings(""), remoteBook.Release.IndexerPriority);
                 await _downloadService.DownloadReport(remoteBook, downloadClientId);
 
                 return ProcessedDecisionResult.Grabbed;
             }
             catch (ReleaseUnavailableException)
             {
-                _logger.Warn("Failed to download release from indexer, no longer available. " + remoteBook);
+                _logger.Warn("Failed to download release from indexer, no longer available. " + remoteBook.ToString().ReplaceLineEndings(""));
                 return ProcessedDecisionResult.Rejected;
             }
             catch (Exception ex)
@@ -213,13 +213,13 @@ namespace NzbDrone.Core.Download
                 if (ex is DownloadClientUnavailableException || ex is DownloadClientAuthenticationException)
                 {
                     _logger.Debug(ex,
-                        "Failed to send release to download client, storing until later. " + remoteBook);
+                        "Failed to send release to download client, storing until later. " + remoteBook.ToString().ReplaceLineEndings(""));
 
                     return ProcessedDecisionResult.Failed;
                 }
                 else
                 {
-                    _logger.Warn(ex, "Couldn't add report to download queue. " + remoteBook);
+                    _logger.Warn(ex, "Couldn't add report to download queue. " + remoteBook.ToString().ReplaceLineEndings(""));
                     return ProcessedDecisionResult.Skipped;
                 }
             }

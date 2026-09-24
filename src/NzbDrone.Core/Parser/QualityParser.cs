@@ -31,7 +31,7 @@ namespace NzbDrone.Core.Parser
 
         public static QualityModel ParseQuality(string name, string desc = null, List<int> categories = null)
         {
-            Logger.Debug("Trying to parse quality for '{0}'", name);
+            Logger.Debug("Trying to parse quality for '{0}'", name?.ReplaceLineEndings(""));
 
             if (name.IsNullOrWhiteSpace() && desc.IsNullOrWhiteSpace())
             {

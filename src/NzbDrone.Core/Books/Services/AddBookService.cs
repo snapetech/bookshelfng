@@ -42,7 +42,7 @@ namespace NzbDrone.Core.Books
 
         public Book AddBook(Book book, bool doRefresh = true)
         {
-            _logger.Debug($"Adding book {book}");
+            _logger.Debug($"Adding book {book.ToString().ReplaceLineEndings("")}");
 
             book = AddSkyhookData(book);
 
@@ -112,7 +112,7 @@ namespace NzbDrone.Core.Books
             }
             catch (BookNotFoundException)
             {
-                _logger.Error("Book with Foreign Id {0} was not found, it may have been removed from Goodreads.", newBook.ForeignBookId);
+                _logger.Error("Book with Foreign Id {0} was not found, it may have been removed from Goodreads.", newBook.ForeignBookId.ReplaceLineEndings(""));
 
                 throw new ValidationException(new List<ValidationFailure>
                                               {

@@ -62,7 +62,7 @@ namespace Readarr.Http.Authentication
 
         public void LogUnauthorized(HttpRequest context)
         {
-            _authLogger.Info("Auth-Unauthorized ip {0} url '{1}'", context.GetRemoteIP(), context.Path);
+            _authLogger.Info("Auth-Unauthorized ip {0} url '{1}'", context.GetRemoteIP()?.ToString()?.ReplaceLineEndings(""), context.Path.Value?.ReplaceLineEndings(""));
         }
 
         private void LogInvalidated(HttpRequest context)
@@ -72,12 +72,12 @@ namespace Readarr.Http.Authentication
 
         private void LogFailure(HttpRequest context, string username)
         {
-            _authLogger.Warn("Auth-Failure ip {0} username '{1}'", context.GetRemoteIP(), username);
+            _authLogger.Warn("Auth-Failure ip {0} username '{1}'", context.GetRemoteIP()?.ToString()?.ReplaceLineEndings(""), username?.ReplaceLineEndings(""));
         }
 
         private void LogSuccess(HttpRequest context, string username)
         {
-            _authLogger.Info("Auth-Success ip {0} username '{1}'", context.GetRemoteIP(), username);
+            _authLogger.Info("Auth-Success ip {0} username '{1}'", context.GetRemoteIP()?.ToString()?.ReplaceLineEndings(""), username?.ReplaceLineEndings(""));
         }
 
         private void LogLogout(HttpRequest context, string username)

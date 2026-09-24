@@ -39,12 +39,12 @@ namespace NzbDrone.Mono.Disk
                 }
 
                 var ex = new UnixIOException(Errno.ELOOP);
-                _logger.Warn("Failed to check for symlinks in the path {0}: {1}", path, ex.Message);
+                _logger.Warn("Failed to check for symlinks in the path {0}: {1}", path.ReplaceLineEndings(""), ex.Message.ReplaceLineEndings(""));
                 return path;
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Failed to check for symlinks in the path {0}", path);
+                _logger.Debug(ex, "Failed to check for symlinks in the path {0}", path.ReplaceLineEndings(""));
                 return path;
             }
         }
@@ -144,7 +144,7 @@ namespace NzbDrone.Mono.Disk
                 var errno = Stdlib.GetLastError();
                 if (errno != Errno.EINVAL)
                 {
-                    _logger.Trace("Checking path {0} for symlink returned error {1}, assuming it's not a symlink.", path, errno);
+                    _logger.Trace("Checking path {0} for symlink returned error {1}, assuming it's not a symlink.", path.ReplaceLineEndings(""), errno);
                 }
 
                 wasSymLink = true;

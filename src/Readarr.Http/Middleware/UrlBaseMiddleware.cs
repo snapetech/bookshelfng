@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using NzbDrone.Common.Extensions;
@@ -19,7 +20,18 @@ namespace Readarr.Http.Middleware
         {
             if (_urlBase.IsNotNullOrWhiteSpace() && context.Request.PathBase.Value.IsNullOrWhiteSpace())
             {
-                context.Response.Redirect($"{_urlBase}{context.Request.Path}{context.Request.QueryString}");
+                var redirectUrl = $"{_urlBase}{context.Request.Path}{context.Request.QueryString}";
+
+                if (!Uri.TryCreate(redirectUrl, UriKind.Relative, out var relativeUrl) ||
+                    !redirectUrl.StartsWith("/", StringComparison.Ordinal) ||
+                    redirectUrl.StartsWith("//", StringComparison.Ordinal) ||
+                    redirectUrl.StartsWith("/\\", StringComparison.Ordinal))
+                {
+                    await _next(context);
+                    return;
+                }
+
+                context.Response.Redirect(relativeUrl.ToString());
                 context.Response.StatusCode = 307;
 
                 return;

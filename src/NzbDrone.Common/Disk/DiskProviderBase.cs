@@ -145,7 +145,7 @@ namespace NzbDrone.Common.Disk
             }
             catch (Exception e)
             {
-                Logger.Trace("Directory '{0}' isn't writable. {1}", path, e.Message);
+                Logger.Trace("Directory '{0}' isn't writable. {1}", path.ReplaceLineEndings(""), e.Message.ReplaceLineEndings(""));
                 return false;
             }
         }
@@ -500,7 +500,7 @@ namespace NzbDrone.Common.Disk
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex, $"Failed to get mount for path {path}");
+                Logger.Debug(ex, $"Failed to get mount for path {path.ReplaceLineEndings("")}");
                 return null;
             }
         }

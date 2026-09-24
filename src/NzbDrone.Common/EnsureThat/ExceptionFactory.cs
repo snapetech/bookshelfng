@@ -9,7 +9,7 @@ namespace NzbDrone.Common.EnsureThat
 
         internal static ArgumentException CreateForParamValidation(string paramName, string message)
         {
-            Logger.Warn(message);
+            Logger.Warn(message.ReplaceLineEndings(""));
             return new ArgumentException(message, paramName);
         }
 

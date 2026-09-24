@@ -42,9 +42,9 @@ namespace Readarr.Http.Middleware
             context.Items["ApiRequestSequenceID"] = id;
             context.Items["ApiRequestStartTime"] = DateTime.UtcNow;
 
-            var reqPath = GetRequestPathAndQuery(context.Request);
+            var reqPath = GetRequestPathAndQuery(context.Request).ReplaceLineEndings("");
 
-            _loggerHttp.Trace("Req: {0} [{1}] {2} (from {3})", id, context.Request.Method, reqPath, GetOrigin(context));
+            _loggerHttp.Trace("Req: {0} [{1}] {2} (from {3})", id, context.Request.Method, reqPath, GetOrigin(context)?.ReplaceLineEndings(""));
         }
 
         private void LogEnd(HttpContext context)
@@ -55,7 +55,7 @@ namespace Readarr.Http.Middleware
             var endTime = DateTime.UtcNow;
             var duration = endTime - startTime;
 
-            var reqPath = GetRequestPathAndQuery(context.Request);
+            var reqPath = GetRequestPathAndQuery(context.Request).ReplaceLineEndings("");
 
             _loggerHttp.Trace("Res: {0} [{1}] {2}: {3}.{4} ({5} ms)", id, context.Request.Method, reqPath, context.Response.StatusCode, (HttpStatusCode)context.Response.StatusCode, (int)duration.TotalMilliseconds);
 

@@ -114,7 +114,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return MapAuthor(_hardcoverMetadataProxy.GetAuthor(foreignAuthorId));
             }
 
-            _logger.Debug("Getting Author details GoodreadsId of {0}", foreignAuthorId);
+            _logger.Debug("Getting Author details GoodreadsId of {0}", foreignAuthorId.ReplaceLineEndings(""));
 
             try
             {
@@ -127,7 +127,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (BookInfoException e)
             {
-                _logger.Warn(e, "Unexpected error getting author info: {foreignAuthorId}", foreignAuthorId);
+                _logger.Warn(e, "Unexpected error getting author info: {foreignAuthorId}", foreignAuthorId.ReplaceLineEndings(""));
                 throw;
             }
         }
@@ -167,7 +167,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (BookInfoException e)
             {
-                _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
+                _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId.ReplaceLineEndings(""));
                 throw;
             }
         }
@@ -292,7 +292,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (Exception e)
             {
-                _logger.Warn(e, "Additional book metadata search failed for {0}", query);
+                _logger.Warn(e, "Additional book metadata search failed for {0}", query.ReplaceLineEndings(""));
             }
 
             return books.DistinctBy(x => x.ForeignBookId).ToList();
@@ -307,7 +307,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (Exception e)
             {
-                _logger.Warn(e, "Error searching for {0}", query);
+                _logger.Warn(e, "Error searching for {0}", query.ReplaceLineEndings(""));
                 return new List<Book>();
             }
 

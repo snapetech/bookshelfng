@@ -253,7 +253,7 @@ namespace NzbDrone.Core.MediaFiles
 
             if (rootFolder != null && rootFolder.IsCalibreLibrary && rootFolder.CalibreSettings != null)
             {
-                _logger.Info($"Getting book list from calibre for {path}");
+                _logger.Info($"Getting book list from calibre for {path.ReplaceLineEndings("")}");
                 var paths = _calibre.GetAllBookFilePaths(rootFolder.CalibreSettings);
                 var folderPaths = paths.Where(x => path.IsParentPath(x));
 
@@ -261,17 +261,17 @@ namespace NzbDrone.Core.MediaFiles
             }
             else
             {
-                _logger.Debug("Scanning '{0}' for ebook files", path);
+                _logger.Debug("Scanning '{0}' for ebook files", path.ReplaceLineEndings(""));
 
                 filesOnDisk = _diskProvider.GetFileInfos(path, allDirectories);
 
-                _logger.Trace("{0} files were found in {1}", filesOnDisk.Count(), path);
+                _logger.Trace("{0} files were found in {1}", filesOnDisk.Count(), path.ReplaceLineEndings(""));
             }
 
             var mediaFileList = filesOnDisk.Where(file => MediaFileExtensions.AllExtensions.Contains(file.Extension))
                 .ToArray();
 
-            _logger.Debug("{0} book files were found in {1}", mediaFileList.Length, path);
+            _logger.Debug("{0} book files were found in {1}", mediaFileList.Length, path.ReplaceLineEndings(""));
 
             return mediaFileList;
         }
