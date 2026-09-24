@@ -45,7 +45,10 @@ namespace Readarr.Http.ErrorManagement
             }
             else if (exception is ValidationException validationException)
             {
-                _logger.Warn("Invalid request {0}", validationException.Message);
+                var requestMethod = context.Request.Method?.ReplaceLineEndings(string.Empty);
+                var requestPath = context.Request.Path.Value?.ReplaceLineEndings(string.Empty);
+
+                _logger.Warn("Invalid request [{0} {1}] {2}", requestMethod, requestPath, validationException.Message);
 
                 response.StatusCode = (int)HttpStatusCode.BadRequest;
                 response.ContentType = "application/json";
