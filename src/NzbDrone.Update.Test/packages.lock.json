@@ -681,7 +681,8 @@
           "Servarr.FluentMigrator.Runner.SQLite": "[3.3.2.9, )",
           "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IO.Abstractions": "[17.0.24, )",
-          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )"
+          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )",
+          "TagLibSharp-Lidarr": "[2.4.0, )"
         }
       },
       "readarr.test.common": {
@@ -709,6 +710,9 @@
           "NLog": "[5.1.4, )",
           "Readarr.Common": "[1.0.0, )"
         }
+      },
+      "TagLibSharp-Lidarr": {
+        "type": "Project"
       },
       "Dapper": {
         "type": "CentralTransitive",
