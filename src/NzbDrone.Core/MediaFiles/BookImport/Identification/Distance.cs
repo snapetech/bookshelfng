@@ -25,6 +25,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             { "country", 0.5 },
             { "language", 5.0 },
             { "publisher", 0.5 },
+            { "preferred_edition", 3.0 },
             { "catalog_number", 0.5 },
             { "book_disambiguation", 0.5 },
             { "book_id", 5.0 },

@@ -12,6 +12,7 @@ namespace NzbDrone.Core.Profiles.Metadata
         public bool SkipPartsAndSets { get; set; }
         public bool SkipSeriesSecondary { get; set; }
         public string AllowedLanguages { get; set; }
+        public string PreferredEditionTerms { get; set; }
         public int MinPages { get; set; }
         public List<string> Ignored { get; set; }
 

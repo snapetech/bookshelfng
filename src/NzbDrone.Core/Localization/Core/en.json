@@ -33,6 +33,8 @@
   "AllowFingerprintingHelpText": "Use fingerprinting to improve accuracy of book matching",
   "AllowFingerprintingHelpTextWarning": "This requires Readarr to read parts of the file which will slow down scans and may cause high disk or network activity.",
   "AllowedLanguages": "Allowed Languages",
+  "PreferredEditionTerms": "Preferred Edition Terms",
+  "PreferredEditionTermsHelpText": "Rank edition title, format, or publisher terms from strongest to weakest. Use one weight and term per line, such as 3|audible or 1|ebook.",
   "AlreadyInYourLibrary": "Already in your library",
   "AlternateTitles": "Alternate Titles",
   "AnyEditionOkHelpText": "Readarr will automatically switch to the edition best matching downloaded files",

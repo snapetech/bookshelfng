@@ -8,6 +8,8 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.MediaFiles.BookImport.Aggregation;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Profiles.Metadata;
+using NzbDrone.Core.RootFolders;
 
 namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 {
@@ -22,18 +24,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
         private readonly IMetadataTagService _metadataTagService;
         private readonly IAugmentingService _augmentingService;
         private readonly ICandidateService _candidateService;
+        private readonly IMetadataProfileService _metadataProfileService;
+        private readonly IRootFolderService _rootFolderService;
         private readonly Logger _logger;
 
         public IdentificationService(ITrackGroupingService trackGroupingService,
                                      IMetadataTagService metadataTagService,
                                      IAugmentingService augmentingService,
                                      ICandidateService candidateService,
+                                     IMetadataProfileService metadataProfileService,
+                                     IRootFolderService rootFolderService,
                                      Logger logger)
         {
             _trackGroupingService = trackGroupingService;
             _metadataTagService = metadataTagService;
             _augmentingService = augmentingService;
             _candidateService = candidateService;
+            _metadataProfileService = metadataProfileService;
+            _rootFolderService = rootFolderService;
             _logger = logger;
         }
 
@@ -219,6 +227,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
             var bestDistance = localBookRelease.Edition != null ? localBookRelease.Distance.NormalizedDistance() : 1.0;
             seenCandidate = false;
+            var defaultMetadataProfileId = _rootFolderService.GetBestRootFolder(localBookRelease.LocalBooks.First().Path)?.DefaultMetadataProfileId ?? 0;
+            var preferredEditionTermsByProfile = new Dictionary<int, string>();
 
             foreach (var candidateRelease in candidateReleases)
             {
@@ -232,7 +242,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 var extraTracks = extraTracksOnDisk.Where(x => extraTrackPaths.Contains(x.Path)).ToList();
                 var allLocalTracks = localBookRelease.LocalBooks.Concat(extraTracks).DistinctBy(x => x.Path).ToList();
 
-                var distance = DistanceCalculator.BookDistance(allLocalTracks, release);
+                var author = release.Book?.Value?.Author?.Value;
+                var metadataProfileId = author != null && author.MetadataProfileId > 0 ? author.MetadataProfileId : defaultMetadataProfileId;
+                if (!preferredEditionTermsByProfile.TryGetValue(metadataProfileId, out var preferredEditionTerms))
+                {
+                    preferredEditionTerms = metadataProfileId > 0 ? _metadataProfileService.Get(metadataProfileId)?.PreferredEditionTerms : null;
+                    preferredEditionTermsByProfile[metadataProfileId] = preferredEditionTerms;
+                }
+
+                var distance = DistanceCalculator.BookDistance(allLocalTracks, release, preferredEditionTerms);
                 var currDistance = distance.NormalizedDistance();
 
                 rwatch.Stop();

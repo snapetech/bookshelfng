@@ -1,0 +1,1 @@
+Metadata profiles can now rank edition title, format, and publisher terms. Imports use those preferences to choose the best matching edition, allowing audiobook and ebook libraries to apply different preferences through their assigned metadata profiles.

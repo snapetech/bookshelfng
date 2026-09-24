@@ -54,7 +54,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             return null;
         }
 
-        public static Distance BookDistance(List<LocalBook> localTracks, Edition edition)
+        public static Distance BookDistance(List<LocalBook> localTracks, Edition edition, string preferredEditionTerms = null)
         {
             var dist = new Distance();
 
@@ -190,7 +190,49 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 }
             }
 
+            AddPreferredEditionDistance(dist, edition, preferredEditionTerms);
+
             return dist;
+        }
+
+        private static void AddPreferredEditionDistance(Distance distance, Edition edition, string preferredEditionTerms)
+        {
+            if (preferredEditionTerms.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            var terms = preferredEditionTerms
+                .Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => value.Trim())
+                .Select(value =>
+                {
+                    var separator = value.IndexOf('|');
+                    if (separator <= 0 || separator == value.Length - 1 || !int.TryParse(value.Substring(0, separator).Trim(), out var weight) || weight <= 0)
+                    {
+                        return null;
+                    }
+
+                    return new { Weight = weight, Term = value.Substring(separator + 1).Trim() };
+                })
+                .Where(value => value != null && value.Term.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            if (!terms.Any())
+            {
+                return;
+            }
+
+            var text = $"{edition.Title} {edition.Format} {edition.Publisher}";
+            var maxWeight = terms.Max(value => value.Weight);
+            var matchingWeight = terms
+                .Where(value => text.IndexOf(value.Term, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Select(value => value.Weight)
+                .DefaultIfEmpty(0)
+                .Max();
+            var penalty = matchingWeight > 0 ? 1.0 - (matchingWeight / (double)maxWeight) : 1.0;
+
+            distance.Add("preferred_edition", penalty);
         }
 
         public static List<string> GetAuthorVariants(List<string> fileAuthors)
