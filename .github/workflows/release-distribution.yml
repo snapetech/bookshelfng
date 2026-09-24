@@ -996,8 +996,11 @@ jobs:
           if [[ -z "$release_body" ]]; then
             release_body='Standalone BookshelfNG builds and packages are available. See the release for platform downloads and checksums.'
           fi
-          if (( ${#release_body} > 3500 )); then
-            release_body="${release_body:0:3497}…"
+          if [[ "$release_body" == *$'\n### Bug Fixes'* ]]; then
+            release_body="${release_body%%$'\n### Bug Fixes'*}"
+          fi
+          if (( ${#release_body} > 4000 )); then
+            release_body="${release_body:0:3997}…"
           fi
           failed_publishers=()
           for channel in AUR COPR PPA SNAP CHOCOLATEY HELM; do
