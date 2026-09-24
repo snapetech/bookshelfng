@@ -29,14 +29,23 @@ provider behavior and settings.
   ISBN-13 check digits, and prefers ISBN-13 when an ebook provides multiple
   valid identifiers. ISBN and ASIN are also used for direct metadata searches
   and edition matching.
+- **Control catalog search timing.** The Add page waits for you to submit a
+  search by default. Enable search-as-you-type when you want results as you
+  enter a query; the preference is saved in the current browser.
 - **Find and compare likely releases.** Import identification searches by
   ISBN, ASIN, and Goodreads ID before using author and title. If author
   information is missing, it can search by title alone. Candidate editions
   are ranked using identifiers and available edition details; ambiguous
   matches can still need review. Search result ordering is preserved.
+- **Keep multiple formats for a book.** Different ebook formats and audiobook
+  files can stay attached to the same book. Import and upgrade decisions only
+  compare compatible formats; see [import matching and format support](docs/import-matching-and-formats.md).
 - **Import common ebook and audiobook formats.** Recognized ebooks include
   EPUB, KEPUB, MOBI, AZW3, and PDF. Audiobooks include M4B, MP3, FLAC, AAC,
   M4A, OGG, and related formats; see the [complete extension list](docs/capabilities-and-compatibility.md#supported-file-formats).
+- **Tune edition matching and series names.** Metadata profiles can rank
+  edition title, format, and publisher terms, and choose preferred series for
+  filenames and metadata. See [import matching and format support](docs/import-matching-and-formats.md).
 - **Import books from the lists you use.** BookshelfNG supports Goodreads
   shelves, owned books, series, and Listopia lists, plus native Hardcover list
   imports. Hardcover imports honor the lists selected in configuration.
@@ -57,7 +66,16 @@ provider behavior and settings.
 - **Search and recover downloads.** Use interactive release search to choose
   an available release when an indexer supports it. BookshelfNG can search
   again after a failed download; automatic grabs and manually selected grabs
-  have separate re-search settings.
+  have separate re-search settings. You can adopt a matching torrent already
+  in a download client, and ignore an unmatched queue item without deleting
+  the download. See [search and download workflows](docs/search-and-downloads.md).
+- **Find books by narrator and write audiobook tags.** Narrator credits stay
+  separate from authors, appear in book search and filtering, and can be
+  written to audio files when audio tag writing is enabled. See
+  [audiobook metadata](docs/audiobookshelf-metadata.md).
+- **Send imports to BookLore.** Add BookLore as a notification destination to
+  upload imported files to its BookDrop review queue. See the
+  [BookLore integration guide](docs/booklore-integration.md).
 - **Connect a Calibre Content Server.** Configure a Calibre library as a root
   folder to add imported books to the library, sync metadata, and convert into
   configured output formats.
@@ -67,9 +85,9 @@ provider behavior and settings.
   standard app image contains no reporting module or telemetry SDK.
 
 BookshelfNG retains the Readarr-compatible API and the broader Readarr
-library-management workflow. It supports one format per book in an instance;
-run separate ebook and audiobook instances if you want both formats of the
-same title.
+library-management workflow. A book can keep multiple ebook formats and
+audio files in one instance; import and upgrade checks keep those formats
+separate. See [import matching and format support](docs/import-matching-and-formats.md).
 
 Some capabilities are part of the Bookshelf and Readarr lineage rather than
 unique BookshelfNG additions. The [capabilities and compatibility guide](docs/capabilities-and-compatibility.md)
@@ -223,6 +241,13 @@ NDL Search, and Apify are opt-in. Google Books and Europeana are enabled when
 their keys are set. Hardcover needs its API token. All sources can be disabled,
 including the configured primary provider's catalog search.
 
+Field-level metadata preferences are configured separately from catalog
+search. Choose an enabled supplemental catalog for a book's title,
+description, publisher, language, release date, page count, cover, or genres.
+The alternate catalog only supplies a field when it returns an edition with
+the same ISBN; otherwise BookshelfNG keeps the selected book source's value.
+See [capabilities and compatibility](docs/capabilities-and-compatibility.md#per-field-metadata-source-preferences).
+
 `BOOKSHELF_METADATA_SOURCES` accepts `hardcover`, `metadata-api`,
 `openlibrary`, `googlebooks`, `loc`, `gutendex`, `internetarchive`, `ndl`,
 `europeana`, and `apify-goodreads`. A custom value replaces the saved UI
@@ -312,8 +337,9 @@ result sets are cached for one day. Provider failures are logged independently;
 other configured sources continue to return results.
 
 The source checkboxes and optional credentials are managed separately by each
-BookshelfNG instance. For an ebook/audiobook pair, configure the two instances
-individually in their own **Settings > Metadata** pages. `HARDCOVER_NATIVE`,
+BookshelfNG instance. If you choose to run separate ebook and audiobook
+instances, configure each in its own **Settings > Metadata** page.
+`HARDCOVER_NATIVE`,
 `METADATA_URL`, and `HARDCOVER_API_URL` still select deployment mode or an API
 endpoint and remain environment-level settings. SeerrNG's **Settings >
 Metadata** page explains this boundary; its TMDB/TVDB selectors control video
@@ -409,7 +435,13 @@ you can also authenticate with package read access.
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [Capabilities, upstream comparison, and compatibility boundaries](docs/capabilities-and-compatibility.md)
+- [Import matching and multiple formats](docs/import-matching-and-formats.md)
+- [Search, torrent adoption, and queue workflows](docs/search-and-downloads.md)
+- [Audiobook narrator tags and Audiobookshelf sidecars](docs/audiobookshelf-metadata.md)
+- [BookLore import uploads](docs/booklore-integration.md)
+- [Series pack search](docs/series-pack-search.md)
 - [Optional audiobook M4B merging](docs/audiobook-m4b-merging.md)
 - [Metadata providers and configuration](#metadata-sources)
 - [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
@@ -424,9 +456,7 @@ you can also authenticate with package read access.
 ## Support and contributing
 
 Please file a GitHub issue or start a discussion for help. Contributions are
-welcome, especially fixes and quality-of-life improvements. Current areas of
-interest include monitoring series and supporting ebook and audiobook files
-in the same root folder.
+welcome, especially fixes and quality-of-life improvements.
 
 ## Optional diagnostics
 

@@ -1,5 +1,4 @@
-# Author metadata storage and refresh behavior
-
+# Author metadata storage an| Author-ID not-found log | The provider did not return a usable author record. BookshelfNG keeps the existing author and leaves its metadata freshness unchanged; check the following “Keeping author” warning. |
 BookshelfNG keeps the current author catalog data in its application database.
 The database is the durable cache: the app does not need a separate permanent
 in-memory cache to remember an author it already knows. Provider responses may
@@ -133,13 +132,12 @@ usable author response was applied, the stored author remains available and its
 `LastInfoSync` is not made fresh by that failed lookup. A later eligible refresh
 can try again.
 
-A provider's explicit “author not found” result is different from a temporary
-request failure. The refresh pipeline treats missing remote author data as a
-not-found condition. It deletes the local author record only when that author
-has no media files; if files exist, it retains the record and reports that the
-metadata source may have removed the author. Preserve the database and inspect
-the provider response before treating a not-found result as a transient API
-outage.
+A provider's explicit “author not found” result or a lookup without a usable
+author record is treated as missing remote data. BookshelfNG keeps the existing
+local author record even when it has no media files linked to it. The failed
+lookup does not update its metadata or make the record appear fresh, so a later
+eligible or manual refresh can try again. This protects valid aliases and pen
+names that a provider does not recognize.
 
 ## Troubleshooting refresh logs
 

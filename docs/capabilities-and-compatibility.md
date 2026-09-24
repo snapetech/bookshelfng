@@ -21,8 +21,11 @@ download clients, import files, and manage library metadata without SeerrNG.
 SeerrNG is an optional integration that can request books through the
 Readarr-compatible API.
 
-One instance supports one format per book. Run separate instances for ebooks
-and audiobooks when both are needed. Persist `/config`; that volume contains
+One book can keep multiple ebook formats and audiobook files in a single
+instance. Import and upgrade checks compare compatible formats so an ebook
+does not replace an audiobook, and one ebook format does not replace another.
+Separate instances are still useful when you want different settings or
+separate libraries. Persist `/config`; that volume contains
 the database, application settings, and provider identities needed to keep an
 existing library usable across container replacement.
 
@@ -104,6 +107,21 @@ credentials, and the settings API returns presence flags instead of secret
 values. Provider failures are logged independently, so one unavailable catalog
 does not suppress other selected providers.
 
+### Per-field metadata source preferences
+
+In **Settings > Metadata > Metadata Field Source Preferences**, operators can
+choose an enabled supplemental catalog for each of these fields: title,
+description, publisher, language, release date, page count, cover, and genres.
+The available catalogs are Open Library, Google Books, Library of Congress,
+Gutendex, Internet Archive, NDL Search, Europeana, and the Goodreads-compatible
+Apify adapter.
+
+BookshelfNG applies a preference only when that catalog returns an edition
+with the same normalized ISBN as the selected book. If it cannot find an exact
+ISBN match or does not provide the requested value, BookshelfNG keeps the
+selected book source's value. This changes field values; it does not change
+the book's provider identity or the source used for discovery.
+
 Search results are cached for ten minutes. Open Library, Google Books, LOC,
 Gutendex, Internet Archive, NDL Search, and Europeana HTTP responses and Apify
 result sets are cached for one day. These are process-level request caches, not
@@ -155,6 +173,13 @@ missing identifiers. Series-title variants and common author-name formats are
 also considered. BookshelfNG preserves provider search ordering so equally
 ranked search results remain predictable. The importer can still need manual
 review when file tags are sparse or several editions look alike.
+
+Automatic imports also use a configurable minimum title-match score. It
+defaults to 70 percent and can be adjusted from 50 to 99 percent in the
+advanced **Settings > Media Management** options. Higher values are stricter.
+Metadata profiles can add weighted edition terms and preferred series names;
+see the [import matching and format support guide](import-matching-and-formats.md)
+for the matching rules and configuration examples.
 
 When BookshelfNG creates the initial `Standard` metadata profile, it sets the
 minimum popularity to 50 when `HARDCOVER=true` and 350 otherwise. The lower
@@ -222,6 +247,16 @@ following import and service connections:
   consume useful metadata in a request flow.
 - Optional chaptered M4B generation for multi-track audiobook downloads; see
   [Audiobook M4B merging](#audiobook-m4b-merging).
+- Import matching that preserves multiple ebook and audiobook formats on the
+  same book record, and supports weighted edition and preferred-series terms;
+  see the [import matching guide](import-matching-and-formats.md).
+- Manual catalog searches from the Add page, series pack searches, and adoption
+  of matching torrents already in a download client; see
+  [search and download workflows](search-and-downloads.md).
+- An optional BookLore notification destination for uploading newly imported
+  files to BookDrop; see the [BookLore integration guide](booklore-integration.md).
+- Narrator search and audio-tag metadata; see
+  [audiobook metadata](audiobookshelf-metadata.md).
 
 Relevant implementation:
 
@@ -273,7 +308,8 @@ dependency updates and routine maintenance individually.
 | January 2026 | Added native Hardcover import lists and made the import sync only the list IDs selected in configuration. |
 | May–July 2026 | Enriched `/api/v1/book/lookup` with author and edition metadata, added tagged image publishing and downstream edge builds, and added qBittorrent 5.2 bearer API-key authentication. |
 | August 2026 | Added a native Hardcover GraphQL metadata client so the Hardcover image can search and resolve records directly without a metadata proxy. |
-| September 2026 | Added title-only and normalized-filename search for imports without author metadata; added optional chaptered M4B generation for multi-track audiobook downloads; added independently selectable runtime catalogs for Hardcover, Readarr-compatible metadata APIs, Open Library, Google Books, LOC, Gutendex, Internet Archive, NDL, Europeana, and optional Apify results; batched Hardcover lookups and honored rate-limit resets; reused stored author records and introduced periodic freshness checks; added an option to move configured extra files after author renames; added a separately installed diagnostics module; and added curated GitHub releases and Discord build announcements. |
+| September 1–23, 2026 | Added title-only and normalized-filename search for imports without author metadata; added optional chaptered M4B generation for multi-track audiobook downloads; added independently selectable runtime catalogs for Hardcover, Readarr-compatible metadata APIs, Open Library, Google Books, LOC, Gutendex, Internet Archive, NDL, Europeana, and optional Apify results; batched Hardcover lookups and honored rate-limit resets; reused stored author records and introduced periodic freshness checks; added an option to move configured extra files after author renames; added a separately installed diagnostics module; and added curated GitHub releases and Discord build announcements. |
+| September 24, 2026 | Added field-level metadata source preferences, multiple formats per book, weighted edition and preferred-series matching, configurable automatic import title matching, manual Add searches and series-pack search, existing-torrent adoption, BookLore BookDrop uploads, and narrator search and audio tags. Added queue ignore behavior and safety fixes for metadata refresh and cross-origin redirects. |
 
 BookshelfNG retains ebook identification behavior from the Readarr lineage:
 EPUB ISBN normalization and checksum checks, ISBN-13 preference, ASIN matching,
@@ -286,12 +322,16 @@ newer provider mapping.
 
 ## What is shared with upstream
 
-The current upstream Bookshelf README already describes its Readarr revival,
-one-format-per-instance model, Goodreads and Hardcover modes, native
-MyAnonamouse support, Hardcover list imports, self-hosted metadata options,
-improved matching, and removal of Servarr analytics. These are Bookshelf
-lineage capabilities and should not be described as unique to BookshelfNG.
-BookshelfNG maintains and extends that base; its notable implementation work
+The upstream Bookshelf README snapshot checked on 2026-09-23 describes its
+Readarr revival, one-format-per-book-per-instance model, Goodreads and
+Hardcover modes,
+native MyAnonamouse support, Hardcover list imports, self-hosted metadata
+options, improved matching, and removal of Servarr analytics. These are
+Bookshelf lineage capabilities and should not be described as unique to
+BookshelfNG. BookshelfNG has since extended format handling to keep multiple
+compatible ebook and audiobook files on one book record; see the
+[import matching guide](import-matching-and-formats.md). BookshelfNG maintains
+and extends that base; its notable implementation work
 is the direct Hardcover GraphQL client and request controls, supplemental
 runtime catalogs and stable IDs, durable author refresh policy, optional
 diagnostics module, richer book lookup API response, qBittorrent 5.2
