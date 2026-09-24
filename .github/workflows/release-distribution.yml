@@ -425,6 +425,7 @@ jobs:
           cp "dist-release/BookshelfNG-${{ needs.validate.outputs.tag }}-linux-x64.tar.gz" "$rpm_top/SOURCES/bookshelfng-${VERSION}.tar.gz"
           cp packaging/systemd/bookshelfng.{service,env,sysusers,tmpfiles} "$rpm_top/SOURCES/"
           cp packaging/rpm/bookshelfng.spec "$rpm_top/SPECS/"
+          # Older release tags may predate the durable exclusion in the RPM spec.
           spec_path="$rpm_top/SPECS/bookshelfng.spec"
           if ! grep -Fqx '%global __requires_exclude ^liblttng-ust[.]so[.]0' "$spec_path"; then
             sed -i '/^%global _libdir /a %global __requires_exclude ^liblttng-ust[.]so[.]0' "$spec_path"
