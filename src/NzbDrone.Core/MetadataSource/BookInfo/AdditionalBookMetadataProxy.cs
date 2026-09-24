@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
@@ -26,7 +28,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     }
 
     /// <summary>
-    /// Additional Google Books, Library of Congress, Europeana, and Apify catalogs.
+    /// Additional Google Books, Library of Congress, Europeana, Gutendex,
+    /// Internet Archive, and Apify catalogs.
     /// Provider-qualified foreign IDs are retained in Bookshelf so subsequent
     /// book and author refreshes resolve through the same catalog.
     /// </summary>
@@ -35,6 +38,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private const string GoogleBooks = "googlebooks";
         private const string LibraryOfCongress = "loc";
         private const string Europeana = "europeana";
+        private const string Gutendex = "gutendex";
+        private const string InternetArchive = "internetarchive";
+        private const string NdlSearch = "ndl";
         private const string ApifyGoodreads = "apify-goodreads";
         private readonly IHttpClient _httpClient;
         private readonly ICachedHttpResponseService _cachedHttpClient;
@@ -74,7 +80,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             var books = new List<Book>();
             foreach (var provider in EnabledSources
-                .OrderBy(x => x == GoogleBooks ? 0 : x == Europeana ? 1 : x == LibraryOfCongress ? 2 : x == ApifyGoodreads ? 3 : 4)
+                .OrderBy(x => x == GoogleBooks ? 0 : x == Gutendex ? 1 : x == InternetArchive ? 2 : x == Europeana ? 3 : x == LibraryOfCongress ? 4 : x == NdlSearch ? 5 : x == ApifyGoodreads ? 6 : 7)
                 .ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
             {
                 try
@@ -90,6 +96,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     else if (provider == Europeana)
                     {
                         books.AddRange(SearchEuropeana(query));
+                    }
+                    else if (provider == Gutendex)
+                    {
+                        books.AddRange(SearchGutendex(query));
+                    }
+                    else if (provider == InternetArchive)
+                    {
+                        books.AddRange(SearchInternetArchive(query));
+                    }
+                    else if (provider == NdlSearch)
+                    {
+                        books.AddRange(SearchNdl(query));
                     }
                     else if (provider == ApifyGoodreads)
                     {
@@ -112,12 +130,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             HasPrefix(foreignBookId, GoogleBooks) ||
             HasPrefix(foreignBookId, LibraryOfCongress) ||
             HasPrefix(foreignBookId, Europeana) ||
+            HasPrefix(foreignBookId, Gutendex) ||
+            HasPrefix(foreignBookId, InternetArchive) ||
+            HasPrefix(foreignBookId, NdlSearch) ||
             HasPrefix(foreignBookId, ApifyGoodreads);
 
         public bool HandlesAuthorId(string foreignAuthorId) =>
             HasPrefix(foreignAuthorId, GoogleBooks + "-author") ||
             HasPrefix(foreignAuthorId, LibraryOfCongress + "-author") ||
             HasPrefix(foreignAuthorId, Europeana + "-author") ||
+            HasPrefix(foreignAuthorId, Gutendex + "-author") ||
+            HasPrefix(foreignAuthorId, InternetArchive + "-author") ||
+            HasPrefix(foreignAuthorId, NdlSearch + "-author") ||
             HasPrefix(foreignAuthorId, ApifyGoodreads + "-author");
 
         public Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId)
@@ -171,6 +195,41 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     .Build();
                 record = _cachedHttpClient.Get<JObject>(url, true, TimeSpan.FromDays(1)).Resource;
             }
+            else if (provider == Gutendex)
+            {
+                if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var bookId) || bookId <= 0)
+                {
+                    throw new BookNotFoundException(foreignBookId);
+                }
+
+                var url = new HttpRequestBuilder("https://gutendex.com/books/{id}/")
+                    .SetSegment("id", bookId.ToString(CultureInfo.InvariantCulture))
+                    .Build();
+                record = _cachedHttpClient.Get<JObject>(url, true, TimeSpan.FromDays(1)).Resource;
+            }
+            else if (provider == InternetArchive)
+            {
+                var identifier = SafeInternetArchiveIdentifier(Decode(id));
+                var url = new HttpRequestBuilder("https://archive.org/metadata/{identifier}")
+                    .SetSegment("identifier", identifier)
+                    .Build();
+                var response = _cachedHttpClient.Get<JObject>(url, true, TimeSpan.FromDays(1)).Resource;
+                record = response["metadata"] as JObject ?? throw new BookNotFoundException(foreignBookId);
+            }
+            else if (provider == NdlSearch)
+            {
+                var recordId = SafeNdlRecordId(Decode(id));
+                var request = new HttpRequestBuilder("https://ndlsearch.ndl.go.jp/api/sru")
+                    .AddQueryParam("operation", "searchRetrieve")
+                    .AddQueryParam("version", "1.2")
+                    .AddQueryParam("maximumRecords", "1")
+                    .AddQueryParam("recordSchema", "dcndl")
+                    .AddQueryParam("query", "itemno=" + recordId)
+                    .WithRateLimit(1)
+                    .Build();
+                var response = _cachedHttpClient.Get(request, true, TimeSpan.FromDays(1));
+                record = ParseNdlDetail(response.Content, recordId);
+            }
             else if (provider == ApifyGoodreads)
             {
                 var source = DecodeApifyId(id);
@@ -185,7 +244,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             var book = provider == GoogleBooks ? MapGoogleVolume(record) :
                 provider == LibraryOfCongress ? MapLocRecord(record) :
-                provider == Europeana ? MapEuropeanaRecord(record) : MapApifyRecord(record);
+                provider == Europeana ? MapEuropeanaRecord(record) :
+                provider == Gutendex ? MapGutendexRecord(record) :
+                provider == InternetArchive ? MapInternetArchiveRecord(record) :
+                provider == NdlSearch ? MapNdlRecord(record) : MapApifyRecord(record);
             var metadata = book.AuthorMetadata.Value;
             book.Author.Value.Metadata = metadata;
             return Tuple.Create(metadata.ForeignAuthorId, book, new List<AuthorMetadata> { metadata });
@@ -260,6 +322,130 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return (response["items"] as JArray ?? new JArray())
                 .OfType<JObject>().Select(MapEuropeanaRecord).Where(x => x != null).ToList();
         }
+
+        private List<Book> SearchGutendex(string query)
+        {
+            var request = new HttpRequestBuilder("https://gutendex.com/books/")
+                .AddQueryParam("search", query)
+                .AddQueryParam("page", "1")
+                .Build();
+            var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
+            return (response["results"] as JArray ?? new JArray())
+                .OfType<JObject>().Select(MapGutendexRecord).Where(x => x != null).Take(10).ToList();
+        }
+
+        private List<Book> SearchInternetArchive(string query)
+        {
+            var terms = query.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Take(20)
+                .Select(EscapeLuceneTerm)
+                .Where(x => !x.IsNullOrWhiteSpace())
+                .Select(x => $"(title:\"{x}\" OR creator:\"{x}\")")
+                .ToList();
+            if (terms.Count == 0)
+            {
+                return new List<Book>();
+            }
+
+            var request = new HttpRequestBuilder("https://archive.org/advancedsearch.php")
+                .AddQueryParam("q", "mediatype:texts AND " + string.Join(" AND ", terms))
+                .AddQueryParam("fl[]", "identifier")
+                .AddQueryParam("fl[]", "title")
+                .AddQueryParam("fl[]", "creator")
+                .AddQueryParam("fl[]", "date")
+                .AddQueryParam("fl[]", "description")
+                .AddQueryParam("fl[]", "language")
+                .AddQueryParam("fl[]", "publisher")
+                .AddQueryParam("fl[]", "isbn")
+                .AddQueryParam("rows", "10")
+                .AddQueryParam("page", "1")
+                .AddQueryParam("output", "json")
+                .Build();
+            var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
+            return (response["response"]?["docs"] as JArray ?? new JArray())
+                .OfType<JObject>().Select(MapInternetArchiveRecord).Where(x => x != null).ToList();
+        }
+
+        private List<Book> SearchNdl(string query)
+        {
+            var request = new HttpRequestBuilder("https://ndlsearch.ndl.go.jp/api/opensearch")
+                .AddQueryParam("any", query)
+                .AddQueryParam("mediatype", "books")
+                .AddQueryParam("cnt", "10")
+                .WithRateLimit(1)
+                .Build();
+            var response = _cachedHttpClient.Get(request, true, TimeSpan.FromDays(1));
+            var document = ParseXmlSafely(response.Content);
+            return document.Descendants()
+                .Where(x => x.Name.LocalName == "item")
+                .Select(x => MapNdlRecord(NdlElementToRecord(x, null)))
+                .Where(x => x != null)
+                .ToList();
+        }
+
+        private static JObject ParseNdlDetail(string response, string recordId)
+        {
+            var document = ParseXmlSafely(response);
+            var recordData = document.Descendants().FirstOrDefault(x => x.Name.LocalName == "recordData");
+            if (recordData == null || recordData.Value.IsNullOrWhiteSpace())
+            {
+                throw new BookNotFoundException(recordId);
+            }
+
+            var recordDocument = ParseXmlSafely(recordData.Value);
+            var bibliography = recordDocument.Descendants()
+                .FirstOrDefault(x => x.Name.LocalName == "BibResource") ?? recordDocument.Root;
+            return bibliography == null ? throw new BookNotFoundException(recordId) : NdlElementToRecord(bibliography, recordId);
+        }
+
+        private static XDocument ParseXmlSafely(string xml)
+        {
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            using var reader = XmlReader.Create(new System.IO.StringReader(xml ?? string.Empty), settings);
+            return XDocument.Load(reader, LoadOptions.None);
+        }
+
+        private static JObject NdlElementToRecord(XElement element, string recordId)
+        {
+            var idUrl = recordId ?? FindNdlText(element, "link") ?? FindNdlText(element, "guid");
+            var id = SafeNdlRecordId(idUrl);
+            var title = FindNdlText(element, "title");
+            var creators = FindNdlTexts(element, "creator");
+            var identifiers = element.DescendantsAndSelf()
+                .Where(x => x.Name.LocalName == "identifier")
+                .Where(x => ((string)x.Attribute(XName.Get("type", "http://www.w3.org/2001/XMLSchema-instance")) is string type && type.IndexOf("ISBN", StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    System.Text.RegularExpressions.Regex.IsMatch(x.Value.Trim(), "^(?:97[89][0-9]{10}|[0-9]{9}[0-9Xx])$"))
+                .Select(x => NormalizeEuropeanaIsbn13(x.Value))
+                .Where(x => x != null)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            return new JObject
+            {
+                ["identifier"] = id,
+                ["title"] = title,
+                ["creator"] = new JArray(creators),
+                ["publisher"] = FindNdlText(element, "publisher"),
+                ["language"] = FindNdlText(element, "language"),
+                ["date"] = FindNdlText(element, "issued") ?? FindNdlText(element, "date"),
+                ["description"] = FindNdlText(element, "abstract") ?? FindNdlText(element, "description"),
+                ["extent"] = FindNdlText(element, "extent"),
+                ["isbn"] = new JArray(identifiers)
+            };
+        }
+
+        private static string FindNdlText(XElement element, string localName) =>
+            element.DescendantsAndSelf()
+                .Where(x => x.Name.LocalName == localName && !x.HasElements)
+                .Select(x => x.Value.Trim())
+                .FirstOrDefault(x => !x.IsNullOrWhiteSpace());
+
+        private static List<string> FindNdlTexts(XElement element, string localName) =>
+            element.DescendantsAndSelf()
+                .Where(x => x.Name.LocalName == localName && !x.HasElements)
+                .Select(x => x.Value.Trim())
+                .Where(x => !x.IsNullOrWhiteSpace())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
 
         private List<Book> SearchApify(string query)
         {
@@ -364,6 +550,121 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 (string)record["image_url"],
                 record["identifiers"] as JArray,
                 uri.ToString());
+        }
+
+        private Book MapGutendexRecord(JObject record)
+        {
+            if (record == null || !int.TryParse((string)record["id"], NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0)
+            {
+                return null;
+            }
+
+            var author = (record["authors"] as JArray)?.OfType<JObject>()
+                .Select(x => (string)x["name"]).FirstOrDefault(x => !x.IsNullOrWhiteSpace());
+            var identifiers = new JArray();
+            var image = (string)record["formats"]?["image/jpeg"] ?? (string)record["formats"]?["image/png"];
+            var summaries = record["summaries"] as JArray;
+            var idText = id.ToString(CultureInfo.InvariantCulture);
+            return BuildBook(
+                Gutendex,
+                idText,
+                (string)record["title"],
+                author,
+                summaries?.Values<string>().FirstOrDefault(),
+                null,
+                GetFirstString(record["languages"]),
+                null,
+                null,
+                image,
+                identifiers,
+                "https://www.gutenberg.org/ebooks/" + idText);
+        }
+
+        private Book MapInternetArchiveRecord(JObject record)
+        {
+            if (record == null)
+            {
+                return null;
+            }
+
+            string identifier;
+            try
+            {
+                identifier = SafeInternetArchiveIdentifier((string)record["identifier"]);
+            }
+            catch (BookInfoException)
+            {
+                return null;
+            }
+
+            var title = GetFirstString(record["title"]);
+            var author = GetFirstString(record["creator"]);
+            var isbnValues = GetStringValues(record["isbn"])
+                .Select(NormalizeEuropeanaIsbn13)
+                .Where(x => x != null)
+                .Distinct(StringComparer.Ordinal);
+            var identifiers = new JArray(isbnValues);
+            var pages = (string)record["numberofpages"] ?? (string)record["page_count"];
+            var pageCount = int.TryParse(pages, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedPages)
+                ? parsedPages
+                : (int?)null;
+            var image = "https://archive.org/services/img/" + Uri.EscapeDataString(identifier);
+
+            return BuildBook(
+                InternetArchive,
+                Encode(identifier),
+                title,
+                author,
+                GetFirstString(record["description"]),
+                GetFirstString(record["publisher"]),
+                GetFirstString(record["language"]),
+                (string)record["date"],
+                pageCount,
+                image,
+                identifiers,
+                "https://archive.org/details/" + Uri.EscapeDataString(identifier));
+        }
+
+        private Book MapNdlRecord(JObject record)
+        {
+            if (record == null)
+            {
+                return null;
+            }
+
+            string recordId;
+            try
+            {
+                recordId = SafeNdlRecordId((string)record["identifier"]);
+            }
+            catch (BookInfoException)
+            {
+                return null;
+            }
+
+            var isbnIdentifiers = new JArray(GetStringValues(record["isbn"])
+                .Select(NormalizeEuropeanaIsbn13)
+                .Where(x => x != null)
+                .Distinct(StringComparer.Ordinal));
+            var extent = (string)record["extent"];
+            var pages = System.Text.RegularExpressions.Regex.Match(extent ?? string.Empty, "([0-9]+)\\s*p", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var pageCount = pages.Success && int.TryParse(pages.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var count)
+                ? count
+                : (int?)null;
+
+            return BuildBook(
+                NdlSearch,
+                Encode(recordId),
+                GetFirstString(record["title"]),
+                GetFirstString(record["creator"]),
+                GetFirstString(record["description"]),
+                GetFirstString(record["publisher"]),
+                GetFirstString(record["language"]),
+                (string)record["date"],
+                pageCount,
+                null,
+                isbnIdentifiers,
+                "https://ndlsearch.ndl.go.jp/books/" + Uri.EscapeDataString(recordId));
         }
 
         private Book MapApifyRecord(JObject record)
@@ -518,7 +819,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 Author = new Author { CleanName = Parser.Parser.CleanAuthorName(author), Metadata = authorMetadata },
                 AuthorMetadataId = 0
             };
-            book.Links.Add(new Links { Name = provider, Url = url });
+            book.Links.Add(new Links { Name = provider == NdlSearch ? "NDL Search API" : provider, Url = url });
             return book;
         }
 
@@ -554,6 +855,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return provider == GoogleBooks ? host == "books.google.com" || host.EndsWith(".googleusercontent.com") :
                 provider == LibraryOfCongress ? host == "loc.gov" || host.EndsWith(".loc.gov") :
                 provider == Europeana ? host == "europeana.eu" || host.EndsWith(".europeana.eu") :
+                provider == InternetArchive ? host == "archive.org" || host.EndsWith(".archive.org") :
+                provider == Gutendex ? host == "gutenberg.org" || host.EndsWith(".gutenberg.org") :
                 host == "goodreads.com" || host.EndsWith(".gr-assets.com") || host.EndsWith(".ssl-images-amazon.com");
         }
 
@@ -575,6 +878,46 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private static string Encode(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         private static string Decode(string value) => Encoding.UTF8.GetString(Convert.FromBase64String(value.Replace('-', '+').Replace('_', '/') + new string('=', (4 - (value.Length % 4)) % 4)));
         private static string NormalizeText(string value) => (value ?? string.Empty).Trim();
+        private static string EscapeLuceneTerm(string value) =>
+            System.Text.RegularExpressions.Regex.Replace(value ?? string.Empty, "([+\\-!(){}\\[\\]^\\\"~*?:\\\\/])", "\\\\$1");
+
+        private static string SafeInternetArchiveIdentifier(string value)
+        {
+            if (value.IsNullOrWhiteSpace() || value == "." || value == ".." ||
+                !System.Text.RegularExpressions.Regex.IsMatch(value, "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"))
+            {
+                throw new BookInfoException("Internet Archive returned an invalid item identifier.");
+            }
+
+            return value;
+        }
+
+        private static string SafeNdlRecordId(string value)
+        {
+            var recordId = value;
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            {
+                if (uri.Scheme != Uri.UriSchemeHttps || !uri.Host.Equals("ndlsearch.ndl.go.jp", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new BookInfoException("NDL Search returned an invalid record URL.");
+                }
+
+                var segments = uri.AbsolutePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length == 2 && segments[0].Equals("books", StringComparison.OrdinalIgnoreCase))
+                {
+                    recordId = segments[1];
+                }
+            }
+
+            if (recordId.IsNullOrWhiteSpace() ||
+                !System.Text.RegularExpressions.Regex.IsMatch(recordId, "^R[0-9]{9}-[A-Za-z0-9-]+$"))
+            {
+                throw new BookInfoException("NDL Search returned an invalid bibliographic identifier.");
+            }
+
+            return recordId;
+        }
+
         private static JObject DecodeApifyId(string value)
         {
             var json = Decode(value);

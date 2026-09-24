@@ -183,13 +183,16 @@ the limit.
 ### Optional additional runtime catalogs
 
 The Hardcover image keeps Hardcover as its primary metadata source and merges
-public catalog results into normal book searches. Library of Congress is
-enabled by default. Google Books and Europeana are enabled automatically when
-their API keys are set. The Goodreads-compatible Apify adapter remains opt-in
-because Actor usage may be metered. Supported values for
-`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, `europeana`, and
-`apify-goodreads`. When set, this variable replaces the defaults; an empty
-value disables all additional catalogs.
+public catalog results into normal book searches. Library of Congress and
+Gutendex are enabled by default. Google Books and Europeana are enabled
+automatically when their API keys are set. Internet Archive and NDL Search are
+available as opt-in sources; NDL reuse terms vary by contributing catalog and
+require visible API credit. The Goodreads-compatible Apify adapter remains
+opt-in because Actor usage may be metered. Supported values for
+`BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, `gutendex`,
+`internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. When set, this
+variable replaces the defaults; an empty value disables all additional
+catalogs.
 
 ```env
 HARDCOVER=true
@@ -199,15 +202,26 @@ EUROPEANA_API_KEY=your-europeana-api-key
 ```
 
 With these keys, Google Books and Europeana results are also queried alongside
-Hardcover. Library of Congress runs without a key. Google Books and Europeana
-are skipped when their keys are absent. To keep only LOC, set
-`BOOKSHELF_METADATA_SOURCES=loc`; to disable the additions, set
+Hardcover. Library of Congress and Gutendex run without keys. Gutendex covers
+Project Gutenberg's literature catalog, including multiple languages, and is
+not a current commercial-book catalog. Google Books and Europeana are skipped
+when their keys are absent. To keep only the default public catalogs, set
+`BOOKSHELF_METADATA_SOURCES=loc,gutendex`; to disable additions, set
 `BOOKSHELF_METADATA_SOURCES=`.
+
+Internet Archive searches its text collection and resolves records by stable
+item identifier. Catalog records and edition metadata vary, so treat it as an
+optional fallback. NDL Search adds Japanese and partner-library metadata; it
+does not provide artwork because NDL ended its thumbnail service on March 31,
+2026. It is opt-in because requests are paced to one per second and usage
+conditions vary by provider. Operators must show NDL Search API credit and
+check the provider's licensing/application requirements, especially for
+commercial or continuous use. See NDL's [thumbnail service notice](https://ndlsearch.ndl.go.jp/news/20260401_thumbnail).
 
 To add a Goodreads-compatible Apify Actor:
 
 ```env
-BOOKSHELF_METADATA_SOURCES=googlebooks,loc,europeana,apify-goodreads
+BOOKSHELF_METADATA_SOURCES=googlebooks,loc,gutendex,internetarchive,ndl,europeana,apify-goodreads
 HARDCOVER_APIFY_GOODREADS_ACTOR=publisher~goodreads-scraper
 HARDCOVER_APIFY_TOKEN=your-apify-token
 # Override only when the Actor does not use searchQueries and maxItems:

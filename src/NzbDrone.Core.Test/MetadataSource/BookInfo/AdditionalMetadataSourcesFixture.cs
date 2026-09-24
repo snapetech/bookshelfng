@@ -8,24 +8,24 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
     public class AdditionalMetadataSourcesFixture
     {
         [Test]
-        public void should_enable_public_loc_by_default()
+        public void should_enable_public_catalogs_by_default()
         {
             AdditionalMetadataSources.GetEnabledSources(null, null, null)
-                .Should().BeEquivalentTo("loc");
+                .Should().BeEquivalentTo("loc", "gutendex");
         }
 
         [Test]
         public void should_enable_google_books_by_default_when_an_api_key_is_configured()
         {
             AdditionalMetadataSources.GetEnabledSources(null, "api-key", null)
-                .Should().BeEquivalentTo("loc", "googlebooks");
+                .Should().BeEquivalentTo("loc", "gutendex", "googlebooks");
         }
 
         [Test]
         public void should_enable_europeana_by_default_when_an_api_key_is_configured()
         {
             AdditionalMetadataSources.GetEnabledSources(null, null, "api-key")
-                .Should().BeEquivalentTo("loc", "europeana");
+                .Should().BeEquivalentTo("loc", "gutendex", "europeana");
         }
 
         [Test]

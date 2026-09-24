@@ -15,7 +15,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (sources == null)
             {
-                sources = "loc";
+                // Gutendex is a public, no-key source with a focused catalog of
+                // Project Gutenberg titles. LOC remains the broad public fallback.
+                sources = "loc,gutendex";
 
                 if (!string.IsNullOrWhiteSpace(googleBooksApiKey))
                 {

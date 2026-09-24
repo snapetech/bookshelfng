@@ -73,22 +73,39 @@ credentials must remain available while records from that source are in use.
 | --- | --- | --- |
 | Google Books | Set `GOOGLE_BOOKS_API_KEY`; enabled by default when the key is present. | Uses Google volume IDs. Search and detail responses are cached; the API key is required for later details. |
 | Library of Congress | Enabled by default; public search. | Uses LOC record URLs. Requests are paced to one per 3.2 seconds per BookshelfNG process and successful responses are cached for one day. |
+| Gutendex / Project Gutenberg | Enabled by default; no key. | Focused on Project Gutenberg's literature catalog. Uses Gutenberg ebook IDs for details and author lookups; edition and ISBN data are limited. |
+| Internet Archive | Opt in with `BOOKSHELF_METADATA_SOURCES=...`; no key for public search and metadata. | Searches text items and resolves metadata by Archive item identifier. Edition, creator, language, and cover fields vary by item. |
+| NDL Search | Opt in with `BOOKSHELF_METADATA_SOURCES=...`; no API key. | Japanese and participating-catalog records use stable NDL bibliographic IDs. Requests are paced to one per second. Metadata only: NDL ended its thumbnail service on March 31, 2026. Provider-specific reuse conditions apply; SeerrNG book details link to NDL Search API for credit. |
 | Europeana | Set `EUROPEANA_API_KEY`; enabled by default when the key is present. | Searches open-reuse text records. Provider IDs resolve through the Europeana Record API. ISBN values in `dcIdentifier` are normalized by removing punctuation before they are mapped. It is a cultural-heritage catalog, so coverage and covers vary. |
 | Goodreads-compatible Apify Actor | Opt in with `BOOKSHELF_METADATA_SOURCES=...`, an Actor name, and an Apify token. | Actor schema, availability, terms, and possible charges are controlled by the Actor publisher. Results use stable record keys where available. |
 
-`BOOKSHELF_METADATA_SOURCES` accepts `googlebooks`, `loc`, `europeana`, and
-`apify-goodreads`. When set, it replaces the default list; an empty value
-disables supplemental sources. The setting applies to both `hardcover` and
-`softcover` images. Provider failures are logged independently, so an
-unavailable supplemental catalog does not suppress results from other
+`BOOKSHELF_METADATA_SOURCES` accepts `googlebooks`, `loc`, `gutendex`,
+`internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. When set, it
+replaces the default list (`loc,gutendex` plus keyed Google Books and Europeana);
+an empty value disables supplemental sources. The setting applies to both
+`hardcover` and `softcover` images. Provider failures are logged independently,
+so an unavailable supplemental catalog does not suppress results from other
 configured sources.
 
-Search results are cached for ten minutes. Google Books, LOC, and Europeana
-HTTP responses and Apify result sets are cached for one day. These are
-process-level request caches, not durable metadata storage. Namespaced IDs
-include `googlebooks:<volume-id>`, `loc:<encoded-record-url>`,
-`europeana:<encoded-record-id>`, and
-`apify-goodreads:<encoded-record-key>`.
+Search results are cached for ten minutes. Google Books, LOC, Gutendex,
+Internet Archive, NDL Search, and Europeana HTTP responses and Apify result
+sets are cached for one day. These are process-level request caches, not
+durable metadata storage. Namespaced IDs include `googlebooks:<volume-id>`,
+`loc:<encoded-record-url>`, `gutendex:<ebook-id>`,
+`internetarchive:<encoded-item-id>`, `ndl:<encoded-bibliographic-id>`,
+`europeana:<encoded-record-id>`, and `apify-goodreads:<encoded-record-key>`.
+
+NDL Search is opt-in because contributing catalogs have different reuse terms.
+SeerrNG shows an NDL Search API source link on matching book details; operators
+must also follow any additional catalog-specific credit or application
+requirements. NDL asks continuous users to contact it and notes that excessive
+concurrent requests may be blocked. NDL ended its thumbnail service on March
+31, 2026, so this integration supplies bibliographic metadata without NDL
+artwork; see the [official notice](https://ndlsearch.ndl.go.jp/news/20260401_thumbnail).
+Internet Archive metadata quality, edition matching, and artwork availability
+differ across items. Gutendex can be self-hosted; the shared `gutendex.com`
+instance is a third-party service, and Project Gutenberg rights metadata
+describes US copyright status.
 
 Open Library is not an ordinary BookshelfNG search or detail provider. The
 SeerrNG migration helper may use Open Library, Google Books, LOC, or an
