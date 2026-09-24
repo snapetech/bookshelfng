@@ -75,6 +75,7 @@ class AddNewBookSearchResult extends Component {
       titleSlug,
       title,
       seriesTitle,
+      narrator,
       releaseDate,
       disambiguation,
       overview,
@@ -162,6 +163,13 @@ class AddNewBookSearchResult extends Component {
                 </div>
             }
 
+            {
+              narrator &&
+                <div>
+                  {translate('NarratedBy', [narrator])}
+                </div>
+            }
+
             <div>
               <Label size={sizes.LARGE}>
                 <HeartRating
@@ -217,6 +225,7 @@ AddNewBookSearchResult.propTypes = {
   titleSlug: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
   seriesTitle: PropTypes.string,
+  narrator: PropTypes.string,
   releaseDate: PropTypes.string,
   disambiguation: PropTypes.string,
   overview: PropTypes.string,

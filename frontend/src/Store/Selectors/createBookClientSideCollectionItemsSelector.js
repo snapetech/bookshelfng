@@ -10,13 +10,15 @@ function createUnoptimizedSelector(uiSection) {
         const {
           id,
           title,
-          authorTitle
+          authorTitle,
+          narrator
         } = s;
 
         return {
           id,
           title,
-          authorTitle
+          authorTitle,
+          narrator
         };
       });
 

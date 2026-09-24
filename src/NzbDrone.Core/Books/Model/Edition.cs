@@ -30,6 +30,7 @@ namespace NzbDrone.Core.Books
         public string Overview { get; set; }
         public string Format { get; set; }
         public bool IsEbook { get; set; }
+        public string Narrator { get; set; }
         public string Disambiguation { get; set; }
         public string Publisher { get; set; }
         public int PageCount { get; set; }
@@ -64,6 +65,7 @@ namespace NzbDrone.Core.Books
             Overview = other.Overview.IsNullOrWhiteSpace() ? Overview : other.Overview;
             Format = other.Format;
             IsEbook = other.IsEbook;
+            Narrator = other.Narrator;
             Disambiguation = other.Disambiguation;
             Publisher = other.Publisher;
             PageCount = other.PageCount;

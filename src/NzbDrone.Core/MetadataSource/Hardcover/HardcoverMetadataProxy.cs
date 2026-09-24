@@ -856,6 +856,12 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             var workId = GetInt(work["id"]);
             var format = GetString(edition["edition_format"]);
             var slug = GetString(work["slug"]);
+            var narrator = string.Join("; ", (work["contributions"] as JArray ?? new JArray())
+                .OfType<JObject>()
+                .Where(x => IsNarratorRole(GetString(x["contribution"])))
+                .Select(x => GetString(AsObject(x["author"])?["name"]))
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Distinct(StringComparer.InvariantCultureIgnoreCase));
             var contributors = SelectAuthorContributions(work["contributions"] as JArray)
                 .Select(x => new ContributorResource
                 {
@@ -873,6 +879,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
                 Title = CleanSubtitle(title, subtitle),
                 Language = GetString(AsObject(edition["language"])?["code3"]),
                 Format = format.IsNullOrWhiteSpace() ? GetString(edition["physical_format"]) : format,
+                Narrator = narrator,
                 EditionInformation = WithFallback(GetString(edition["edition_information"]), GetString(edition["physical_information"])),
                 Publisher = GetString(AsObject(edition["publisher"])?["name"]),
                 ImageUrl = GetString(work["cached_image"]),
@@ -1432,6 +1439,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             var candidates = (contributions ?? new JArray())
                 .OfType<JObject>()
                 .Where(x => x["author"] is JObject)
+                .Where(x => !IsNarratorOnlyRole(GetString(x["contribution"])))
                 .ToList();
 
             var primary = candidates.Where(x => IsPrimaryAuthorRole(GetString(x["contribution"]))).ToList();
@@ -1458,6 +1466,19 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return role.IsNullOrWhiteSpace() ||
                    role.Equals("author", StringComparison.OrdinalIgnoreCase) ||
                    role.Equals("author/narrator", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsNarratorOnlyRole(string role)
+        {
+            return string.Equals(role, "narrator", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, "reading", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, "reader", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsNarratorRole(string role)
+        {
+            return IsNarratorOnlyRole(role) ||
+                   string.Equals(role, "author/narrator", StringComparison.OrdinalIgnoreCase);
         }
 
         private static object GetCacheLock(string key)

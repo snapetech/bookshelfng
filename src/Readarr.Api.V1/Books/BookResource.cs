@@ -17,6 +17,7 @@ namespace Readarr.Api.V1.Books
         public string AuthorTitle { get; set; }
         public string SeriesTitle { get; set; }
         public string Disambiguation { get; set; }
+        public string Narrator { get; set; }
         public string Overview { get; set; }
         public int AuthorId { get; set; }
         public string ForeignBookId { get; set; }
@@ -77,6 +78,7 @@ namespace Readarr.Api.V1.Books
                 AuthorTitle = authorTitle,
                 SeriesTitle = seriesTitle,
                 Disambiguation = selectedEdition?.Disambiguation,
+                Narrator = selectedEdition?.Narrator,
                 Images = selectedEdition?.Images ?? new List<MediaCover>(),
                 Links = model.Links.Concat(selectedEdition?.Links ?? new List<Links>()).ToList(),
                 Ratings = selectedEdition?.Ratings ?? new Ratings(),

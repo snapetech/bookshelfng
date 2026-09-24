@@ -99,6 +99,7 @@ namespace NzbDrone.Core.MediaFiles
                 Title = edition.Title,
                 Performers = new[] { author.Name },
                 BookAuthors = new[] { author.Name },
+                Narrator = edition.Narrator,
                 Track = (uint)trackfile.Part,
                 TrackCount = (uint)partCount,
                 Book = book.Title,

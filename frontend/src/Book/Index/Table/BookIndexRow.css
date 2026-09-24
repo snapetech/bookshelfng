@@ -17,6 +17,12 @@
   flex: 4 0 110px;
 }
 
+.narrator {
+  composes: cell;
+
+  flex: 2 0 120px;
+}
+
 .authorName {
   composes: cell;
 

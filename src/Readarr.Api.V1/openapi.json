@@ -9346,6 +9346,10 @@
             "type": "string",
             "nullable": true
           },
+          "narrator": {
+            "type": "string",
+            "nullable": true
+          },
           "overview": {
             "type": "string",
             "nullable": true
@@ -10154,6 +10158,10 @@
             "type": "string",
             "nullable": true
           },
+          "narrator": {
+            "type": "string",
+            "nullable": true
+          },
           "isEbook": {
             "type": "boolean"
           },
@@ -10277,6 +10285,10 @@
             "nullable": true
           },
           "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "narrator": {
             "type": "string",
             "nullable": true
           },

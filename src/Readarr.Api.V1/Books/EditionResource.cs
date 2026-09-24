@@ -20,6 +20,7 @@ namespace Readarr.Api.V1.Books
         public string Language { get; set; }
         public string Overview { get; set; }
         public string Format { get; set; }
+        public string Narrator { get; set; }
         public bool IsEbook { get; set; }
         public string Disambiguation { get; set; }
         public string Publisher { get; set; }
@@ -59,6 +60,7 @@ namespace Readarr.Api.V1.Books
                 Language = model.Language,
                 Overview = model.Overview,
                 Format = model.Format,
+                Narrator = model.Narrator,
                 IsEbook = model.IsEbook,
                 Disambiguation = model.Disambiguation,
                 Publisher = model.Publisher,
@@ -91,6 +93,7 @@ namespace Readarr.Api.V1.Books
                 Language = resource.Language,
                 Overview = resource.Overview,
                 Format = resource.Format,
+                Narrator = resource.Narrator,
                 IsEbook = resource.IsEbook,
                 Disambiguation = resource.Disambiguation,
                 Publisher = resource.Publisher,

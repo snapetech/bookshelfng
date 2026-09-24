@@ -636,6 +636,8 @@
   "MustNotContain": "Must Not Contain",
   "NETCore": ".NET Core",
   "Name": "Name",
+  "Narrator": "Narrator",
+  "NarratedBy": "Narrated by {0}",
   "NameFirstLast": "First Name Last Name",
   "NameLastFirst": "Last Name, First Name",
   "NameStyle": "Author Name Style",

@@ -80,6 +80,12 @@ export const defaultState = {
       isModifiable: false
     },
     {
+      name: 'narrator',
+      label: 'Narrator',
+      isSortable: true,
+      isVisible: true
+    },
+    {
       name: 'authorName',
       label: 'Author',
       isSortable: true,
@@ -197,6 +203,11 @@ export const defaultState = {
     {
       name: 'title',
       label: 'Title',
+      type: filterBuilderTypes.STRING
+    },
+    {
+      name: 'narrator',
+      label: 'Narrator',
       type: filterBuilderTypes.STRING
     },
     {

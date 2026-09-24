@@ -88,6 +88,7 @@ class BookIndexRow extends Component {
       authorId,
       monitored,
       title,
+      narrator,
       author,
       titleSlug,
       qualityProfile,
@@ -169,6 +170,17 @@ class BookIndexRow extends Component {
                     titleSlug={titleSlug}
                     title={title}
                   />
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'narrator') {
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles.narrator}
+                >
+                  {narrator || ''}
                 </VirtualTableRowCell>
               );
             }
@@ -369,6 +381,7 @@ BookIndexRow.propTypes = {
   authorId: PropTypes.number.isRequired,
   monitored: PropTypes.bool.isRequired,
   title: PropTypes.string.isRequired,
+  narrator: PropTypes.string,
   titleSlug: PropTypes.string.isRequired,
   author: PropTypes.object.isRequired,
   qualityProfile: PropTypes.object.isRequired,

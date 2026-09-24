@@ -20,6 +20,7 @@ namespace NzbDrone.Core.MediaFiles
         public string Title { get; set; }
         public string[] Performers { get; set; }
         public string[] BookAuthors { get; set; }
+        public string Narrator { get; set; }
         public uint Track { get; set; }
         public uint TrackCount { get; set; }
         public string Book { get; set; }
@@ -102,6 +103,8 @@ namespace NzbDrone.Core.MediaFiles
                 if (file.TagTypesOnDisk.HasFlag(TagTypes.Id3v2))
                 {
                     var id3tag = (TagLib.Id3v2.Tag)file.GetTag(TagTypes.Id3v2);
+                    var narratorFrame = UserTextInformationFrame.Get(id3tag, "NARRATOR", false);
+                    Narrator = narratorFrame == null ? null : string.Join("; ", narratorFrame.Text);
                     Media = id3tag.GetTextAsString("TMED");
                     Date = ReadId3Date(id3tag, "TDRC");
                     OriginalReleaseDate = ReadId3Date(id3tag, "TDOR");
@@ -111,6 +114,7 @@ namespace NzbDrone.Core.MediaFiles
                     // while publisher is handled by taglib, it seems to be mapped to 'ORGANIZATION' and not 'LABEL' like Picard is
                     // https://picard.musicbrainz.org/docs/mappings/
                     var flactag = (TagLib.Ogg.XiphComment)file.GetTag(TagLib.TagTypes.Xiph);
+                    Narrator = flactag.GetField("PERFORMER").ExclusiveOrDefault();
                     Media = flactag.GetField("MEDIA").ExclusiveOrDefault();
                     Date = DateTime.TryParse(flactag.GetField("DATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(flactag.GetField("ORIGINALDATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
@@ -119,6 +123,7 @@ namespace NzbDrone.Core.MediaFiles
                 else if (file.TagTypesOnDisk.HasFlag(TagTypes.Ape))
                 {
                     var apetag = (TagLib.Ape.Tag)file.GetTag(TagTypes.Ape);
+                    Narrator = apetag.GetItem("Narrator")?.ToString();
                     Media = apetag.GetItem("Media")?.ToString();
                     Date = DateTime.TryParse(apetag.GetItem("Year")?.ToString(), out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(apetag.GetItem("Original Date")?.ToString(), out tempDate) ? tempDate : default(DateTime?);
@@ -127,6 +132,7 @@ namespace NzbDrone.Core.MediaFiles
                 else if (file.TagTypesOnDisk.HasFlag(TagTypes.Asf))
                 {
                     var asftag = (TagLib.Asf.Tag)file.GetTag(TagTypes.Asf);
+                    Narrator = asftag.GetDescriptorString("WM/Narrator");
                     Media = asftag.GetDescriptorString("WM/Media");
                     Date = DateTime.TryParse(asftag.GetDescriptorString("WM/Year"), out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(asftag.GetDescriptorString("WM/OriginalReleaseTime"), out tempDate) ? tempDate : default(DateTime?);
@@ -135,9 +141,14 @@ namespace NzbDrone.Core.MediaFiles
                 else if (file.TagTypesOnDisk.HasFlag(TagTypes.Apple))
                 {
                     var appletag = (TagLib.Mpeg4.AppleTag)file.GetTag(TagTypes.Apple);
+                    Narrator = appletag.GetDashBox("com.apple.iTunes", "NARRATOR");
                     Media = appletag.GetDashBox("com.apple.iTunes", "MEDIA");
                     Date = DateTime.TryParse(appletag.DataBoxes(FixAppleId("day")).FirstOrDefault()?.Text, out tempDate) ? tempDate : default(DateTime?);
                     OriginalReleaseDate = DateTime.TryParse(appletag.GetDashBox("com.apple.iTunes", "Original Date"), out tempDate) ? tempDate : default(DateTime?);
+                }
+                else if (file.TagTypesOnDisk.HasFlag(TagTypes.AudibleMetadata))
+                {
+                    Narrator = ((TagLib.Audible.Tag)file.GetTag(TagTypes.AudibleMetadata)).Narrator;
                 }
 
                 OriginalYear = OriginalReleaseDate.HasValue ? (uint)OriginalReleaseDate?.Year : 0;
@@ -334,6 +345,7 @@ namespace NzbDrone.Core.MediaFiles
                 if (file.TagTypes.HasFlag(TagTypes.Id3v2))
                 {
                     var id3tag = (TagLib.Id3v2.Tag)file.GetTag(TagTypes.Id3v2);
+                    WriteId3Tag(id3tag, "NARRATOR", Narrator);
                     id3tag.SetTextFrame("TMED", Media);
                     WriteId3Date(id3tag, "TDRC", "TYER", "TDAT", Date);
                     WriteId3Date(id3tag, "TDOR", "TORY", null, OriginalReleaseDate);
@@ -349,6 +361,8 @@ namespace NzbDrone.Core.MediaFiles
 
                     var flactag = (TagLib.Ogg.XiphComment)file.GetTag(TagLib.TagTypes.Xiph);
 
+                    // Vorbis comments define PERFORMER as the reader of an audiobook.
+                    flactag.SetField("PERFORMER", Narrator);
                     flactag.SetField("DATE", Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALDATE", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null);
                     flactag.SetField("ORIGINALYEAR", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null);
@@ -363,6 +377,7 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     var apetag = (TagLib.Ape.Tag)file.GetTag(TagTypes.Ape);
 
+                    apetag.SetValue("Narrator", Narrator);
                     apetag.SetValue("Year", Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null);
                     apetag.SetValue("Original Date", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null);
                     apetag.SetValue("Original Year", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null);
@@ -373,6 +388,7 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     var asftag = (TagLib.Asf.Tag)file.GetTag(TagTypes.Asf);
 
+                    asftag.SetDescriptorString(Narrator, "WM/Narrator");
                     asftag.SetDescriptorString(Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null, "WM/Year");
                     asftag.SetDescriptorString(OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null, "WM/OriginalReleaseTime");
                     asftag.SetDescriptorString(OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null, "WM/OriginalReleaseYear");
@@ -383,6 +399,7 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     var appletag = (TagLib.Mpeg4.AppleTag)file.GetTag(TagTypes.Apple);
 
+                    appletag.SetDashBox("com.apple.iTunes", "NARRATOR", Narrator);
                     appletag.SetText(FixAppleId("day"), Date.HasValue ? Date.Value.ToString("yyyy-MM-dd") : null);
                     appletag.SetDashBox("com.apple.iTunes", "Original Date", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.ToString("yyyy-MM-dd") : null);
                     appletag.SetDashBox("com.apple.iTunes", "Original Year", OriginalReleaseDate.HasValue ? OriginalReleaseDate.Value.Year.ToString() : null);
@@ -433,6 +450,11 @@ namespace NzbDrone.Core.MediaFiles
             if (Book != other.Book)
             {
                 output.Add("Book", Tuple.Create(Book, other.Book));
+            }
+
+            if (Narrator != other.Narrator)
+            {
+                output.Add("Narrator", Tuple.Create(Narrator, other.Narrator));
             }
 
             if (!BookAuthors.SequenceEqual(other.BookAuthors))

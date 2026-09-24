@@ -1448,6 +1448,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 Language = resource.Language,
                 Overview = resource.Description,
                 Format = resource.Format,
+                Narrator = resource.Narrator,
                 IsEbook = resource.IsEbook,
                 Disambiguation = resource.EditionInformation,
                 Publisher = resource.Publisher,
