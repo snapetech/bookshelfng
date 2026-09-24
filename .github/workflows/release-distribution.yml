@@ -144,10 +144,14 @@ jobs:
           }
           git show "$runtime_pack_sha:.github/workflows/release-distribution.yml" \
             | sed -n '/^  build-platform-runtime-packs:/,/^  build-release-assets:/p' \
-            | sed '$d' > "$RUNNER_TEMP/runtime-pack-source-job.yml"
+            | sed '$d' \
+            | sed "/^    if: inputs.runtime_pack_run_id == ''$/d" \
+            > "$RUNNER_TEMP/runtime-pack-source-job.yml"
           git show "$source_sha:.github/workflows/release-distribution.yml" \
             | sed -n '/^  build-platform-runtime-packs:/,/^  build-release-assets:/p' \
-            | sed '$d' > "$RUNNER_TEMP/runtime-pack-tag-job.yml"
+            | sed '$d' \
+            | sed "/^    if: inputs.runtime_pack_run_id == ''$/d" \
+            > "$RUNNER_TEMP/runtime-pack-tag-job.yml"
           cmp -s "$RUNNER_TEMP/runtime-pack-source-job.yml" "$RUNNER_TEMP/runtime-pack-tag-job.yml" || {
             echo "Runtime-pack workflow job changed since run $RUNTIME_PACK_RUN_ID." >&2
             exit 1
@@ -264,7 +268,7 @@ jobs:
         run: |
           set -euo pipefail
           ./build.sh --backend --frontend --enable-extra-platforms \
-            --msbuild-arg="-p:RuntimeIdentifiers=${BOOKSHELF_RUNTIME_IDENTIFIERS}" \
+            --msbuild-arg="-p:RuntimeIdentifiers=${BOOKSHELF_RUNTIME_IDENTIFIERS//;/%3B}" \
             --msbuild-arg=-p:SelfContained=true
 
       - name: Package all supported runtime identifiers
