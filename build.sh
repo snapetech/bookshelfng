@@ -10,6 +10,21 @@ artifactsFolder="_artifacts";
 # Additional arguments passed through to the backend MSBuild invocation.
 MSBUILD_ARGS=()
 
+RunPython()
+{
+    local python_command
+    for python_command in python3 python; do
+        if command -v "$python_command" >/dev/null 2>&1 &&
+            "$python_command" -c 'import sys; raise SystemExit(sys.version_info < (3, 9))' >/dev/null 2>&1; then
+            "$python_command" "$@"
+            return
+        fi
+    done
+
+    echo "Python 3.9 or later is required to configure the .NET 10 platform runtime packs." >&2
+    return 1
+}
+
 ProgressStart()
 {
     echo "Start '$1'"
@@ -31,68 +46,163 @@ UpdateVersionNumber()
     fi
 }
 
-PrepareFreeBSDRuntimePacks()
+EnableExtraPlatformsInSDK()
 {
-    local packageFolder="_temp/freebsd-nuget"
-    local archive="_temp/freebsd-dotnet-10.0.12-source-built.tar.gz"
-    local url="https://github.com/Thefrank/dotnet-freebsd-crossbuild/releases/download/v10.0.112-amd64-freebsd-14/Private.SourceBuilt.Artifacts.10.0.112-servicing.26422.108.freebsd-x64.tar.gz"
-    local sha256="7e032c2024cfb17ac3bb27ab8d35234a6e74f5ede16e66ca8420bcf66028d978"
+    local dotnet_root
+    local sdk_version
+    local bundled_versions
+
+    if ! command -v dotnet >/dev/null 2>&1; then
+        echo "dotnet must be on PATH before enabling the extra runtime identifiers" >&2
+        exit 1
+    fi
+
+    sdk_version="${DOTNETVERSION:-$(dotnet --version)}"
+    dotnet_root="${DOTNET_ROOT:-}"
+    if [ -z "$dotnet_root" ]; then
+        local sdk_base_path
+        sdk_base_path="$(dotnet --info | sed -n 's/^[[:space:]]*Base Path:[[:space:]]*//p' | head -1 | tr -d '\r')"
+        if command -v cygpath >/dev/null 2>&1; then
+            sdk_base_path="$(cygpath -u "$sdk_base_path")"
+        fi
+        if [[ "$sdk_base_path" != */sdk/* ]]; then
+            echo "Could not determine the .NET SDK root from 'dotnet --info'" >&2
+            exit 1
+        fi
+        dotnet_root="${sdk_base_path%%/sdk/*}"
+    elif command -v cygpath >/dev/null 2>&1; then
+        dotnet_root="$(cygpath -u "$dotnet_root")"
+    fi
+    bundled_versions="$dotnet_root/sdk/$sdk_version/Microsoft.NETCoreSdk.BundledVersions.props"
+
+    if [ ! -f "$bundled_versions" ]; then
+        echo "Could not find SDK bundled runtime metadata: $bundled_versions" >&2
+        exit 1
+    fi
+
+    RunPython - "$bundled_versions" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+content = path.read_text(encoding="utf-8-sig")
+changed = False
+
+def update_pack(match):
+    global changed
+    block = match.group(0)
+    if 'TargetFramework="net10.0"' not in block:
+        return block
+    include = re.search(r'Include="([^"]+)"', block)
+    if not include:
+        return block
+    package = include.group(1)
+    attributes = []
+    if package in ("Microsoft.NETCore.App", "Microsoft.AspNetCore.App"):
+        attributes.append("RuntimePackRuntimeIdentifiers")
+    if package == "Microsoft.NETCore.App":
+        attributes.append("AppHostRuntimeIdentifiers")
+    for attribute in attributes:
+        attr = re.search(rf'{attribute}="([^"]*)"', block)
+        if not attr:
+            continue
+        identifiers = attr.group(1).split(";")
+        for rid in ("linux-x86", "freebsd-x64"):
+            if rid not in identifiers:
+                identifiers.append(rid)
+                changed = True
+        block = block[:attr.start(1)] + ";".join(identifiers) + block[attr.end(1):]
+    return block
+
+pattern = re.compile(r'<(?:KnownFrameworkReference|KnownAppHostPack)\s+Include="[^"]+"[\s\S]*?/>')
+updated = pattern.sub(update_pack, content)
+for framework in ("Microsoft.NETCore.App", "Microsoft.AspNetCore.App"):
+    if not re.search(rf'<KnownFrameworkReference\s+Include="{re.escape(framework)}"[\s\S]*?TargetFramework="net10\.0"[\s\S]*?RuntimePackRuntimeIdentifiers="[^"]*(?:linux-x86|freebsd-x64)', updated):
+        raise SystemExit(f"Could not enable .NET 10 runtime identifiers for {framework}")
+if changed:
+    path.write_text(updated, encoding="utf-8")
+PY
+}
+
+EnableExtraPlatforms()
+{
+    local rid
+    for rid in linux-x86 freebsd-x64; do
+        if ! grep -q "<RuntimeIdentifiers>[^<]*$rid" src/Directory.Build.props; then
+            sed -i'' -e "s#</RuntimeIdentifiers>#;$rid</RuntimeIdentifiers>#" src/Directory.Build.props
+        fi
+    done
+}
+
+PrepareExtraRuntimePacks()
+{
+    local sourceFolder="${CUSTOM_RUNTIME_PACKS_DIR:-_temp/platform-runtime-packs}"
+    local packageFolder="_temp/platform-runtime-nuget"
+    local configFile="_temp/platform-runtime-nuget.config"
+    local absolutePackageFolder
+    local nugetPackageFolder
+    local nugetConfigFile
     local packages=(
+        "Microsoft.NETCore.App.Host.linux-x86.10.0.12.nupkg"
+        "Microsoft.NETCore.App.Runtime.linux-x86.10.0.12.nupkg"
+        "Microsoft.AspNetCore.App.Runtime.linux-x86.10.0.12.nupkg"
         "Microsoft.NETCore.App.Host.freebsd-x64.10.0.12.nupkg"
         "Microsoft.NETCore.App.Runtime.freebsd-x64.10.0.12.nupkg"
         "Microsoft.AspNetCore.App.Runtime.freebsd-x64.10.0.12.nupkg"
     )
 
-    mkdir -p "$packageFolder"
+    if command -v cygpath >/dev/null 2>&1; then
+        sourceFolder="$(cygpath -u "$sourceFolder")"
+    fi
+
+    rm -rf "$packageFolder"
+    mkdir -p "$packageFolder" "$(dirname "$configFile")"
+    absolutePackageFolder="$(cd "$packageFolder" && pwd)"
 
     local package
-    local packagesReady=YES
     for package in "${packages[@]}"; do
-        if [ ! -s "$packageFolder/$package" ]; then
-            packagesReady=NO
-            break
-        fi
-    done
-
-    if [ "$packagesReady" = "NO" ]; then
-        mkdir -p "$(dirname "$archive")"
-        echo "Downloading the pinned community-built .NET 10.0.12 FreeBSD runtime packs"
-        curl --fail --location --retry 3 --silent --show-error --output "$archive" "$url"
-
-        if command -v sha256sum >/dev/null 2>&1; then
-            if ! printf '%s  %s\n' "$sha256" "$archive" | sha256sum --check --status; then
-                echo "FreeBSD runtime pack archive SHA-256 verification failed" >&2
-                exit 1
-            fi
-        elif command -v shasum >/dev/null 2>&1; then
-            if ! printf '%s  %s\n' "$sha256" "$archive" | shasum -a 256 --check --status; then
-                echo "FreeBSD runtime pack archive SHA-256 verification failed" >&2
-                exit 1
-            fi
-        else
-            echo "No SHA-256 checksum utility is installed" >&2
+        local sourcePackage
+        sourcePackage="$(find "$sourceFolder" -type f -name "$package" -print -quit 2>/dev/null || true)"
+        if [ -z "$sourcePackage" ]; then
+            echo "Missing .NET 10 platform package $package in $sourceFolder." >&2
+            echo "Build or download the pinned platform packs first and set CUSTOM_RUNTIME_PACKS_DIR." >&2
             exit 1
         fi
-
-        tar -xzf "$archive" -C "$packageFolder" "${packages[@]}"
-        rm -f "$archive"
-    fi
-
-    for package in "${packages[@]}"; do
-        if [ ! -s "$packageFolder/$package" ]; then
-            echo "Missing FreeBSD runtime package: $package" >&2
-            exit 1
-        fi
+        cp "$sourcePackage" "$packageFolder/$package"
     done
-}
 
-EnableFreeBSD()
-{
-    if ! grep -q 'freebsd-x64</RuntimeIdentifiers>' src/Directory.Build.props; then
-        sed -i'' -e "s^<RuntimeIdentifiers>\(.*\)</RuntimeIdentifiers>^<RuntimeIdentifiers>\1;freebsd-x64</RuntimeIdentifiers>^" src/Directory.Build.props
+    cp src/NuGet.config "$configFile"
+    nugetPackageFolder="$absolutePackageFolder"
+    nugetConfigFile="$configFile"
+    if command -v cygpath >/dev/null 2>&1; then
+        nugetPackageFolder="$(cygpath -m "$nugetPackageFolder")"
+        nugetConfigFile="$(cygpath -m "$nugetConfigFile")"
     fi
+    dotnet nuget add source "$nugetPackageFolder" --name bookshelf-platform-runtime-packs --configfile "$nugetConfigFile"
+    RunPython - "$configFile" "${packages[@]}" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
 
-    PrepareFreeBSDRuntimePacks
+path = sys.argv[1]
+packages = sys.argv[2:]
+tree = ET.parse(path)
+root = tree.getroot()
+mapping = root.find("packageSourceMapping")
+if mapping is None:
+    mapping = ET.SubElement(root, "packageSourceMapping")
+source = ET.SubElement(mapping, "packageSource", {"key": "bookshelf-platform-runtime-packs"})
+for package in packages:
+    package_id = package.removesuffix(".10.0.12.nupkg")
+    ET.SubElement(source, "package", {"pattern": package_id})
+ET.indent(tree, space="  ")
+tree.write(path, encoding="utf-8", xml_declaration=True)
+PY
+
+    PLATFORM_RUNTIME_NUGET_CONFIG="$(cd "$(dirname "$configFile")" && pwd)/$(basename "$configFile")"
+    if command -v cygpath >/dev/null 2>&1; then
+        PLATFORM_RUNTIME_NUGET_CONFIG="$(cygpath -m "$PLATFORM_RUNTIME_NUGET_CONFIG")"
+    fi
 }
 
 LintUI()
@@ -125,10 +235,13 @@ Build()
         platform=Posix
     fi
 
-    local msbuild_args=(-restore "$slnFile" "-p:Configuration=Release" "-p:Platform=$platform")
+    local msbuild_args=(-restore "$slnFile" -m:1 "-p:Configuration=Release" "-p:Platform=$platform")
     if [[ -n "$RID" && -n "$FRAMEWORK" ]];
     then
         msbuild_args+=("-p:RuntimeIdentifiers=$RID")
+    fi
+    if [ -n "$PLATFORM_RUNTIME_NUGET_CONFIG" ]; then
+        msbuild_args+=("-p:RestoreConfigFile=$PLATFORM_RUNTIME_NUGET_CONFIG")
     fi
 
     dotnet msbuild "${msbuild_args[@]}" "${MSBUILD_ARGS[@]}" -t:PublishAllRids
@@ -434,6 +547,8 @@ then
     if [ "$ENABLE_EXTRA_PLATFORMS" = "YES" ];
     then
         EnableExtraPlatforms
+        EnableExtraPlatformsInSDK
+        PrepareExtraRuntimePacks
     fi
     Build
     if [[ -z "$RID" || -z "$FRAMEWORK" ]];

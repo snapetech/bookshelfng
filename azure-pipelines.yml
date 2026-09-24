@@ -25,8 +25,7 @@ variables:
 trigger:
   branches:
     include:
-    - develop
-    - master
+    - main
   paths:
     exclude:
       - .github
@@ -35,7 +34,7 @@ trigger:
 pr:
   branches:
     include:
-    - develop
+    - main
   paths:
     exclude:
     - .github
@@ -51,12 +50,15 @@ stages:
       pool:
         vmImage: ${{ variables.linuxImage }}
       steps:
+      - checkout: self
+        fetchDepth: 0
       # Set the build name properly.  The 'name' property won't recursively expand so hack here:
       - bash: echo "##vso[build.updatebuildnumber]$READARRVERSION"
         displayName: Set Build Name
       - bash: |
           if [[ $BUILD_REASON == "PullRequest" ]]; then
-          git diff origin/develop...HEAD  --name-only | grep -E "^(src/|azure-pipelines.yml)"
+          target_branch="${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}"
+          git diff "origin/${target_branch}"...HEAD --name-only | grep -E "^(src/|azure-pipelines.yml)"
           echo $? > not_backend_update
           else
           echo 0 > not_backend_update
@@ -66,9 +68,52 @@ stages:
       - publish: not_backend_update
         artifact: not_backend_update
         displayName: Publish update type
+
+  - stage: Build_Platform_RuntimePacks
+    displayName: Build .NET 10 platform runtime packs
+    dependsOn: Setup
+    jobs:
+    - job: PlatformRuntimePacks
+      displayName: Build Linux x86 and FreeBSD runtime packs
+      timeoutInMinutes: 0
+      pool:
+        vmImage: ${{ variables.linuxImage }}
+      steps:
+      - checkout: self
+        fetchDepth: 1
+      - task: UseDotNet@2
+        displayName: Install .NET runtime build SDK
+        inputs:
+          packageType: sdk
+          version: '10.0.110'
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+      - task: UseDotNet@2
+        displayName: Install ASP.NET Core build SDK
+        inputs:
+          packageType: sdk
+          version: '10.0.111'
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+      - task: UseDotNet@2
+        displayName: Install Bookshelf build SDK
+        inputs:
+          packageType: sdk
+          version: $(dotnetVersion)
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+      - bash: ./scripts/build-dotnet10-platform-runtime-packs.sh
+        displayName: Build and collect .NET 10 platform packs
+        env:
+          DOTNET_ROOT: $(Agent.ToolsDirectory)/dotnet
+          DOTNETVERSION: $(dotnetVersion)
+          PLATFORM_RUNTIME_PACKS_OUTPUT: $(Build.ArtifactStagingDirectory)/platform-runtime-packs
+      - publish: $(Build.ArtifactStagingDirectory)/platform-runtime-packs
+        artifact: platform-runtime-packs
+        displayName: Publish .NET 10 platform packs
+
   - stage: Build_Backend
     displayName: Build Backend
-    dependsOn: Setup
+    dependsOn:
+    - Setup
+    - Build_Platform_RuntimePacks
     jobs:
     - job: Backend
       strategy:
@@ -95,22 +140,23 @@ stages:
       - checkout: self
         submodules: true
         fetchDepth: 1
+      - task: DownloadPipelineArtifact@2
+        displayName: Download .NET 10 platform runtime packs
+        inputs:
+          buildType: current
+          artifactName: platform-runtime-packs
+          itemPattern: packages/*.nupkg
+          targetPath: $(Build.SourcesDirectory)/_temp/platform-runtime-packs
       - task: UseDotNet@2
         displayName: 'Install .net core'
         inputs:
           version: $(dotnetVersion)
-      - bash: |
-          BUNDLEDVERSIONS=${AGENT_TOOLSDIRECTORY}/dotnet/sdk/${DOTNETVERSION}/Microsoft.NETCoreSdk.BundledVersions.props
-          echo $BUNDLEDVERSIONS
-          if grep -q freebsd-x64 $BUNDLEDVERSIONS; then
-            echo "Extra platforms already enabled"
-          else
-            echo "Enabling extra platform support"
-            sed -i.ORI 's/osx-x64/osx-x64;freebsd-x64;linux-x86/' $BUNDLEDVERSIONS
-          fi
-        displayName: Enable Extra Platform Support
       - bash: ./build.sh --backend --enable-extra-platforms
         displayName: Build Readarr Backend
+        env:
+          CUSTOM_RUNTIME_PACKS_DIR: $(Build.SourcesDirectory)/_temp/platform-runtime-packs/packages
+          DOTNET_ROOT: $(Agent.ToolsDirectory)/dotnet
+          DOTNETVERSION: $(dotnetVersion)
       - bash: |
           find ${OUTPUTFOLDER} -type f ! -path "*/publish/*" -exec rm -rf {} \;
           find ${OUTPUTFOLDER} -depth -empty -type d -exec rm -r "{}" \;
@@ -371,22 +417,14 @@ stages:
           sentry-cli releases new --finalize -p readarr -p readarr-ui -p readarr-update "${RELEASENAME}"
           sentry-cli releases -p readarr-ui files "${RELEASENAME}" upload-sourcemaps _output/UI/ --rewrite
           sentry-cli releases set-commits --auto "${RELEASENAME}"
-          if [[ ${BUILD_SOURCEBRANCH} == "refs/heads/develop" ]]; then
-          sentry-cli releases deploys "${RELEASENAME}" new -e nightly
-          else
           sentry-cli releases deploys "${RELEASENAME}" new -e production
-          fi
           if [ $? -gt 0 ]; then
             echo "##vso[task.logissue type=warning]Error uploading source maps."
           fi
           exit 0
         displayName: Publish Sentry Source Maps
         condition: |
-          or
-          (
-            and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop')),
-            and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
-          )
+          and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
         env:
           SENTRY_AUTH_TOKEN: $(sentryAuthTokenServarr)
           SENTRY_ORG: $(sentryOrg)
@@ -452,6 +490,17 @@ stages:
           version: $(dotnetVersion)
         condition: ne(variables['poolName'], 'FreeBSD')
       - task: DownloadPipelineArtifact@2
+        displayName: Download .NET 10 FreeBSD runtime
+        inputs:
+          buildType: current
+          artifactName: platform-runtime-packs
+          targetPath: $(Pipeline.Workspace)/platform-runtime-packs
+        condition: eq(variables['testName'], 'freebsd-x64')
+      - bash: |
+          bash "$(Pipeline.Workspace)/platform-runtime-packs/install-dotnet10-platform-runtime.sh" freebsd-x64 "$(Pipeline.Workspace)/platform-runtime-packs" "$(Agent.TempDirectory)/bookshelf-dotnet"
+        displayName: Install .NET 10 FreeBSD test runtime and SDK
+        condition: eq(variables['testName'], 'freebsd-x64')
+      - task: DownloadPipelineArtifact@2
         displayName: Download Test Artifact
         inputs:
           buildType: 'current'
@@ -505,10 +554,16 @@ stages:
         inputs:
           version: $(dotnetVersion)
         condition: and(succeeded(), ne(variables['testName'], 'linux-x86'))
+      - task: DownloadPipelineArtifact@2
+        displayName: Download .NET 10 Linux x86 runtime
+        inputs:
+          buildType: current
+          artifactName: platform-runtime-packs
+          targetPath: $(Pipeline.Workspace)/platform-runtime-packs
+        condition: and(succeeded(), eq(variables['testName'], 'linux-x86'))
       - bash: |
-          SDKURL=$(curl -s https://api.github.com/repos/Servarr/dotnet-linux-x86/releases | jq -rc '.[].assets[].browser_download_url' | grep sdk-${DOTNETVERSION}.*gz$)
-          curl -fsSL $SDKURL | tar xzf - -C /opt/dotnet
-        displayName: 'Install .NET'
+          bash "$(Pipeline.Workspace)/platform-runtime-packs/install-dotnet10-platform-runtime.sh" linux-x86 "$(Pipeline.Workspace)/platform-runtime-packs" "$(Agent.TempDirectory)/bookshelf-dotnet"
+        displayName: Install .NET 10 Linux x86 test runtime and SDK
         condition: and(succeeded(), eq(variables['testName'], 'linux-x86'))
       - checkout: none
       - task: DownloadPipelineArtifact@2
@@ -861,6 +916,15 @@ stages:
       steps:
       - checkout: none
       - task: DownloadPipelineArtifact@2
+        displayName: Download .NET 10 FreeBSD runtime
+        inputs:
+          buildType: current
+          artifactName: platform-runtime-packs
+          targetPath: $(Pipeline.Workspace)/platform-runtime-packs
+      - bash: |
+          bash "$(Pipeline.Workspace)/platform-runtime-packs/install-dotnet10-platform-runtime.sh" freebsd-x64 "$(Pipeline.Workspace)/platform-runtime-packs" "$(Agent.TempDirectory)/bookshelf-dotnet"
+        displayName: Install .NET 10 FreeBSD test runtime and SDK
+      - task: DownloadPipelineArtifact@2
         displayName: Download Test Artifact
         inputs:
           buildType: 'current'
@@ -922,10 +986,16 @@ stages:
         inputs:
           version: $(dotnetVersion)
         condition: and(succeeded(), ne(variables['testName'], 'linux-x86'))
+      - task: DownloadPipelineArtifact@2
+        displayName: Download .NET 10 Linux x86 runtime
+        inputs:
+          buildType: current
+          artifactName: platform-runtime-packs
+          targetPath: $(Pipeline.Workspace)/platform-runtime-packs
+        condition: and(succeeded(), eq(variables['testName'], 'linux-x86'))
       - bash: |
-          SDKURL=$(curl -s https://api.github.com/repos/Servarr/dotnet-linux-x86/releases | jq -rc '.[].assets[].browser_download_url' | grep sdk-${DOTNETVERSION}.*gz$)
-          curl -fsSL $SDKURL | tar xzf - -C /opt/dotnet
-        displayName: 'Install .NET'
+          bash "$(Pipeline.Workspace)/platform-runtime-packs/install-dotnet10-platform-runtime.sh" linux-x86 "$(Pipeline.Workspace)/platform-runtime-packs" "$(Agent.TempDirectory)/bookshelf-dotnet"
+        displayName: Install .NET 10 Linux x86 test runtime and SDK
         condition: and(succeeded(), eq(variables['testName'], 'linux-x86'))
       - checkout: none
       - task: DownloadPipelineArtifact@2
@@ -1122,7 +1192,7 @@ stages:
       condition: |
         and
         (
-          and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop')),
+          and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main')),
           and(succeeded(), eq(dependencies.Prepare.outputs['setVar.backendNotUpdated'], '0'))
         )
 
@@ -1143,20 +1213,16 @@ stages:
       - bash: |
           git config --global user.email "development@lidarr.audio"
           git config --global user.name "Servarr"
-          git checkout -b api-docs
           git add .
-          if git status | grep -q modified
+          if ! git diff --cached --quiet
           then
-            git commit -am 'Automated API Docs update'
-            git push -f --set-upstream origin api-docs
-            curl -X POST -H "Authorization: token ${GITHUBTOKEN}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/readarr/readarr/pulls -d '{"head":"api-docs","base":"develop","title":"Update API docs"}'
+            git commit -m 'Automated API Docs update'
+            git push origin HEAD:main
           else
             echo "No changes since last run"
           fi
         displayName: Commit API Doc Change
         continueOnError: true
-        env:
-          GITHUBTOKEN: $(githubToken)
       - task: CopyFiles@2
         displayName: 'Copy openapi.json to: $(Build.ArtifactStagingDirectory)'
         inputs:

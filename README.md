@@ -365,6 +365,7 @@ you can also authenticate with package read access.
 - [Metadata providers and configuration](#metadata-sources)
 - [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
 - [Author metadata storage, refresh policy, and troubleshooting](docs/author-metadata-refresh.md)
+- [.NET 10 platform builds for Linux x86 and FreeBSD](docs/dotnet-10-platform-builds.md)
 - [Optional diagnostics module](src/Bookshelf.Diagnostics/README.md)
 - [Release-note format and preview](release-notes/README.md)
 - [SeerrNG migration metadata source matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
