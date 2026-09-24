@@ -14,6 +14,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             RuleFor(c => c.Port).InclusiveBetween(1, 65535);
             RuleFor(c => c.UrlBase).ValidUrlBase().When(c => c.UrlBase.IsNotNullOrWhiteSpace());
 
+            RuleFor(c => c.Username).Empty()
+                .WithMessage("Username must be empty when using API Key.")
+                .When(c => c.ApiKey.IsNotNullOrWhiteSpace());
+            RuleFor(c => c.Password).Empty()
+                .WithMessage("Password must be empty when using API Key.")
+                .When(c => c.ApiKey.IsNotNullOrWhiteSpace());
+
             RuleFor(c => c.MusicCategory).Matches(@"^([^\\\/](\/?[^\\\/])*)?$").WithMessage(@"Can not contain '\', '//', or start/end with '/'");
             RuleFor(c => c.MusicImportedCategory).Matches(@"^([^\\\/](\/?[^\\\/])*)?$").WithMessage(@"Can not contain '\', '//', or start/end with '/'");
         }
@@ -42,7 +49,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         [FieldDefinition(3, Label = "Url Base", Type = FieldType.Textbox, Advanced = true, HelpText = "Adds a prefix to the qBittorrent url, e.g. http://[host]:[port]/[urlBase]/api")]
         public string UrlBase { get; set; }
 
-        [FieldDefinition(4, Label = "API Key", Type = FieldType.Textbox, Privacy = PrivacyLevel.ApiKey, HelpText = "API key authentication requires qBittorrent 5.2.0 or newer. Leave blank to use username and password.")]
+        [FieldDefinition(4, Label = "API Key", Type = FieldType.Textbox, Privacy = PrivacyLevel.ApiKey, HelpText = "API key authentication requires qBittorrent 5.2.0 or newer. Leave username and password empty when using this.")]
         public string ApiKey { get; set; }
 
         [FieldDefinition(5, Label = "Username", Type = FieldType.Textbox, Privacy = PrivacyLevel.UserName)]

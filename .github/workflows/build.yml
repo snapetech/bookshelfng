@@ -23,7 +23,7 @@ on:
 
 env:
   DOTNET_VERSION: "10.0.401"
-  READARR_VERSION: 0.4.20
+  READARR_VERSION: 0.4.21
   OUTPUT_FOLDER: ./_output
   ARTIFACTS_FOLDER: ./_artifacts
   TESTS_FOLDER: ./_tests

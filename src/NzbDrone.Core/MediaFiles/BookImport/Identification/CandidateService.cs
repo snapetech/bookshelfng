@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -210,15 +211,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             {
                 _logger.Trace($"Searching by isbn {isbns[0]}");
 
-                try
-                {
-                    remoteBooks = _bookSearchService.SearchByIsbn(isbns[0]);
-                }
-                catch (GoodreadsException e)
-                {
-                    _logger.Info(e, "Skipping ISBN search due to Goodreads Error");
-                    remoteBooks = new List<Book>();
-                }
+                remoteBooks = TryRemoteSearch(localEdition, "ISBN search", () => _bookSearchService.SearchByIsbn(isbns[0]));
 
                 foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
                 {
@@ -232,15 +225,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             {
                 _logger.Trace($"Searching by asin {asins[0]}");
 
-                try
-                {
-                    remoteBooks = _bookSearchService.SearchByAsin(asins[0]);
-                }
-                catch (GoodreadsException e)
-                {
-                    _logger.Info(e, "Skipping ASIN search due to Goodreads Error");
-                    remoteBooks = new List<Book>();
-                }
+                remoteBooks = TryRemoteSearch(localEdition, "ASIN search", () => _bookSearchService.SearchByAsin(asins[0]));
 
                 foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
                 {
@@ -255,6 +240,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     _logger.Trace($"Searching by goodreads id {id}");
 
+                    // Not routed through TryRemoteSearch: SearchByGoodreadsBookId swallows upstream
+                    // errors internally, so we can't treat a result here as a confirmed successful
+                    // search. The author/title fallbacks below set RemoteSearchSucceeded reliably.
                     try
                     {
                         remoteBooks = _bookSearchService.SearchByGoodreadsBookId(id, true);
@@ -314,15 +302,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             {
                 foreach (var authorTag in authorTags)
                 {
-                    try
-                    {
-                        remoteBooks = _bookSearchService.SearchForNewBook(bookTag, authorTag);
-                    }
-                    catch (GoodreadsException e)
-                    {
-                        _logger.Info(e, "Skipping author/title search due to Goodreads Error");
-                        remoteBooks = new List<Book>();
-                    }
+                    remoteBooks = TryRemoteSearch(localEdition, "author/title search", () => _bookSearchService.SearchForNewBook(bookTag, authorTag));
 
                     foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
                     {
@@ -338,15 +318,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             }
 
             // Search by just book title
-            try
-            {
-                remoteBooks = _bookSearchService.SearchForNewBook(bookTag, null);
-            }
-            catch (GoodreadsException e)
-            {
-                _logger.Info(e, "Skipping book title search due to Goodreads Error");
-                remoteBooks = new List<Book>();
-            }
+            remoteBooks = TryRemoteSearch(localEdition, "book title search", () => _bookSearchService.SearchForNewBook(bookTag, null));
 
             foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
             {
@@ -367,15 +339,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 if (filenameBookTag.IsNotNullOrWhiteSpace() &&
                     !filenameBookTag.Equals(bookTag, System.StringComparison.InvariantCultureIgnoreCase))
                 {
-                    try
-                    {
-                        remoteBooks = _bookSearchService.SearchForNewBook(filenameBookTag, null);
-                    }
-                    catch (GoodreadsException e)
-                    {
-                        _logger.Info(e, "Skipping filename title search due to Goodreads Error");
-                        remoteBooks = new List<Book>();
-                    }
+                    remoteBooks = TryRemoteSearch(localEdition, "filename title search", () => _bookSearchService.SearchForNewBook(filenameBookTag, null));
 
                     foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
                     {
@@ -394,21 +358,31 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             {
                 foreach (var a in authorTags)
                 {
-                    try
-                    {
-                        remoteBooks = _bookSearchService.SearchForNewBook(a, null);
-                    }
-                    catch (GoodreadsException e)
-                    {
-                        _logger.Info(e, "Skipping author search due to Goodreads Error");
-                        remoteBooks = new List<Book>();
-                    }
+                    remoteBooks = TryRemoteSearch(localEdition, "author search", () => _bookSearchService.SearchForNewBook(a, null));
 
                     foreach (var candidate in ToCandidates(remoteBooks, seenCandidates, idOverrides))
                     {
                         yield return candidate;
                     }
                 }
+            }
+        }
+
+        // Runs a remote metadata search, marking the edition as successfully searched when the call
+        // completes. A GoodreadsException means the upstream call failed (not "no match"), so the
+        // flag is left unset and the file stays eligible for a retry on a later scan.
+        private List<Book> TryRemoteSearch(LocalEdition localEdition, string searchDescription, Func<List<Book>> search)
+        {
+            try
+            {
+                var books = search();
+                localEdition.RemoteSearchSucceeded = true;
+                return books;
+            }
+            catch (GoodreadsException e)
+            {
+                _logger.Info(e, "Skipping {0} due to Goodreads Error", searchDescription);
+                return new List<Book>();
             }
         }
 

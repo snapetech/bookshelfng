@@ -640,10 +640,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 result = _goodreadsSearchProxy.Search(query);
             }
-            catch (Exception e)
+            catch (GoodreadsException e)
             {
                 _logger.Warn(e, "Error searching for {0}", query?.ReplaceLineEndings(""));
-                return new List<Book>();
+                throw;
             }
 
             var books = new List<Book>();

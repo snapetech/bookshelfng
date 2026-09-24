@@ -17,7 +17,7 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
     public class HardcoverProxy : IHardcoverProxy
     {
-        private const string ListQuery = @"{""query"":""query Lists { me { lists { name slug list_books { id } } } }""}";
+        private const string ListQuery = "query UserLists($user: citext) {users(where: {username: {_eq: $user}}) {lists {name slug list_books { id  } } }}";
 
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
@@ -50,11 +50,32 @@ namespace NzbDrone.Core.ImportLists.Hardcover
             }
 
             var payload = JsonConvert.DeserializeObject<HardcoverGraphQlResponse>(response.Content);
-            var lists = payload?.GetLists() ?? new List<HardcoverListResource>();
+            var customLists = payload?.GetLists() ?? new List<HardcoverListResource>();
 
-            _logger.Debug("Hardcover: Found {0} lists", lists.Count);
+            foreach (var list in customLists)
+            {
+                list.Hint = "Custom List";
+            }
 
-            return lists;
+            _logger.Debug("Hardcover: Found {0} custom lists", customLists.Count);
+
+            var allOptions = GetReadingStatusOptions();
+            allOptions.AddRange(customLists);
+
+            return allOptions;
+        }
+
+        private static List<HardcoverListResource> GetReadingStatusOptions()
+        {
+            return new List<HardcoverListResource>
+            {
+                new HardcoverListResource { Id = "status:1", Name = "Want to Read", Hint = "Reading Status" },
+                new HardcoverListResource { Id = "status:2", Name = "Currently Reading", Hint = "Reading Status" },
+                new HardcoverListResource { Id = "status:3", Name = "Read", Hint = "Reading Status" },
+                new HardcoverListResource { Id = "status:4", Name = "Paused", Hint = "Reading Status" },
+                new HardcoverListResource { Id = "status:5", Name = "Did Not Finish", Hint = "Reading Status" },
+                new HardcoverListResource { Id = "status:6", Name = "Ignored", Hint = "Reading Status" },
+            };
         }
 
         public ValidationFailure Test(HardcoverImportSettings settings)
@@ -84,6 +105,14 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
         private HttpRequest BuildGraphQlRequest(HardcoverImportSettings settings, string query, string apiKey)
         {
+            var graphQlBody = JsonConvert.SerializeObject(new
+            {
+                query = query,
+                variables = new
+                {
+                    user = settings.User
+                }
+            });
             var request = new HttpRequestBuilder($"{settings.BaseUrl.TrimEnd('/')}/v1/graphql")
                 .Post()
                 .Accept(HttpAccept.Json)
@@ -94,7 +123,7 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 .KeepAlive()
                 .Build();
 
-            request.SetContent(query);
+            request.SetContent(graphQlBody);
             return request;
         }
 
@@ -123,7 +152,7 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         public HardcoverGraphQlData Data { get; set; }
 
         public List<HardcoverListResource> GetLists() =>
-            Data?.Me?
+            Data?.Users?
                 .SelectMany(m => m.Lists ?? new List<HardcoverListResource>())
                 .ToList()
             ?? new List<HardcoverListResource>();
@@ -131,11 +160,11 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
     public class HardcoverGraphQlData
     {
-        [JsonProperty("me")]
-        public List<HardcoverGraphQlMe> Me { get; set; }
+        [JsonProperty("users")]
+        public List<HardcoverGraphQlUsers> Users { get; set; }
     }
 
-    public class HardcoverGraphQlMe
+    public class HardcoverGraphQlUsers
     {
         [JsonProperty("lists")]
         public List<HardcoverListResource> Lists { get; set; }
@@ -151,6 +180,9 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
         [JsonProperty("name")]
         public string Name { get; set; }
+
+        [JsonIgnore]
+        public string Hint { get; set; }
 
         public string DisplayName => Name ?? Slug ?? Id;
     }
