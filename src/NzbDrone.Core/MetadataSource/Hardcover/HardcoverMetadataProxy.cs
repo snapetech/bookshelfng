@@ -27,7 +27,7 @@ namespace NzbDrone.Core.MetadataSource.Hardcover
         bool IsConfigured { get; }
         bool IsNativeEnabled { get; }
         List<SearchJsonResource> Search(string query, bool interactiveSearch = false);
-        AuthorResource GetAuthor(string foreignAuthorId);
+        AuthorResource GetAuthor(string foreignAuthorId, bool interactiveSearch = false);
         WorkResource GetWork(string foreignWorkId, bool interactiveSearch = false);
         WorkResource GetEdition(string foreignEditionId, bool interactiveSearch = false);
     }
@@ -450,12 +450,12 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return GetCached(_searchCache, cacheKey, () => SearchUncached(normalized, interactiveSearch), TimeSpan.FromMinutes(10));
         }
 
-        public AuthorResource GetAuthor(string foreignAuthorId)
+        public AuthorResource GetAuthor(string foreignAuthorId, bool interactiveSearch = false)
         {
             var id = ParseId(foreignAuthorId, "author");
 
             var cacheKey = id.ToString(CultureInfo.InvariantCulture);
-            return GetCached(_authorCache, cacheKey, () => LoadAuthor(id), TimeSpan.FromMinutes(30));
+            return GetCached(_authorCache, cacheKey, () => LoadAuthor(id, interactiveSearch), TimeSpan.FromMinutes(30));
         }
 
         public WorkResource GetWork(string foreignWorkId, bool interactiveSearch = false)
@@ -706,7 +706,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return works;
         }
 
-        private AuthorResource LoadAuthor(int id)
+        private AuthorResource LoadAuthor(int id, bool interactiveSearch)
         {
             JObject author = null;
             var works = new List<WorkResource>();
@@ -714,12 +714,16 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
 
             while (true)
             {
-                var data = ExecuteGraphQl("GetAuthorEditions", AuthorQuery, new JObject
-                {
-                    ["id"] = id,
-                    ["limit"] = AuthorPageSize,
-                    ["offset"] = offset
-                });
+                var data = ExecuteGraphQl(
+                    "GetAuthorEditions",
+                    AuthorQuery,
+                    new JObject
+                    {
+                        ["id"] = id,
+                        ["limit"] = AuthorPageSize,
+                        ["offset"] = offset
+                    },
+                    interactiveSearch);
 
                 author = author ?? data["authors_by_pk"] as JObject;
                 var pageAuthor = data["authors_by_pk"] as JObject;
@@ -736,7 +740,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
 
                     try
                     {
-                        var work = book?["editions"] is JArray ? MapWork(book) : GetWork(workId.ToString(CultureInfo.InvariantCulture));
+                        var work = book?["editions"] is JArray ? MapWork(book) : GetWork(workId.ToString(CultureInfo.InvariantCulture), interactiveSearch);
                         if (GetAuthorIds(work).Contains(id))
                         {
                             works.Add(work);

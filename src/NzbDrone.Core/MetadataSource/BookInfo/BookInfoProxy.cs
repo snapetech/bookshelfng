@@ -104,6 +104,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Author GetAuthorInfo(string foreignAuthorId, bool useCache = false)
         {
+            return GetAuthorInfo(foreignAuthorId, useCache, false);
+        }
+
+        private Author GetAuthorInfo(string foreignAuthorId, bool useCache, bool interactiveSearch)
+        {
             if (_additionalBookMetadataProxy.HandlesAuthorId(foreignAuthorId))
             {
                 return _additionalBookMetadataProxy.GetAuthor(foreignAuthorId);
@@ -116,12 +121,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (TryGetNamespacedId(foreignAuthorId, "hardcover-author:", out var hardcoverAuthorId))
             {
-                return NamespaceHardcoverAuthor(MapAuthor(_hardcoverMetadataProxy.GetAuthor(hardcoverAuthorId)));
+                return NamespaceHardcoverAuthor(MapAuthor(_hardcoverMetadataProxy.GetAuthor(hardcoverAuthorId, interactiveSearch)));
             }
 
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
-                return MapAuthor(_hardcoverMetadataProxy.GetAuthor(foreignAuthorId));
+                return MapAuthor(_hardcoverMetadataProxy.GetAuthor(foreignAuthorId, interactiveSearch));
             }
 
             _logger.Debug("Getting Author details GoodreadsId of {0}", foreignAuthorId?.ReplaceLineEndings(""));
@@ -258,7 +263,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (TryGetNamespacedId(title, "metadata-api-author:", out _) ||
                 TryGetNamespacedId(title, "hardcover-author:", out _))
             {
-                return GetAuthorInfo(title).Books.Value;
+                return GetAuthorInfo(title, false, interactiveSearch).Books.Value;
             }
 
             var q = title.ToLower().Trim();
