@@ -14,6 +14,16 @@ const CATEGORIES = new Map([
   ['removed', 'Removed'],
   ['deprecated', 'Deprecated'],
 ]);
+const ACTION_COPY = new Map([
+  [
+    'install-dotnet-10-sdk-for-source-builds',
+    'Install the .NET 10 SDK before building from source.',
+  ],
+  [
+    'use-dotnet-10-platform-pack-builder-for-linux-x86-and-freebsd',
+    'Use the documented .NET 10 platform pack builder for Linux x86 or FreeBSD source builds.',
+  ],
+]);
 const AUDIENCES = new Set(['users', 'operators']);
 const FRONTMATTER_KEYS = new Set([
   'category',
@@ -219,7 +229,9 @@ export function formatCuratedNotes(notes) {
       const breakingPrefix = note.breaking ? '**Breaking:** ' : '';
       lines.push(`- **${areaTitle}:** ${breakingPrefix}${note.body}`);
       if (note.action && note.action !== 'none') {
-        lines.push(`  - **Action required:** ${note.action}`);
+        lines.push(
+          `  - **Action required:** ${ACTION_COPY.get(note.action) ?? note.action}`
+        );
       }
     }
     lines.push('');
