@@ -136,11 +136,21 @@ namespace Readarr.Api.V1.Indexers
         }
 
         [HttpGet]
-        public async Task<List<ReleaseResource>> GetReleases(int? bookId, int? authorId)
+        public async Task<List<ReleaseResource>> GetReleases(int? bookId, int? authorId, int? seriesId)
         {
             if (bookId.HasValue)
             {
                 return await GetBookReleases(int.Parse(Request.Query["bookId"]));
+            }
+
+            if (seriesId.HasValue)
+            {
+                if (!authorId.HasValue)
+                {
+                    throw new BadRequestException("authorId is required for a series search");
+                }
+
+                return await GetSeriesReleases(seriesId.Value, authorId.Value);
             }
 
             if (authorId.HasValue)
@@ -179,6 +189,22 @@ namespace Readarr.Api.V1.Indexers
             catch (Exception ex)
             {
                 _logger.Error(ex, "Author search failed");
+                throw new NzbDroneClientException(HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
+
+        private async Task<List<ReleaseResource>> GetSeriesReleases(int seriesId, int authorId)
+        {
+            try
+            {
+                var decisions = await _releaseSearchService.SeriesSearch(seriesId, authorId, true, true);
+                var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
+
+                return MapDecisions(prioritizedDecisions);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Series pack search failed");
                 throw new NzbDroneClientException(HttpStatusCode.InternalServerError, ex.Message);
             }
         }

@@ -60,6 +60,7 @@ function createMapStateToProps() {
         sortKey: series.sortKey,
         sortDirection: series.sortDirection,
         authorMonitored: author.monitored,
+        authorName: author.authorName,
         isSmallScreen: dimensions.isSmallScreen,
         uiSettings
       };

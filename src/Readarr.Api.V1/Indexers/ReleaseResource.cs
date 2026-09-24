@@ -58,6 +58,11 @@ namespace Readarr.Api.V1.Indexers
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int? BookId { get; set; }
 
+        // Sent when searching for a series pack so the cached series context
+        // remains attached if the release is grabbed from the interactive UI.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int? SeriesId { get; set; }
+
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int? DownloadClientId { get; set; }
 

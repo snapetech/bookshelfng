@@ -17,6 +17,8 @@ namespace NzbDrone.Core.IndexerSearch
     {
         Task<List<DownloadDecision>> BookSearch(int bookId, bool missingOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> AuthorSearch(int authorId, bool missingOnly, bool userInvokedSearch, bool interactiveSearch);
+        Task<List<DownloadDecision>> SeriesSearch(int seriesId, int authorId, bool userInvokedSearch, bool interactiveSearch);
+        List<Book> GetSeriesBooks(int seriesId, int authorId);
     }
 
     public class ReleaseSearchService : ISearchForReleases
@@ -24,18 +26,24 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly IIndexerFactory _indexerFactory;
         private readonly IBookService _bookService;
         private readonly IAuthorService _authorService;
+        private readonly ISeriesService _seriesService;
+        private readonly ISeriesBookLinkService _seriesBookLinkService;
         private readonly IMakeDownloadDecision _makeDownloadDecision;
         private readonly Logger _logger;
 
         public ReleaseSearchService(IIndexerFactory indexerFactory,
                                 IBookService bookService,
                                 IAuthorService authorService,
+                                ISeriesService seriesService,
+                                ISeriesBookLinkService seriesBookLinkService,
                                 IMakeDownloadDecision makeDownloadDecision,
                                 Logger logger)
         {
             _indexerFactory = indexerFactory;
             _bookService = bookService;
             _authorService = authorService;
+            _seriesService = seriesService;
+            _seriesBookLinkService = seriesBookLinkService;
             _makeDownloadDecision = makeDownloadDecision;
             _logger = logger;
         }
@@ -74,6 +82,46 @@ namespace NzbDrone.Core.IndexerSearch
             searchSpec.Books = books;
 
             return await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec);
+        }
+
+        public async Task<List<DownloadDecision>> SeriesSearch(int seriesId, int authorId, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var series = _seriesService.GetById(seriesId);
+            var author = _authorService.GetAuthor(authorId);
+            var books = GetSeriesBooks(seriesId, authorId);
+
+            if (series == null || !books.Any())
+            {
+                return new List<DownloadDecision>();
+            }
+
+            var searchSpec = Get<BookSearchCriteria>(author, books, userInvokedSearch, interactiveSearch);
+            searchSpec.BookTitle = series.Title;
+
+            var decisions = await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec);
+
+            // Series-pack search intentionally keeps the complete author-scoped
+            // series on each cached release. The regular interactive import
+            // flow then reviews and maps every downloaded file individually.
+            foreach (var decision in decisions)
+            {
+                decision.RemoteBook.Author = author;
+                decision.RemoteBook.Books = books;
+                decision.RemoteBook.DownloadAllowed = true;
+            }
+
+            return DeDupeDecisions(decisions);
+        }
+
+        public List<Book> GetSeriesBooks(int seriesId, int authorId)
+        {
+            var author = _authorService.GetAuthor(authorId);
+            var links = _seriesBookLinkService.GetLinksBySeriesAndAuthor(seriesId, author.ForeignAuthorId);
+            var positions = links.ToDictionary(x => x.BookId, x => x.SeriesPosition);
+
+            return _bookService.GetBooks(positions.Keys)
+                .OrderBy(x => positions[x.Id])
+                .ToList();
         }
 
         public async Task<List<DownloadDecision>> BookSearch(Book book, bool missingOnly, bool userInvokedSearch, bool interactiveSearch)

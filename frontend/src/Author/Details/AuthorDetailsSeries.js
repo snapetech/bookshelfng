@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import BookInteractiveSearchModalConnector from 'Book/Search/BookInteractiveSearchModalConnector';
 import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
@@ -24,6 +25,7 @@ class AuthorDetailsSeries extends Component {
     this.state = {
       isOrganizeModalOpen: false,
       isManageBooksOpen: false,
+      isSeriesPackSearchOpen: false,
       lastToggledBook: null
     };
   }
@@ -99,6 +101,14 @@ class AuthorDetailsSeries extends Component {
     this.props.onMonitorBookPress(_.uniq(bookIds), monitored);
   };
 
+  onSeriesPackSearchPress = () => {
+    this.setState({ isSeriesPackSearchOpen: true });
+  };
+
+  onSeriesPackSearchModalClose = () => {
+    this.setState({ isSeriesPackSearchOpen: false });
+  };
+
   //
   // Render
 
@@ -114,7 +124,9 @@ class AuthorDetailsSeries extends Component {
       onSortPress,
       isSmallScreen,
       onTableOptionChange,
-      authorMonitored
+      authorMonitored,
+      authorName,
+      authorId
     } = this.props;
 
     return (
@@ -128,6 +140,12 @@ class AuthorDetailsSeries extends Component {
             isDisabled={!authorMonitored}
             isSaving={this.isSeriesSaving(this.props)}
             onPress={this.onMonitorSeriesPress}
+          />
+
+          <IconButton
+            name={icons.SEARCH}
+            title={translate('SearchSeriesPack')}
+            onPress={this.onSeriesPackSearchPress}
           />
 
           <Link
@@ -206,6 +224,16 @@ class AuthorDetailsSeries extends Component {
               </div>
           }
         </div>
+
+        <BookInteractiveSearchModalConnector
+          isOpen={this.state.isSeriesPackSearchOpen}
+          bookId={null}
+          seriesId={id}
+          authorId={authorId}
+          seriesTitle={label}
+          authorName={authorName}
+          onModalClose={this.onSeriesPackSearchModalClose}
+        />
       </div>
     );
   }
@@ -227,7 +255,8 @@ AuthorDetailsSeries.propTypes = {
   onSortPress: PropTypes.func.isRequired,
   onMonitorBookPress: PropTypes.func.isRequired,
   uiSettings: PropTypes.object.isRequired,
-  authorMonitored: PropTypes.bool.isRequired
+  authorMonitored: PropTypes.bool.isRequired,
+  authorName: PropTypes.string.isRequired
 };
 
 export default AuthorDetailsSeries;

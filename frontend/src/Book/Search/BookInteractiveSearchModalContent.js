@@ -12,7 +12,10 @@ import translate from 'Utilities/String/translate';
 function BookInteractiveSearchModalContent(props) {
   const {
     bookId,
+    seriesId,
+    authorId,
     bookTitle,
+    seriesTitle,
     authorName,
     onModalClose
   } = props;
@@ -20,9 +23,11 @@ function BookInteractiveSearchModalContent(props) {
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>
-        {bookId === null ?
-          translate('InteractiveSearchModalHeader') :
-          translate('InteractiveSearchModalHeaderBookAuthor', { bookTitle, authorName })
+        {seriesId != null ?
+          translate('InteractiveSearchModalHeaderSeriesAuthor', { seriesTitle, authorName }) :
+          (bookId === null ?
+            translate('InteractiveSearchModalHeader') :
+            translate('InteractiveSearchModalHeaderBookAuthor', { bookTitle, authorName }))
         }
       </ModalHeader>
 
@@ -30,7 +35,7 @@ function BookInteractiveSearchModalContent(props) {
         <InteractiveSearchConnector
           type="book"
           searchPayload={{
-            bookId
+            ...(seriesId != null ? { seriesId, authorId } : { bookId })
           }}
         />
       </ModalBody>
@@ -45,10 +50,17 @@ function BookInteractiveSearchModalContent(props) {
 }
 
 BookInteractiveSearchModalContent.propTypes = {
-  bookId: PropTypes.number.isRequired,
-  bookTitle: PropTypes.string.isRequired,
+  bookId: PropTypes.number,
+  seriesId: PropTypes.number,
+  authorId: PropTypes.number,
+  bookTitle: PropTypes.string,
+  seriesTitle: PropTypes.string,
   authorName: PropTypes.string.isRequired,
   onModalClose: PropTypes.func.isRequired
+};
+
+BookInteractiveSearchModalContent.defaultProps = {
+  bookId: null
 };
 
 export default BookInteractiveSearchModalContent;
