@@ -368,7 +368,11 @@ PackageWindows()
     local folder=$artifactsFolder/$runtime/$framework/Readarr
 
     PackageFiles "$folder" "$framework" "$runtime"
-    cp -r $outputFolder/$framework-windows/$runtime/publish/* $folder
+
+    local windowsFrameworkFolder="$outputFolder/$framework-windows/$runtime/publish"
+    if [ -d "$windowsFrameworkFolder" ]; then
+        cp -r "$windowsFrameworkFolder"/* "$folder"
+    fi
 
     echo "Removing Readarr.Mono"
     rm -f $folder/Readarr.Mono.*
@@ -409,6 +413,59 @@ BuildInstaller()
     local runtime="$2"
 
     ./_inno/ISCC.exe distribution/windows/setup/readarr.iss "//DFramework=$framework" "//DRuntime=$runtime"
+}
+
+BuildInstallerNet()
+{
+    local framework="$1"
+    local runtime="$2"
+
+    ProgressStart "Creating $runtime .NET installer"
+
+    local installerProj="distribution/windows/installer-net"
+    local payloadDir="$installerProj/Payload"
+    local payloadZip="$payloadDir/Readarr.payload.zip"
+    local buildFolder="$artifactsFolder/$runtime/$framework/Readarr"
+    local publishDir="$installerProj/publish"
+    local destDir="distribution/windows/setup/output"
+    local version="${READARRVERSION:-dev}"
+    local destExe="$destDir/BookshelfNG.Installer.$version.$runtime.exe"
+
+    if [ ! -d "$buildFolder" ]; then
+        echo "[ERROR] Build folder not found: $buildFolder" >&2
+        echo "[ERROR] Build and package the win-x64 runtime first." >&2
+        exit 1
+    fi
+
+    mkdir -p "$payloadDir"
+    rm -f "$payloadZip"
+    RunPython - "$buildFolder" "$payloadZip" <<'PAYLOAD_ZIP_PY'
+from pathlib import Path
+import sys
+from zipfile import ZIP_DEFLATED, ZipFile
+
+source = Path(sys.argv[1])
+destination = Path(sys.argv[2])
+with ZipFile(destination, "w", ZIP_DEFLATED, compresslevel=9) as archive:
+    for item in source.rglob("*"):
+        relative = item.relative_to(source)
+        if relative.parts and relative.parts[0].casefold() == "readarr.update":
+            continue
+        if item.is_file() and not item.is_symlink():
+            archive.write(item, relative.as_posix())
+PAYLOAD_ZIP_PY
+
+    rm -rf "$publishDir"
+    dotnet publish "$installerProj/Readarr.Installer.csproj" -c Release -r "$runtime" --self-contained \
+        -p:EnableWindowsTargeting=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+        -o "$publishDir"
+
+    mkdir -p "$destDir"
+    mv "$publishDir/BookshelfNG.Installer.exe" "$destExe"
+    rm -f "$payloadZip"
+    rm -rf "$publishDir"
+
+    ProgressEnd "Created .NET installer: $destExe"
 }
 
 InstallInno()
@@ -598,8 +655,5 @@ fi
 
 if [ "$INSTALLER" = "YES" ];
 then
-    InstallInno
-    BuildInstaller "net10.0" "win-x64"
-    BuildInstaller "net10.0" "win-x86"
-    RemoveInno
+    BuildInstallerNet "net10.0" "win-x64"
 fi
