@@ -123,6 +123,7 @@ namespace NzbDrone.Core.MediaFiles
                             .Where(x => x.IsNotNullOrWhiteSpace())
                             .ToArray();
                     }
+
                     Narrator = narratorFields.Length > 0 ? string.Join("; ", narratorFields) : null;
                     Media = flactag.GetField("MEDIA").ExclusiveOrDefault();
                     Date = DateTime.TryParse(flactag.GetField("DATE").ExclusiveOrDefault(), out tempDate) ? tempDate : default(DateTime?);
