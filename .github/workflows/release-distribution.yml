@@ -257,21 +257,21 @@ jobs:
               raise SystemExit("Cannot align archive helper host executable validation for this tag.")
 
           old_launcher = '''  if [[ -f "$staging/$archive_base/Readarr.exe" ]]; then
-    cat > "$staging/$archive_base/BookshelfNG.cmd" <<'EOF'
-@echo off
-"%~dp0Readarr.exe" %*
-EOF
-  fi'''
+              cat > "$staging/$archive_base/BookshelfNG.cmd" <<'EOF'
+          @echo off
+          "%~dp0Readarr.exe" %*
+          EOF
+            fi'''
           new_launcher = '''  if [[ "$rid" == win-* ]]; then
-    host_executable="Readarr.exe"
-    if [[ -f "$staging/$archive_base/Readarr.Console.exe" ]]; then
-      host_executable="Readarr.Console.exe"
-    fi
-    cat > "$staging/$archive_base/BookshelfNG.cmd" <<EOF
-@echo off
-"%~dp0${host_executable}" %*
-EOF
-  fi'''
+              host_executable="Readarr.exe"
+              if [[ -f "$staging/$archive_base/Readarr.Console.exe" ]]; then
+                host_executable="Readarr.Console.exe"
+              fi
+              cat > "$staging/$archive_base/BookshelfNG.cmd" <<EOF
+          @echo off
+          "%~dp0${host_executable}" %*
+          EOF
+            fi'''
           if old_launcher in contents:
               contents = contents.replace(old_launcher, new_launcher, 1)
           elif 'Readarr.Console.exe' not in contents:
