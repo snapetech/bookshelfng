@@ -18,4 +18,10 @@ namespace NzbDrone.Core.Indexers
         Task<IList<ReleaseInfo>> Fetch(AuthorSearchCriteria searchCriteria);
         HttpRequest GetDownloadRequest(string link);
     }
+
+    public interface IIndexerDownloadFallback
+    {
+        string GetFallbackDownloadUrl(string link);
+        bool RequireDownloadFallbackSuccess { get; }
+    }
 }

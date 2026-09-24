@@ -22,7 +22,7 @@ using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Indexers.MyAnonaMouse
 {
-    public class MyAnonaMouse : HttpIndexerBase<MyAnonaMouseSettings>
+    public class MyAnonaMouse : HttpIndexerBase<MyAnonaMouseSettings>, IIndexerDownloadFallback
     {
         public override string Name => "MyAnonaMouse";
         public override DownloadProtocol Protocol => DownloadProtocol.Torrent;
@@ -38,6 +38,20 @@ namespace NzbDrone.Core.Indexers.MyAnonaMouse
 
         public Func<IDictionary<string, string>> GetCookies { get; set; }
         public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
+
+        public bool RequireDownloadFallbackSuccess => Settings.UseFreeleechWedge == (int)MyAnonaMouseFreeleechWedgeAction.Required;
+
+        public string GetFallbackDownloadUrl(string link)
+        {
+            var uri = new HttpUri(link);
+            var queryParams = uri.Query.Split('&')
+                .Where(param => !Uri.UnescapeDataString(param.Split('=', 2)[0]).Equals("fl", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            return queryParams.Length == uri.Query.Split('&').Length
+                ? null
+                : uri.SetQuery(string.Join("&", queryParams)).FullUri;
+        }
 
         private void UpdateCookiesInternal(IDictionary<string, string> cookies, DateTime? expiry)
         {
@@ -333,7 +347,7 @@ namespace NzbDrone.Core.Indexers.MyAnonaMouse
 
             if (_settings.UseFreeleechWedge is (int)MyAnonaMouseFreeleechWedgeAction.Preferred or (int)MyAnonaMouseFreeleechWedgeAction.Required && canUseToken)
             {
-                url = url.AddQueryParam("canUseToken", "true");
+                url = url.AddQueryParam("fl", "1");
             }
 
             return url.FullUri;

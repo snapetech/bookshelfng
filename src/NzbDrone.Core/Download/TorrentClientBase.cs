@@ -170,6 +170,18 @@ namespace NzbDrone.Core.Download
             }
             catch (HttpException ex)
             {
+                var fallbackUrl = (indexer as IIndexerDownloadFallback)?.GetFallbackDownloadUrl(torrentUrl);
+                if (fallbackUrl.IsNotNullOrWhiteSpace())
+                {
+                    if (((IIndexerDownloadFallback)indexer).RequireDownloadFallbackSuccess)
+                    {
+                        throw new ReleaseUnavailableException(remoteBook.Release, "Unable to use the required MyAnonamouse freeleech wedge", ex);
+                    }
+
+                    _logger.Debug(ex, "Freeleech wedge request failed; retrying without the wedge");
+                    return await DownloadFromWebUrl(remoteBook, indexer, fallbackUrl).ConfigureAwait(false);
+                }
+
                 if (ex.Response.StatusCode == HttpStatusCode.NotFound)
                 {
                     _logger.Error(ex, "Downloading torrent file for book '{0}' failed since it no longer exists ({1})", remoteBook.Release.Title?.ReplaceLineEndings(""), torrentUrl?.ReplaceLineEndings(""));
@@ -189,6 +201,18 @@ namespace NzbDrone.Core.Download
             }
             catch (WebException ex)
             {
+                var fallbackUrl = (indexer as IIndexerDownloadFallback)?.GetFallbackDownloadUrl(torrentUrl);
+                if (fallbackUrl.IsNotNullOrWhiteSpace())
+                {
+                    if (((IIndexerDownloadFallback)indexer).RequireDownloadFallbackSuccess)
+                    {
+                        throw new ReleaseUnavailableException(remoteBook.Release, "Unable to use the required MyAnonamouse freeleech wedge", ex);
+                    }
+
+                    _logger.Debug(ex, "Freeleech wedge request failed; retrying without the wedge");
+                    return await DownloadFromWebUrl(remoteBook, indexer, fallbackUrl).ConfigureAwait(false);
+                }
+
                 _logger.Error(ex, "Downloading torrent file for release '{0}' failed ({1})", remoteBook.Release.Title?.ReplaceLineEndings(""), torrentUrl?.ReplaceLineEndings(""));
 
                 throw new ReleaseDownloadException(remoteBook.Release, "Downloading torrent failed", ex);
