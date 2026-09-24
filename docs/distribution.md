@@ -25,27 +25,30 @@ release and sends the existing Discord announcement.
 
 The distribution workflow reports publisher channels that lack credentials as
 skipped. It does not claim an upload succeeded unless the publisher command
-returns success. Configure the missing repository secrets listed below before
-expecting an external package store to receive a release.
+returns success. Configure the publisher settings and credentials listed below
+before expecting an external package store to receive a release.
 
-## Required GitHub Actions secrets
+## Publisher credentials and settings
 
-| Secret | Used by |
+| Secret or variable | Used by |
 | --- | --- |
 | `AUR_SSH_KEY` | Pushes the `bookshelfng-bin` package to AUR. Add the matching public key to the AUR account. |
 | `COPR_LOGIN`, `COPR_TOKEN` | Submits SRPM builds to Fedora COPR. |
-| `COPR_USERNAME` | Optional COPR account name; defaults to the SeerrNG publisher account `slskdn`. |
+| `COPR_USERNAME` | Repository variable for the COPR account; defaults to `slskdn`. |
 | `GPG_PRIVATE_KEY` | Signs source packages before upload to Launchpad. |
+| `LAUNCHPAD_PPA` | Existing PPA target (`ppa:<owner>/<archive>`), set as an Actions secret or repository variable. |
 | `SNAPCRAFT_STORE_CREDENTIALS` | Uploads the Snap to the stable channel. Use Snapcraft's exported, scope-limited credentials. |
 | `CHOCOLATEY_API_KEY` | Pushes `bookshelfng` packages to Chocolatey Community Repository. |
-| `DISCORD_RELEASE_WEBHOOK` | Existing BookshelfNG release announcement channel. |
+| `DISCORD_RELEASE_WEBHOOK` | Required. Sends the curated release notes and image digests to the BookshelfNG release channel. |
 
-The `LAUNCHPAD_PPA` repository variable defaults to `ppa:keefshape/bookshelfng`;
-it can also be supplied as an Actions secret to override that target. The
-package source files are in [`packaging/`](../packaging/). The COPR job
+The Launchpad upload runs only when `GPG_PRIVATE_KEY` and `LAUNCHPAD_PPA` are
+configured. Set `LAUNCHPAD_PPA` to an existing PPA as a repository variable or
+Actions secret; the publisher account must have permission to upload to it.
+The `COPR_PROJECT`
+repository variable defaults to `bookshelfng`. The package source files are in
+[`packaging/`](../packaging/). The COPR job
 creates or updates the `bookshelfng` project under the authenticated COPR
-account and builds it for Fedora 44 and Rawhide. Set the `COPR_PROJECT`
-repository variable only if the project should use another name. Build output
+account and builds it for Fedora 44 and Rawhide. Build output
 from `main` is not sent to third-party package stores; store updates are tied to
 verified stable release tags.
 
@@ -53,9 +56,9 @@ verified stable release tags.
 
 Before the first external upload, register `bookshelfng` on the Snap Store and
 Chocolatey Community Repository, add the AUR SSH public key to the publisher
-account, and create a Launchpad PPA owned by the Snapetech publisher account.
-The COPR job creates its project on first release. Add the account credentials
-above to the `snapetech/bookshelfng` repository's Actions secrets. Package identifiers are
+account, and create a Launchpad PPA for the publisher account. The COPR job
+creates its project on first release. Add the account credentials above to the
+`snapetech/bookshelfng` repository's Actions secrets. Package identifiers are
 reserved by their respective services, so confirm ownership before the first
 publish. Flatpak is provided as a GitHub Release bundle; Flathub hosting is a
 separate, maintainer-reviewed publication path.

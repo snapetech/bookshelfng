@@ -14,7 +14,6 @@ mkdir -p "$output_dir"
 if [[ "$output_dir" != /* ]]; then
   output_dir="$(cd "$output_dir" && pwd)"
 fi
-workspace="${GITHUB_WORKSPACE:-$(pwd)}"
 source_date_epoch="$(git show -s --format=%ct "$tag")"
 
 release_rids=(

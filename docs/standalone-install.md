@@ -51,6 +51,25 @@ the service:
 sudo systemctl enable --now bookshelfng
 ```
 
+Install a downloaded Debian package with:
+
+```sh
+sudo apt install ./bookshelfng_*.deb
+```
+
+Install a downloaded RPM package with:
+
+```sh
+sudo dnf install ./bookshelfng-*.rpm
+```
+
+External package repositories are optional for each release. If the release
+lists the `slskdn/bookshelfng` COPR project, enable it with
+`sudo dnf copr enable slskdn/bookshelfng`, then run `sudo dnf install bookshelfng`.
+If `bookshelfng-bin` is published to AUR, install it with an AUR helper such as
+`paru -S bookshelfng-bin`. A Launchpad PPA is published only when an existing
+PPA and signing key are configured; use the target named in the release.
+
 Configuration overrides can be placed in
 `/etc/bookshelfng/bookshelfng.env`. Package upgrades leave this file and
 `/var/lib/bookshelfng` in place.
@@ -68,9 +87,22 @@ chmod +x BookshelfNG-*.AppImage
 
 ## Snap
 
-Install the `bookshelfng` Snap from the stable channel. Snap data is kept in the
-Snap's persistent common data directory. Connect `removable-media` only if
-your libraries are on removable or mounted external storage.
+When the Snap Store channel is enabled for a release, install and start the
+`bookshelfng` Snap:
+
+```sh
+sudo snap install bookshelfng
+snap run bookshelfng
+```
+
+The `.snap` file is also attached to each GitHub release. To sideload that
+asset, use `sudo snap install --dangerous ./BookshelfNG-main-v*.snap`. Snap data
+is kept in the Snap's persistent common data directory. Connect `removable-media`
+only if your libraries are on removable or mounted external storage:
+
+```sh
+sudo snap connect bookshelfng:removable-media
+```
 
 ## Flatpak bundle
 
@@ -80,6 +112,8 @@ already present. Grant access only to the directories that contain your book
 and download libraries; for example:
 
 ```sh
+flatpak install --user ./BookshelfNG-main-v*.flatpak
+flatpak run com.snapetech.BookshelfNG
 flatpak override --user --filesystem=/path/to/books:rw com.snapetech.BookshelfNG
 ```
 

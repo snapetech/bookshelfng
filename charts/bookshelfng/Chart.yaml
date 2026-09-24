@@ -5,6 +5,7 @@ type: application
 version: 0.1.0
 appVersion: "0.4.21"
 home: https://github.com/snapetech/bookshelfng
+icon: https://raw.githubusercontent.com/snapetech/bookshelfng/main/frontend/src/Content/Images/logo.svg
 sources:
   - https://github.com/snapetech/bookshelfng
 maintainers:
