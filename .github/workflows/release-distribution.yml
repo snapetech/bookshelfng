@@ -284,7 +284,7 @@ jobs:
       - name: Create versioned archives and checksums
         env:
           TAG: ${{ needs.validate.outputs.tag }}
-        run: ./scripts/create-release-archives.sh "$TAG" dist-release
+        run: bash scripts/create-release-archives.sh "$TAG" dist-release
 
       - name: Build Windows x64 setup installer
         env:
