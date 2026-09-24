@@ -112,10 +112,11 @@ differ across items. Gutendex can be self-hosted; the shared `gutendex.com`
 instance is a third-party service, and Project Gutenberg rights metadata
 describes US copyright status.
 
-Open Library is not an ordinary BookshelfNG search or detail provider. The
-SeerrNG migration helper may use Open Library, Google Books, LOC, or an
-optional Apify Actor to recover candidate metadata while it remaps records;
-that work is separate from BookshelfNG's runtime metadata path. See the
+Open Library is not a BookshelfNG search or detail provider. SeerrNG queries it
+directly for SeerrNG book discovery and details, and its migration helper may
+also use Open Library, Google Books, LOC, or an optional Apify Actor to recover
+candidate metadata while remapping records. Those SeerrNG requests are separate
+from BookshelfNG's runtime metadata path. See the
 [SeerrNG support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md).
 
 ## Search, identifiers, and edition matching

@@ -13,11 +13,12 @@ self-hosted metadata service.
 
 Google Books, Library of Congress, and Europeana can be queried as supplemental
 runtime catalogs in both images. The Goodreads-compatible Apify adapter is
-optional. Open Library is not a BookshelfNG runtime provider; SeerrNG uses it
-only in a separate migration recovery helper. See [Metadata sources](#metadata-sources)
-and the [SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
-for the boundary between normal BookshelfNG searches and SeerrNG migration
-recovery.
+optional. Open Library is a native SeerrNG runtime catalog, not a BookshelfNG
+runtime provider; SeerrNG can also use it during migration recovery. See
+[Metadata sources](#metadata-sources) and the
+[SeerrNG metadata source support matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)
+for the boundary between BookshelfNG provider requests, SeerrNG searches, and
+migration recovery.
 
 ## Capabilities
 
