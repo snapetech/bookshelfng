@@ -149,7 +149,14 @@ export function parseReleaseNote(file, content) {
     categoryTitle: CATEGORIES.get(category),
     audience: audienceParts,
     area,
-    action: action?.toLowerCase() === 'none' ? 'none' : action,
+    // The .20 import-matching note used this legacy token for optional tuning.
+    // It does not require an operator action; the body already explains when
+    // changing the default threshold can help.
+    action:
+      action?.toLowerCase() === 'none' ||
+      action?.toLowerCase() === 'review-setting'
+        ? 'none'
+        : action,
     breaking: breaking === 'true',
     body,
     errors,

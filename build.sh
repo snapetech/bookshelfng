@@ -392,6 +392,16 @@ PackageWindows()
         cp -r "$windowsFrameworkFolder"/* "$folder"
     fi
 
+    # Keep the app launcher name used by the standalone docs and installer.
+    # Windows builds name the service-capable apphost Readarr.Console.exe.
+    if [[ ! -f "$folder/Readarr.exe" && -f "$folder/Readarr.Console.exe" ]]; then
+        cp "$folder/Readarr.Console.exe" "$folder/Readarr.exe"
+    fi
+    if [[ ! -f "$folder/Readarr.exe" ]]; then
+        echo "Windows package is missing Readarr.exe and Readarr.Console.exe." >&2
+        exit 1
+    fi
+
     echo "Removing Readarr.Mono"
     rm -f $folder/Readarr.Mono.*
     rm -f $folder/Mono.Posix.NETStandard.*
