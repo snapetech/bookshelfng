@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Test.Framework;
@@ -81,6 +82,27 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
             var author = proxy.GetAuthor(book.AuthorMetadata.Value.ForeignAuthorId);
             author.Name.Should().Be("Rubens Marchioni");
             author.Books.Value.Should().ContainSingle().Which.ForeignBookId.Should().Be(book.ForeignBookId);
+        }
+
+        [Test]
+        public void should_use_saved_ui_source_selection_and_credentials()
+        {
+            Environment.SetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES", null);
+            Environment.SetEnvironmentVariable("EUROPEANA_API_KEY", null);
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.AdditionalMetadataSources)
+                .Returns("europeana");
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.EuropeanaApiKey)
+                .Returns("saved-europeana-key");
+            Mocker.GetMock<IConfigService>()
+                .Setup(x => x.IsDefined("AdditionalMetadataSources"))
+                .Returns(true);
+
+            var books = CreateProxy().Search("Escrita criativa Rubens Marchioni");
+
+            books.Should().ContainSingle();
+            books[0].ForeignBookId.Should().StartWith("europeana:");
         }
 
         [Test]
@@ -162,6 +184,7 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
             Mocker.GetMock<IHttpClient>().Object,
             Mocker.GetMock<ICachedHttpResponseService>().Object,
             new CacheManager(),
+            Mocker.GetMock<IConfigService>().Object,
             TestLogger);
 
         private static JObject SearchResponse() => new ()

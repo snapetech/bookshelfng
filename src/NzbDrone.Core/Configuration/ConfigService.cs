@@ -287,6 +287,48 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
+        public string HardcoverAuth
+        {
+            get { return GetValue("HardcoverAuth", string.Empty); }
+            set { SetValue("HardcoverAuth", value ?? string.Empty); }
+        }
+
+        public string AdditionalMetadataSources
+        {
+            get { return GetValue("AdditionalMetadataSources", string.Empty); }
+            set { SetValue("AdditionalMetadataSources", value ?? string.Empty); }
+        }
+
+        public string GoogleBooksApiKey
+        {
+            get { return GetValue("GoogleBooksApiKey", string.Empty); }
+            set { SetValue("GoogleBooksApiKey", value ?? string.Empty); }
+        }
+
+        public string EuropeanaApiKey
+        {
+            get { return GetValue("EuropeanaApiKey", string.Empty); }
+            set { SetValue("EuropeanaApiKey", value ?? string.Empty); }
+        }
+
+        public string ApifyGoodreadsActor
+        {
+            get { return GetValue("ApifyGoodreadsActor", string.Empty); }
+            set { SetValue("ApifyGoodreadsActor", value ?? string.Empty); }
+        }
+
+        public string ApifyToken
+        {
+            get { return GetValue("ApifyToken", string.Empty); }
+            set { SetValue("ApifyToken", value ?? string.Empty); }
+        }
+
+        public string ApifyGoodreadsInputTemplate
+        {
+            get { return GetValue("ApifyGoodreadsInputTemplate", string.Empty); }
+            set { SetValue("ApifyGoodreadsInputTemplate", value ?? string.Empty); }
+        }
+
         public WriteAudioTagsType WriteAudioTags
         {
             get { return GetValueEnum("WriteAudioTags", WriteAudioTagsType.No); }

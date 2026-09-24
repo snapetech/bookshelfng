@@ -67,6 +67,13 @@ namespace NzbDrone.Core.Configuration
 
         //Metadata
         string MetadataSource { get; set; }
+        string HardcoverAuth { get; set; }
+        string AdditionalMetadataSources { get; set; }
+        string GoogleBooksApiKey { get; set; }
+        string EuropeanaApiKey { get; set; }
+        string ApifyGoodreadsActor { get; set; }
+        string ApifyToken { get; set; }
+        string ApifyGoodreadsInputTemplate { get; set; }
         WriteAudioTagsType WriteAudioTags { get; set; }
         bool ScrubAudioTags { get; set; }
         WriteBookTagsType WriteBookTags { get; set; }

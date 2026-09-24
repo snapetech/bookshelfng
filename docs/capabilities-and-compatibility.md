@@ -68,21 +68,26 @@ selected primary metadata provider or merge their records into Hardcover.
 BookshelfNG assigns each result a provider-qualified ID and routes later book
 and author lookups back to the same source. The configured source and its
 credentials must remain available while records from that source are in use.
+Operators can enable catalogs and enter credentials in **Settings > Metadata**.
+The Hardcover token is managed in the same page. Environment credentials take
+precedence over saved credentials, and the API returns presence flags instead
+of secret values.
 
 | Catalog | Enablement | Detail lookup and limits |
 | --- | --- | --- |
-| Google Books | Set `GOOGLE_BOOKS_API_KEY`; enabled by default when the key is present. | Uses Google volume IDs. Search and detail responses are cached; the API key is required for later details. |
-| Library of Congress | Enabled by default; public search. | Uses LOC record URLs. Requests are paced to one per 3.2 seconds per BookshelfNG process and successful responses are cached for one day. |
-| Gutendex / Project Gutenberg | Enabled by default; no key. | Focused on Project Gutenberg's literature catalog. Uses Gutenberg ebook IDs for details and author lookups; edition and ISBN data are limited. |
-| Internet Archive | Opt in with `BOOKSHELF_METADATA_SOURCES=...`; no key for public search and metadata. | Searches text items and resolves metadata by Archive item identifier. Edition, creator, language, and cover fields vary by item. |
-| NDL Search | Opt in with `BOOKSHELF_METADATA_SOURCES=...`; no API key. | Japanese and participating-catalog records use stable NDL bibliographic IDs. Requests are paced to one per second. Metadata only: NDL ended its thumbnail service on March 31, 2026. Provider-specific reuse conditions apply; SeerrNG book details link to NDL Search API for credit. |
-| Europeana | Set `EUROPEANA_API_KEY`; enabled by default when the key is present. | Searches open-reuse text records. Provider IDs resolve through the Europeana Record API. ISBN values in `dcIdentifier` are normalized by removing punctuation before they are mapped. It is a cultural-heritage catalog, so coverage and covers vary. |
-| Goodreads-compatible Apify Actor | Opt in with `BOOKSHELF_METADATA_SOURCES=...`, an Actor name, and an Apify token. | Actor schema, availability, terms, and possible charges are controlled by the Actor publisher. Results use stable record keys where available. |
+| Google Books | Enable in Settings > Metadata and enter `GOOGLE_BOOKS_API_KEY`; enabled by default when a key is present and no source list is saved. | Uses Google volume IDs. Search and detail responses are cached; the API key is required for later details. |
+| Library of Congress | Enabled by default; can be toggled in Settings > Metadata. | Uses LOC record URLs. Requests are paced to one per 3.2 seconds per BookshelfNG process and successful responses are cached for one day. |
+| Gutendex / Project Gutenberg | Enabled by default; can be toggled in Settings > Metadata; no key. | Focused on Project Gutenberg's literature catalog. Uses Gutenberg ebook IDs for details and author lookups; edition and ISBN data are limited. |
+| Internet Archive | Opt in in Settings > Metadata or with `BOOKSHELF_METADATA_SOURCES`; no key for public search and metadata. | Searches text items and resolves metadata by Archive item identifier. Edition, creator, language, and cover fields vary by item. |
+| NDL Search | Opt in in Settings > Metadata or with `BOOKSHELF_METADATA_SOURCES`; no API key. | Japanese and participating-catalog records use stable NDL bibliographic IDs. Requests are paced to one per second. Metadata only: NDL ended its thumbnail service on March 31, 2026. Provider-specific reuse conditions apply; SeerrNG book details link to NDL Search API for credit. |
+| Europeana | Enable in Settings > Metadata and enter `EUROPEANA_API_KEY`; enabled by default when a key is present and no source list is saved. | Searches open-reuse text records. Provider IDs resolve through the Europeana Record API. ISBN values in `dcIdentifier` are normalized by removing punctuation before they are mapped. It is a cultural-heritage catalog, so coverage and covers vary. |
+| Goodreads-compatible Apify Actor | Opt in in Settings > Metadata, provide an Actor name and Apify token, or configure `BOOKSHELF_METADATA_SOURCES`. | Actor schema, availability, terms, and possible charges are controlled by the Actor publisher. Results use stable record keys where available. |
 
 `BOOKSHELF_METADATA_SOURCES` accepts `googlebooks`, `loc`, `gutendex`,
-`internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. When set, it
-replaces the default list (`loc,gutendex` plus keyed Google Books and Europeana);
-an empty value disables supplemental sources. The setting applies to both
+`internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. A custom
+environment value replaces the saved UI selection; an empty value disables
+supplemental sources. Installer-managed default lists are treated as defaults
+and may be replaced by saved UI settings. The setting applies to both
 `hardcover` and `softcover` images. Provider failures are logged independently,
 so an unavailable supplemental catalog does not suppress results from other
 configured sources.

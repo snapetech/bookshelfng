@@ -6,6 +6,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Hardcover;
 using NzbDrone.Core.Test.Framework;
@@ -60,6 +61,17 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
 
             action.Should().Throw<BookInfoException>()
                 .WithMessage("*HARDCOVER_AUTH*");
+        }
+
+        [Test]
+        public void should_use_saved_token_when_environment_credentials_are_missing()
+        {
+            Environment.SetEnvironmentVariable("HARDCOVER_AUTH", null);
+            Mocker.GetMock<IConfigService>()
+                .Setup(x => x.HardcoverAuth)
+                .Returns("saved-hardcover-token");
+
+            Subject.IsConfigured.Should().BeTrue();
         }
 
         [Test]

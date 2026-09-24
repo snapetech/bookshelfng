@@ -12,6 +12,7 @@ using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MediaCover;
@@ -46,6 +47,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private readonly ICachedHttpResponseService _cachedHttpClient;
         private readonly ICached<List<Book>> _searchCache;
         private readonly ICached<List<JObject>> _apifyCache;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         private static readonly TimeSpan LocRequestRateLimit = TimeSpan.FromMilliseconds(3200);
@@ -54,21 +56,39 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             IHttpClient httpClient,
             ICachedHttpResponseService cachedHttpClient,
             ICacheManager cacheManager,
+            IConfigService configService,
             Logger logger)
         {
             _httpClient = httpClient;
             _cachedHttpClient = cachedHttpClient;
             _searchCache = cacheManager.GetCache<List<Book>>(GetType(), "search");
             _apifyCache = cacheManager.GetCache<List<JObject>>(GetType(), "apify");
+            _configService = configService;
             _logger = logger;
         }
 
-        private static HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledSources(
-            Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
-            Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY"),
-            Environment.GetEnvironmentVariable("EUROPEANA_API_KEY"));
+        private string GoogleBooksApiKey => GetConfiguredValue("GOOGLE_BOOKS_API_KEY", _configService.GoogleBooksApiKey);
+        private string EuropeanaApiKey => GetConfiguredValue("EUROPEANA_API_KEY", _configService.EuropeanaApiKey);
+        private string ApifyGoodreadsActor => GetConfiguredValue("HARDCOVER_APIFY_GOODREADS_ACTOR", _configService.ApifyGoodreadsActor);
+        private string ApifyToken => GetConfiguredValue("HARDCOVER_APIFY_TOKEN", _configService.ApifyToken);
+        private string ApifyGoodreadsInputTemplate => GetConfiguredValue("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE", _configService.ApifyGoodreadsInputTemplate);
 
-        private static bool IsEnabled(string provider) => EnabledSources.Contains(provider);
+        private HashSet<string> EnabledSources => AdditionalMetadataSources.GetEnabledSources(
+            Environment.GetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES"),
+            _configService.AdditionalMetadataSources,
+            _configService.IsDefined("AdditionalMetadataSources"),
+            GoogleBooksApiKey,
+            EuropeanaApiKey,
+            ApifyGoodreadsActor,
+            ApifyToken);
+
+        private bool IsEnabled(string provider) => EnabledSources.Contains(provider);
+
+        private static string GetConfiguredValue(string environmentName, string savedValue)
+        {
+            var environmentValue = Environment.GetEnvironmentVariable(environmentName);
+            return environmentValue.IsNullOrWhiteSpace() ? savedValue ?? string.Empty : environmentValue;
+        }
 
         public List<Book> Search(string query)
         {
@@ -150,7 +170,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             JObject record;
             if (provider == GoogleBooks)
             {
-                var key = Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY");
+                var key = GoogleBooksApiKey;
                 if (key.IsNullOrWhiteSpace())
                 {
                     throw new BookInfoException("Google Books requires GOOGLE_BOOKS_API_KEY.");
@@ -176,7 +196,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             else if (provider == Europeana)
             {
-                var key = Environment.GetEnvironmentVariable("EUROPEANA_API_KEY");
+                var key = EuropeanaApiKey;
                 if (key.IsNullOrWhiteSpace())
                 {
                     throw new BookInfoException("Europeana requires EUROPEANA_API_KEY.");
@@ -273,7 +293,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> SearchGoogleBooks(string query)
         {
-            var key = Environment.GetEnvironmentVariable("GOOGLE_BOOKS_API_KEY");
+            var key = GoogleBooksApiKey;
             if (key.IsNullOrWhiteSpace())
             {
                 return new List<Book>();
@@ -304,7 +324,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> SearchEuropeana(string query)
         {
-            var key = Environment.GetEnvironmentVariable("EUROPEANA_API_KEY");
+            var key = EuropeanaApiKey;
             if (key.IsNullOrWhiteSpace())
             {
                 return new List<Book>();
@@ -449,8 +469,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> SearchApify(string query)
         {
-            if (Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_ACTOR").IsNullOrWhiteSpace() ||
-                Environment.GetEnvironmentVariable("HARDCOVER_APIFY_TOKEN").IsNullOrWhiteSpace())
+            if (ApifyGoodreadsActor.IsNullOrWhiteSpace() || ApifyToken.IsNullOrWhiteSpace())
             {
                 return new List<Book>();
             }
@@ -468,8 +487,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<JObject> RunApifyUncached(string query)
         {
-            var actor = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_ACTOR");
-            var token = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_TOKEN");
+            var actor = ApifyGoodreadsActor;
+            var token = ApifyToken;
             if (actor.IsNullOrWhiteSpace() || token.IsNullOrWhiteSpace())
             {
                 return new List<JObject>();
@@ -480,7 +499,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException("Invalid Apify actor identifier.");
             }
 
-            var template = Environment.GetEnvironmentVariable("HARDCOVER_APIFY_GOODREADS_INPUT_TEMPLATE");
+            var template = ApifyGoodreadsInputTemplate;
             if (template.IsNullOrWhiteSpace())
             {
                 template = "{\"searchQueries\":[{{query}}],\"maxItems\":10}";

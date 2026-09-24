@@ -11637,6 +11637,99 @@
           },
           "embedMetadata": {
             "type": "boolean"
+          },
+          "hardcoverAuth": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasHardcoverAuth": {
+            "type": "boolean"
+          },
+          "hardcoverAuthFromEnvironment": {
+            "type": "boolean"
+          },
+          "clearHardcoverAuth": {
+            "type": "boolean"
+          },
+          "enableGoogleBooks": {
+            "type": "boolean"
+          },
+          "enableLoc": {
+            "type": "boolean"
+          },
+          "enableGutendex": {
+            "type": "boolean"
+          },
+          "enableInternetArchive": {
+            "type": "boolean"
+          },
+          "enableNdl": {
+            "type": "boolean"
+          },
+          "enableEuropeana": {
+            "type": "boolean"
+          },
+          "enableApifyGoodreads": {
+            "type": "boolean"
+          },
+          "sourcesFromEnvironment": {
+            "type": "boolean"
+          },
+          "googleBooksApiKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasGoogleBooksApiKey": {
+            "type": "boolean"
+          },
+          "googleBooksApiKeyFromEnvironment": {
+            "type": "boolean"
+          },
+          "clearGoogleBooksApiKey": {
+            "type": "boolean"
+          },
+          "europeanaApiKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasEuropeanaApiKey": {
+            "type": "boolean"
+          },
+          "europeanaApiKeyFromEnvironment": {
+            "type": "boolean"
+          },
+          "clearEuropeanaApiKey": {
+            "type": "boolean"
+          },
+          "apifyGoodreadsActor": {
+            "type": "string",
+            "nullable": true
+          },
+          "apifyGoodreadsActorFromEnvironment": {
+            "type": "boolean"
+          },
+          "clearApifyGoodreadsActor": {
+            "type": "boolean"
+          },
+          "apifyToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasApifyToken": {
+            "type": "boolean"
+          },
+          "apifyTokenFromEnvironment": {
+            "type": "boolean"
+          },
+          "clearApifyToken": {
+            "type": "boolean"
+          },
+          "apifyGoodreadsInputTemplate": {
+            "type": "string",
+            "nullable": true
+          },
+          "apifyGoodreadsInputTemplateFromEnvironment": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

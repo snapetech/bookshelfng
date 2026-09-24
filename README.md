@@ -151,8 +151,10 @@ HARDCOVER_AUTH=Bearer your-hardcover-api-token
 
 `HARDCOVER_API_KEY` is accepted in place of `HARDCOVER_AUTH`. The default API
 endpoint is `https://api.hardcover.app`; set `HARDCOVER_API_URL` to use a
-compatible endpoint or test service. Credentials are provided at runtime and
-are not baked into the image.
+compatible endpoint or test service. The Hardcover token can also be entered
+in **Settings > Metadata > Primary Metadata Provider**. Environment credentials
+take precedence over the saved setting; the settings API never returns the
+saved token.
 
 Native mode handles transient request failures and sparse or nullable metadata
 responses, maps Hardcover work and edition records into Bookshelf's library
@@ -192,7 +194,15 @@ opt-in because Actor usage may be metered. Supported values for
 `BOOKSHELF_METADATA_SOURCES` are `googlebooks`, `loc`, `gutendex`,
 `internetarchive`, `ndl`, `europeana`, and `apify-goodreads`. When set, this
 variable replaces the defaults; an empty value disables all additional
-catalogs.
+catalogs. These providers can also be enabled in **Settings > Metadata >
+Additional Metadata Sources**, where Google Books, Europeana, and Apify
+credentials can be entered without editing deployment files. Saved credentials
+are stored in the BookshelfNG configuration database and returned as presence
+flags only. Non-empty credential environment variables take precedence over
+saved values. A custom `BOOKSHELF_METADATA_SOURCES` environment value remains
+authoritative and disables catalog selection in the UI; the installer-managed
+default lists are recognized as defaults so saved UI selections can replace
+them.
 
 ```env
 HARDCOVER=true
@@ -256,6 +266,16 @@ available when the library is refreshed. Search results are cached for 10
 minutes; Google Books, LOC, and Europeana responses and Apify result sets are
 cached for one day. Provider failures are logged independently; other
 configured sources continue to return results.
+
+The source checkboxes and optional credentials are managed separately by each
+BookshelfNG instance. For an ebook/audiobook pair, configure the two instances
+individually in their own **Settings > Metadata** pages. `HARDCOVER_NATIVE`,
+`METADATA_URL`, and `HARDCOVER_API_URL` still select deployment mode or an API
+endpoint and remain environment-level settings. SeerrNG's **Settings >
+Metadata** page explains this boundary; its TMDB/TVDB selectors control video
+metadata, not BookshelfNG catalogs. One-off SeerrNG migration-recovery adapters
+also keep their own environment settings because they run outside BookshelfNG's
+normal search process.
 
 The source setting applies to the `hardcover` and `softcover` images. It does
 not rewrite IDs already stored in the library, and it does not combine remote

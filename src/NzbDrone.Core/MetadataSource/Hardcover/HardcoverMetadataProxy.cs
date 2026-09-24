@@ -11,6 +11,7 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
@@ -395,6 +396,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
         private static DateTime _rateLimitPauseUntilUtc = DateTime.MinValue;
 
         private readonly IHttpClient _httpClient;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
         private readonly ICached<WorkResource> _workCache;
         private readonly ICached<AuthorResource> _authorCache;
@@ -402,10 +404,12 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
 
         public HardcoverMetadataProxy(IHttpClient httpClient,
                                       Logger logger,
-                                      ICacheManager cacheManager)
+                                      ICacheManager cacheManager,
+                                      IConfigService configService)
         {
             _httpClient = httpClient;
             _logger = logger;
+            _configService = configService;
             _workCache = cacheManager.GetCache<WorkResource>(GetType(), "works");
             _authorCache = cacheManager.GetCache<AuthorResource>(GetType(), "authors");
             _searchCache = cacheManager.GetCache<List<SearchJsonResource>>(GetType(), "search");
@@ -1409,9 +1413,11 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return WithFallback(Environment.GetEnvironmentVariable("HARDCOVER_API_URL"), DefaultApiUrl);
         }
 
-        private static string GetApiToken()
+        private string GetApiToken()
         {
-            var value = WithFallback(Environment.GetEnvironmentVariable("HARDCOVER_AUTH"), Environment.GetEnvironmentVariable("HARDCOVER_API_KEY"));
+            var value = WithFallback(
+                Environment.GetEnvironmentVariable("HARDCOVER_AUTH"),
+                WithFallback(Environment.GetEnvironmentVariable("HARDCOVER_API_KEY"), _configService.HardcoverAuth));
             if (value.IsNullOrWhiteSpace())
             {
                 return string.Empty;

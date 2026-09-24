@@ -58,6 +58,16 @@ const writeBookTagOptions = [
   }
 ];
 
+const additionalMetadataSources = [
+  { name: 'enableGoogleBooks', label: 'Google Books', help: 'GoogleBooksSourceHelp' },
+  { name: 'enableLoc', label: 'Library of Congress', help: 'LocSourceHelp' },
+  { name: 'enableGutendex', label: 'Gutendex / Project Gutenberg', help: 'GutendexSourceHelp' },
+  { name: 'enableInternetArchive', label: 'Internet Archive', help: 'InternetArchiveSourceHelp' },
+  { name: 'enableNdl', label: 'NDL Search', help: 'NdlSourceHelp' },
+  { name: 'enableEuropeana', label: 'Europeana', help: 'EuropeanaSourceHelp' },
+  { name: 'enableApifyGoodreads', label: 'Apify Goodreads-compatible Actor', help: 'ApifyGoodreadsSourceHelp' }
+];
+
 function MetadataProvider(props) {
   const {
     isFetching,
@@ -66,6 +76,14 @@ function MetadataProvider(props) {
     hasSettings,
     onInputChange
   } = props;
+
+  const sourcesFromEnvironment = settings.sourcesFromEnvironment?.value;
+  const hardcoverAuthFromEnvironment = settings.hardcoverAuthFromEnvironment?.value;
+  const googleBooksKeyFromEnvironment = settings.googleBooksApiKeyFromEnvironment?.value;
+  const europeanaKeyFromEnvironment = settings.europeanaApiKeyFromEnvironment?.value;
+  const apifyActorFromEnvironment = settings.apifyGoodreadsActorFromEnvironment?.value;
+  const apifyTokenFromEnvironment = settings.apifyTokenFromEnvironment?.value;
+  const apifyTemplateFromEnvironment = settings.apifyGoodreadsInputTemplateFromEnvironment?.value;
 
   return (
 
@@ -130,6 +148,183 @@ function MetadataProvider(props) {
                 />
               </FormGroup>
 
+            </FieldSet>
+
+            <FieldSet legend={translate('PrimaryMetadataProvider')}>
+              <FormGroup>
+                <FormLabel>{translate('HardcoverApiToken')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="hardcoverAuth"
+                  placeholder={translate('EnterToReplaceSavedKey')}
+                  helpText={translate('HardcoverApiTokenHelpText')}
+                  onChange={onInputChange}
+                  {...settings.hardcoverAuth}
+                  isDisabled={hardcoverAuthFromEnvironment}
+                  autoComplete="new-password"
+                />
+                {settings.hasHardcoverAuth?.value && (
+                  <p className="helpText">{translate('MetadataProviderKeySaved')}</p>
+                )}
+                {settings.hasHardcoverAuth?.value && !hardcoverAuthFromEnvironment && (
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="clearHardcoverAuth"
+                    helpText={translate('ClearSavedMetadataKeyHelpText')}
+                    onChange={onInputChange}
+                    {...settings.clearHardcoverAuth}
+                  />
+                )}
+                {hardcoverAuthFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
+            </FieldSet>
+
+            <FieldSet legend={translate('AdditionalMetadataSources')}>
+              <p className="helpText">
+                {sourcesFromEnvironment
+                  ? translate('AdditionalMetadataSourcesEnvironmentOverride')
+                  : translate('AdditionalMetadataSourcesHelpText')}
+              </p>
+
+              {additionalMetadataSources.map((source) => (
+                <FormGroup key={source.name}>
+                  <FormLabel>{source.label}</FormLabel>
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name={source.name}
+                    helpText={translate(source.help)}
+                    onChange={onInputChange}
+                    {...settings[source.name]}
+                    isDisabled={sourcesFromEnvironment}
+                  />
+                </FormGroup>
+              ))}
+
+              <FormGroup>
+                <FormLabel>{translate('GoogleBooksApiKey')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="googleBooksApiKey"
+                  placeholder={translate('EnterToReplaceSavedKey')}
+                  onChange={onInputChange}
+                  {...settings.googleBooksApiKey}
+                  isDisabled={googleBooksKeyFromEnvironment}
+                  autoComplete="new-password"
+                />
+                {settings.hasGoogleBooksApiKey?.value && (
+                  <p className="helpText">{translate('MetadataProviderKeySaved')}</p>
+                )}
+                {settings.hasGoogleBooksApiKey?.value && !googleBooksKeyFromEnvironment && (
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="clearGoogleBooksApiKey"
+                    helpText={translate('ClearSavedMetadataKeyHelpText')}
+                    onChange={onInputChange}
+                    {...settings.clearGoogleBooksApiKey}
+                  />
+                )}
+                {googleBooksKeyFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('EuropeanaApiKey')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="europeanaApiKey"
+                  placeholder={translate('EnterToReplaceSavedKey')}
+                  onChange={onInputChange}
+                  {...settings.europeanaApiKey}
+                  isDisabled={europeanaKeyFromEnvironment}
+                  autoComplete="new-password"
+                />
+                {settings.hasEuropeanaApiKey?.value && (
+                  <p className="helpText">{translate('MetadataProviderKeySaved')}</p>
+                )}
+                {settings.hasEuropeanaApiKey?.value && !europeanaKeyFromEnvironment && (
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="clearEuropeanaApiKey"
+                    helpText={translate('ClearSavedMetadataKeyHelpText')}
+                    onChange={onInputChange}
+                    {...settings.clearEuropeanaApiKey}
+                  />
+                )}
+                {europeanaKeyFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('ApifyGoodreadsActor')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.TEXT}
+                  name="apifyGoodreadsActor"
+                  placeholder="publisher~actor-name"
+                  onChange={onInputChange}
+                  {...settings.apifyGoodreadsActor}
+                  isDisabled={apifyActorFromEnvironment}
+                />
+                {settings.apifyGoodreadsActor?.value && !apifyActorFromEnvironment && (
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="clearApifyGoodreadsActor"
+                    helpText={translate('ClearApifyGoodreadsActorHelpText')}
+                    onChange={onInputChange}
+                    {...settings.clearApifyGoodreadsActor}
+                  />
+                )}
+                {apifyActorFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('ApifyToken')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="apifyToken"
+                  placeholder={translate('EnterToReplaceSavedKey')}
+                  onChange={onInputChange}
+                  {...settings.apifyToken}
+                  isDisabled={apifyTokenFromEnvironment}
+                  autoComplete="new-password"
+                />
+                {settings.hasApifyToken?.value && (
+                  <p className="helpText">{translate('MetadataProviderKeySaved')}</p>
+                )}
+                {settings.hasApifyToken?.value && !apifyTokenFromEnvironment && (
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="clearApifyToken"
+                    helpText={translate('ClearSavedMetadataKeyHelpText')}
+                    onChange={onInputChange}
+                    {...settings.clearApifyToken}
+                  />
+                )}
+                {apifyTokenFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('ApifyGoodreadsInputTemplate')}</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.TEXT_AREA}
+                  name="apifyGoodreadsInputTemplate"
+                  placeholder={'{"searchQueries":[{{query}}],"maxItems":10}'}
+                  helpText={translate('ApifyGoodreadsInputTemplateHelpText')}
+                  onChange={onInputChange}
+                  {...settings.apifyGoodreadsInputTemplate}
+                  isDisabled={apifyTemplateFromEnvironment}
+                />
+                {apifyTemplateFromEnvironment && (
+                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
+                )}
+              </FormGroup>
             </FieldSet>
 
             <FieldSet legend={translate('AudioFileMetadata')}>
