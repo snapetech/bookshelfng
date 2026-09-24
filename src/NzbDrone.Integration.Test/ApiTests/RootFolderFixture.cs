@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using FluentAssertions;
 using NUnit.Framework;
 using Readarr.Api.V1.RootFolders;
@@ -12,6 +13,24 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void should_have_no_root_folder_initially()
         {
             RootFolders.All().Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_bind_root_folder_post_body()
+        {
+            var rootFolder = new RootFolderResource
+            {
+                Name = "Api body binding test",
+                Path = GetTempDirectory("RootFolderBodyBinding"),
+                DefaultMetadataProfileId = 1,
+                DefaultQualityProfileId = 1
+            };
+            Directory.CreateDirectory(rootFolder.Path);
+
+            var response = RootFolders.Post(rootFolder);
+
+            response.Name.Should().Be(rootFolder.Name);
+            RootFolders.Delete(response.Id);
         }
 
         [Test]

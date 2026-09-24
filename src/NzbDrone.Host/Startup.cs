@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -94,6 +95,13 @@ namespace NzbDrone.Host
                 STJson.ApplySerializerSettings(options.JsonSerializerOptions);
             })
             .AddControllersAsServices();
+
+            services.Configure<ApiBehaviorOptions>(options =>
+            {
+                // AutoAddServices registers API resource DTOs as concrete services.
+                // Keep complex API action parameters bound from request bodies.
+                options.DisableImplicitFromServicesParameters = true;
+            });
 
             services.AddSwaggerGen(c =>
             {
