@@ -17,3 +17,8 @@ override_dh_auto_install:
 	install -m 0644 packaging/systemd/bookshelfng.sysusers debian/bookshelfng/usr/lib/sysusers.d/bookshelfng.conf
 	install -m 0644 packaging/systemd/bookshelfng.tmpfiles debian/bookshelfng/usr/lib/tmpfiles.d/bookshelfng.conf
 	chmod -R u=rwX,go=rX debian/bookshelfng/usr/lib/bookshelfng
+
+# The .NET LTTng trace provider is optional and links to ABI 0, which is not
+# available on current Ubuntu releases. Do not require that optional provider.
+override_dh_shlibdeps:
+	dh_shlibdeps -Xlibcoreclrtraceptprovider.so

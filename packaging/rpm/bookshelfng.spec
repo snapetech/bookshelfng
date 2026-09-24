@@ -1,4 +1,7 @@
 %global _libdir /usr/lib
+# .NET's optional LTTng trace provider links to ABI 0, unavailable on current
+# Fedora/RHEL releases. Keep that optional library from adding an install requirement.
+%global __requires_exclude ^liblttng-ust[.]so[.]0
 Name:           bookshelfng
 Version:        0.0.0
 Release:        1%{?dist}
