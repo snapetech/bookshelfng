@@ -7,6 +7,7 @@ ENV XDG_CONFIG_HOME="/config/xdg" \
     TMPDIR=/run/readarr-temp
 
 RUN apk add -U --upgrade --no-cache \
+    ffmpeg \
     icu-libs \
     sqlite-libs \
     xmlstarlet

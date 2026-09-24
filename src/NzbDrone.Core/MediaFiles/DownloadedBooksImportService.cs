@@ -31,6 +31,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IAuthorService _authorService;
         private readonly IParsingService _parsingService;
         private readonly IMakeImportDecision _importDecisionMaker;
+        private readonly IAudiobookM4bMergeService _audiobookM4bMergeService;
         private readonly IImportApprovedBooks _importApprovedTracks;
         private readonly IEventAggregator _eventAggregator;
         private readonly IRuntimeInfo _runtimeInfo;
@@ -41,6 +42,7 @@ namespace NzbDrone.Core.MediaFiles
                                              IAuthorService authorService,
                                              IParsingService parsingService,
                                              IMakeImportDecision importDecisionMaker,
+                                             IAudiobookM4bMergeService audiobookM4bMergeService,
                                              IImportApprovedBooks importApprovedTracks,
                                              IEventAggregator eventAggregator,
                                              IRuntimeInfo runtimeInfo,
@@ -51,6 +53,7 @@ namespace NzbDrone.Core.MediaFiles
             _authorService = authorService;
             _parsingService = parsingService;
             _importDecisionMaker = importDecisionMaker;
+            _audiobookM4bMergeService = audiobookM4bMergeService;
             _importApprovedTracks = importApprovedTracks;
             _eventAggregator = eventAggregator;
             _runtimeInfo = runtimeInfo;
@@ -226,7 +229,17 @@ namespace NzbDrone.Core.MediaFiles
             };
 
             var decisions = _importDecisionMaker.GetImportDecisions(audioFiles, idOverrides, idInfo, idConfig);
-            var importResults = _importApprovedTracks.Import(decisions, true, downloadClientItem, importMode);
+            var mergeBatch = _audiobookM4bMergeService.Prepare(decisions, downloadClientItem);
+            var importResults = new List<ImportResult>();
+
+            try
+            {
+                importResults = _importApprovedTracks.Import(mergeBatch.Decisions, true, downloadClientItem, importMode);
+            }
+            finally
+            {
+                _audiobookM4bMergeService.Complete(mergeBatch, importResults, importMode, downloadClientItem);
+            }
 
             if (importMode == ImportMode.Auto)
             {
