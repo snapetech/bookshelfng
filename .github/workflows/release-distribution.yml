@@ -244,9 +244,40 @@ jobs:
           contents = helper.read_text()
           old = 'source_date_epoch="$(git show -s --format=%ct "$tag")"'
           new = 'source_date_epoch="$(git show -s --format=%ct "${tag}^{commit}")"'
-          if contents.count(old) != 1:
+          if contents.count(old) == 1:
+              contents = contents.replace(old, new, 1)
+          elif new not in contents:
               raise SystemExit("Cannot align archive helper timestamp lookup for this tag.")
-          helper.write_text(contents.replace(old, new, 1))
+
+          old_check = '[[ -f "$source_dir/Readarr" || -f "$source_dir/Readarr.exe" ]] || {'
+          new_check = '[[ -f "$source_dir/Readarr" || -f "$source_dir/Readarr.exe" || -f "$source_dir/Readarr.Console.exe" ]] || {'
+          if old_check in contents:
+              contents = contents.replace(old_check, new_check, 1)
+          elif 'Readarr.Console.exe' not in contents:
+              raise SystemExit("Cannot align archive helper host executable validation for this tag.")
+
+          old_launcher = '''  if [[ -f "$staging/$archive_base/Readarr.exe" ]]; then
+    cat > "$staging/$archive_base/BookshelfNG.cmd" <<'EOF'
+@echo off
+"%~dp0Readarr.exe" %*
+EOF
+  fi'''
+          new_launcher = '''  if [[ "$rid" == win-* ]]; then
+    host_executable="Readarr.exe"
+    if [[ -f "$staging/$archive_base/Readarr.Console.exe" ]]; then
+      host_executable="Readarr.Console.exe"
+    fi
+    cat > "$staging/$archive_base/BookshelfNG.cmd" <<EOF
+@echo off
+"%~dp0${host_executable}" %*
+EOF
+  fi'''
+          if old_launcher in contents:
+              contents = contents.replace(old_launcher, new_launcher, 1)
+          elif 'Readarr.Console.exe' not in contents:
+              raise SystemExit("Cannot align archive helper Windows launcher for this tag.")
+
+          helper.write_text(contents)
           PY
 
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0

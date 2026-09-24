@@ -35,6 +35,7 @@ make_archive() {
   local archive_base="BookshelfNG-${tag}-${rid}"
   local archive
   local staging
+  local host_executable
 
   if [[ "$rid" == win-* ]]; then
     archive="$output_dir/$archive_base.zip"
@@ -46,10 +47,16 @@ make_archive() {
     echo "Missing package output for $rid: $source_dir" >&2
     exit 1
   }
-  [[ -f "$source_dir/Readarr" || -f "$source_dir/Readarr.exe" ]] || {
+  if [[ -f "$source_dir/Readarr" ]]; then
+    host_executable="Readarr"
+  elif [[ -f "$source_dir/Readarr.exe" ]]; then
+    host_executable="Readarr.exe"
+  elif [[ -f "$source_dir/Readarr.Console.exe" ]]; then
+    host_executable="Readarr.Console.exe"
+  else
     echo "Package output for $rid does not contain the BookshelfNG host executable." >&2
     exit 1
-  }
+  fi
 
   staging="$(mktemp -d "$runner_temp/bookshelfng-${rid}.XXXXXX")"
   trap 'rm -rf "$staging"' RETURN
@@ -57,13 +64,13 @@ make_archive() {
   cp -a "$source_dir/." "$staging/$archive_base/"
   cp LICENSE.md "$staging/$archive_base/LICENSE.md"
   cp docs/standalone-install.md "$staging/$archive_base/INSTALL.md"
-  if [[ -f "$staging/$archive_base/Readarr" ]]; then
+  if [[ "$host_executable" == "Readarr" ]]; then
     chmod 0755 "$staging/$archive_base/Readarr"
   fi
-  if [[ -f "$staging/$archive_base/Readarr.exe" ]]; then
-    cat > "$staging/$archive_base/BookshelfNG.cmd" <<'EOF'
+  if [[ "$rid" == win-* ]]; then
+    cat > "$staging/$archive_base/BookshelfNG.cmd" <<EOF
 @echo off
-"%~dp0Readarr.exe" %*
+"%~dp0${host_executable}" %*
 EOF
   fi
   find "$staging/$archive_base" -exec touch -h -d "@$source_date_epoch" {} +
