@@ -72,6 +72,11 @@ namespace NzbDrone.Core.MediaFiles
             // and deleting it would destroy an unrelated book.
             var destinationFolder = isCalibre ? null : GetDestinationFolder(bookFile, localBook);
 
+            if (!isCalibre && existingFiles.Any() && destinationFolder == null)
+            {
+                throw new InvalidOperationException("Cannot safely replace existing book files because the destination folder could not be determined.");
+            }
+
             foreach (var file in existingFiles)
             {
                 var bookFilePath = file.Path;

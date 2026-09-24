@@ -5,6 +5,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
@@ -29,6 +30,7 @@ namespace NzbDrone.Core.Parser
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IEditionService _editionService;
+        private readonly IConfigService _configService;
         private readonly IMediaFileService _mediaFileService;
         private readonly Logger _logger;
 
@@ -36,10 +38,12 @@ namespace NzbDrone.Core.Parser
                               IBookService bookService,
                               IEditionService editionService,
                               IMediaFileService mediaFileService,
+                              IConfigService configService,
                               Logger logger)
         {
             _bookService = bookService;
             _editionService = editionService;
+            _configService = configService;
             _authorService = authorService;
             _mediaFileService = mediaFileService;
             _logger = logger;
@@ -208,6 +212,7 @@ namespace NzbDrone.Core.Parser
             Book bestBook = null;
 
             var possibleAuthors = _authorService.GetReportCandidates(title);
+            var minimumTitleMatch = _configService.BookImportMinimumMatchPercent / 100.0;
 
             foreach (var author in possibleAuthors)
             {
@@ -218,7 +223,13 @@ namespace NzbDrone.Core.Parser
 
                 foreach (var book in possibleBooks)
                 {
-                    var bookMatch = title.FuzzyMatch(book.Title, 0.5);
+                    var bookMatch = title.FuzzyMatch(book.Title, minimumTitleMatch);
+                    if (bookMatch.Item1 < 0)
+                    {
+                        _logger.Trace($"Skipping book {book}: title match is below {minimumTitleMatch:P0}");
+                        continue;
+                    }
+
                     var score = (authorMatch.Item3 + bookMatch.Item3) / 2;
 
                     _logger.Trace($"Book {book} has score {score}");
@@ -233,7 +244,13 @@ namespace NzbDrone.Core.Parser
                 var possibleEditions = _editionService.GetCandidates(author.AuthorMetadataId, title);
                 foreach (var edition in possibleEditions)
                 {
-                    var editionMatch = title.FuzzyMatch(edition.Title, 0.5);
+                    var editionMatch = title.FuzzyMatch(edition.Title, minimumTitleMatch);
+                    if (editionMatch.Item1 < 0)
+                    {
+                        _logger.Trace($"Skipping edition {edition}: title match is below {minimumTitleMatch:P0}");
+                        continue;
+                    }
+
                     var score = (authorMatch.Item3 + editionMatch.Item3) / 2;
 
                     _logger.Trace($"Edition {edition} has score {score}");

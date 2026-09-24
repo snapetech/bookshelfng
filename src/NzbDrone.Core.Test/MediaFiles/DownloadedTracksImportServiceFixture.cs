@@ -124,7 +124,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             GivenSuccessfulImport();
             var author = Builder<Author>.CreateNew().Build();
 
-            Subject.ProcessPath(_subFolders[0], ImportMode.Auto, author, _trackedDownload.DownloadItem);
+            Subject.ProcessPath(_subFolders[0], ImportMode.Auto, new IdentificationOverrides { Author = author }, _trackedDownload.DownloadItem);
 
             Mocker.GetMock<IAudiobookM4bMergeService>()
                 .Verify(s => s.Prepare(It.IsAny<List<ImportDecision<LocalBook>>>(), _trackedDownload.DownloadItem), Times.Once());
