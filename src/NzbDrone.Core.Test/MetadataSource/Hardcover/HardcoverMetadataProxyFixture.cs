@@ -212,9 +212,38 @@ namespace NzbDrone.Core.Test.MetadataSource.Hardcover
             authorPayload["variables"]["offset"].Value<int>().Should().Be(0);
         }
 
-        private static string CreateAuthorResponse()
+        [Test]
+        public void should_keep_author_endpoint_works_when_nested_author_ids_differ()
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(x => x.Execute(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(request =>
+                {
+                    var payload = JObject.Parse(Encoding.UTF8.GetString(request.ContentData));
+                    var operation = payload["operationName"].Value<string>();
+                    var response = operation == "GetAuthorEditions"
+                        ? CreateAuthorResponse(true)
+                        : WorkResponse;
+
+                    return new HttpResponse(request,
+                        new HttpHeader { { "Content-Type", "application/json" } },
+                        response);
+                });
+
+            var result = Subject.GetAuthor("42");
+
+            result.Works.Should().ContainSingle();
+            result.Works[0].ForeignId.Should().Be(101);
+        }
+
+        private static string CreateAuthorResponse(bool mismatchedNestedAuthor = false)
         {
             var work = (JObject)JObject.Parse(WorkResponse)["data"]["books_by_pk"];
+            if (mismatchedNestedAuthor)
+            {
+                work["contributions"][0]["author"]["id"] = 99;
+            }
+
             var primaryAuthor = (JObject)work["contributions"][0]["author"];
             var author = new JObject
             {
