@@ -22,8 +22,6 @@ on:
         required: false
       COPR_TOKEN:
         required: false
-      COPR_USERNAME:
-        required: false
       GPG_PRIVATE_KEY:
         required: false
       LAUNCHPAD_PPA:
@@ -33,7 +31,7 @@ on:
       CHOCOLATEY_API_KEY:
         required: false
       DISCORD_RELEASE_WEBHOOK:
-        required: false
+        required: true
 
 permissions:
   actions: read
@@ -456,6 +454,12 @@ jobs:
             test -f "release-assets/$asset.sha256"
             (cd release-assets && sha256sum -c "$asset.sha256")
           done
+          for rid in x64 arm64; do
+            asset="BookshelfNG-${TAG}-macos-${rid}.app.zip"
+            test -f "release-assets/$asset"
+            test -f "release-assets/$asset.sha256"
+            (cd release-assets && sha256sum -c "$asset.sha256")
+          done
           for pattern in '*.deb' '*.rpm' '*.AppImage' '*.flatpak' '*.snap' '*.tgz'; do
             compgen -G "release-assets/$pattern" >/dev/null || {
               echo "Missing required release asset matching $pattern" >&2
@@ -496,7 +500,7 @@ jobs:
           COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA || 'ppa:keefshape/bookshelfng' }}
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
         run: |
@@ -651,7 +655,7 @@ jobs:
         env:
           COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
-          COPR_USERNAME: ${{ secrets.COPR_USERNAME || 'slskdn' }}
+          COPR_USERNAME: ${{ vars.COPR_USERNAME || 'slskdn' }}
           COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
         run: |
           set -euo pipefail
@@ -744,7 +748,8 @@ jobs:
           cp -a packaging/systemd "$package_root/packaging/"
           tar -xzf "$RUNNER_TEMP/BookshelfNG-${TAG}-linux-x64.tar.gz" --strip-components=1 -C "$package_root/dist"
           cp LICENSE.md "$package_root/"
-          find "$package_root/dist" -type f | sed "s#^$package_root/##" > "$package_root/debian/source/include-binaries"
+          printf '3.0 (native)\n' > "$package_root/debian/source/format"
+          rm -f "$package_root/debian/source/include-binaries"
           ppa_revision="$(date -u +%Y%m%d%H%M)"
           cat > "$package_root/debian/changelog" <<EOF
           bookshelfng (${VERSION}+ppa${ppa_revision}~noble) noble; urgency=medium
@@ -763,7 +768,7 @@ jobs:
 
       - name: Upload to configured Launchpad PPA
         env:
-          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA || 'ppa:keefshape/bookshelfng' }}
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA }}
         run: |
           set -euo pipefail
           [[ "$LAUNCHPAD_PPA" =~ ^ppa:[^/]+/[^/]+$ ]] || {
@@ -775,7 +780,7 @@ jobs:
           archive="${shorthand#*/}"
           owner="${owner#\~}"
           path="~${owner}/ubuntu/${archive}"
-          archive_api="https://api.launchpad.net/1.0/~${owner}/+archive/ubuntu/${archive}"
+          archive_api="https://api.launchpad.net/1.0/~${owner}/%2Barchive/ubuntu/${archive}"
           curl --fail --silent --show-error "$archive_api" >/dev/null || {
             echo "Launchpad PPA does not exist or is not public: $LAUNCHPAD_PPA" >&2
             exit 1

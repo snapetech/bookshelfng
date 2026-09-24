@@ -66,7 +66,3 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 %{_unitdir}/bookshelfng.service
 %{_prefix}/lib/sysusers.d/bookshelfng.conf
 %{_prefix}/lib/tmpfiles.d/bookshelfng.conf
-
-%changelog
-* Thu Jan 01 1970 BookshelfNG Release Automation <bookshelfng@snapetech.com> - 0.0.0-1
-- Initial package
