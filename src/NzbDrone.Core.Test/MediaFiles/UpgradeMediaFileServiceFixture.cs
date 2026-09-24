@@ -61,10 +61,12 @@ namespace NzbDrone.Core.Test.MediaFiles
                               new BookFile
                               {
                                   Id = 1,
-                                  Path = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi"),
+                                  Path = Path.Combine(_rootPath, "Season 01", "30.rock.s01e01.avi"),
                               }
                           }))
                 .Build();
+
+            GivenDestinationFolder(Path.Combine(_rootPath, "Season 01"));
         }
 
         [Test]
