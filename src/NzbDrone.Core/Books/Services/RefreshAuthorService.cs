@@ -362,6 +362,13 @@ namespace NzbDrone.Core.Books
                 try
                 {
                     var data = GetSkyhookData(author.ForeignAuthorId);
+
+                    if (data == null)
+                    {
+                        _logger.Warn("Keeping author {0} because the metadata source did not return its record", author);
+                        continue;
+                    }
+
                     updated |= RefreshEntityInfo(author, null, data, true, false, null);
                 }
                 catch (Exception e)
@@ -412,6 +419,13 @@ namespace NzbDrone.Core.Books
                         {
                             LogProgress(author);
                             var data = GetSkyhookData(author.ForeignAuthorId);
+
+                            if (data == null)
+                            {
+                                _logger.Warn("Keeping author {0} because the metadata source did not return its record", author);
+                                continue;
+                            }
+
                             updated |= RefreshEntityInfo(author, null, data, manualTrigger, false, message.LastStartTime);
                         }
                         catch (Exception e)
