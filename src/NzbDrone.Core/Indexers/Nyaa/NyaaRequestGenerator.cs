@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.IndexerSearch.Definitions;
 
@@ -19,29 +20,32 @@ namespace NzbDrone.Core.Indexers.Nyaa
 
         public virtual IndexerPageableRequestChain GetSearchRequests(BookSearchCriteria searchCriteria)
         {
-            throw new System.NotImplementedException();
+            var pageableRequests = new IndexerPageableRequestChain();
+
+            pageableRequests.Add(GetPagedRequests(searchCriteria.BookQuery));
+
+            return pageableRequests;
         }
 
         public virtual IndexerPageableRequestChain GetSearchRequests(AuthorSearchCriteria searchCriteria)
         {
-            throw new System.NotImplementedException();
+            var pageableRequests = new IndexerPageableRequestChain();
+
+            pageableRequests.Add(GetPagedRequests(searchCriteria.AuthorQuery));
+
+            return pageableRequests;
         }
 
         private IEnumerable<IndexerRequest> GetPagedRequests(string term)
         {
             var baseUrl = $"{Settings.BaseUrl.TrimEnd('/')}/?page=rss{Settings.AdditionalParameters}";
 
-            if (term != null)
+            if (!string.IsNullOrWhiteSpace(term))
             {
-                baseUrl += "&term=" + term;
+                baseUrl += "&q=" + Uri.EscapeDataString(term);
             }
 
             yield return new IndexerRequest(baseUrl, HttpAccept.Rss);
-        }
-
-        private string PrepareQuery(string query)
-        {
-            return query.Replace(' ', '+');
         }
     }
 }
