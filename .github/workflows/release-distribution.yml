@@ -32,6 +32,20 @@ on:
         required: false
       DISCORD_RELEASE_WEBHOOK:
         required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Verified BookshelfNG main release tag
+        required: true
+        type: string
+      softcover_digest:
+        description: Published Softcover container digest
+        required: true
+        type: string
+      hardcover_digest:
+        description: Published Hardcover container digest
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -133,6 +147,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Align the archive helper with built runtime targets on manual reruns
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          sed -i \
+            -e '/^[[:space:]]*linux-arm[[:space:]]*$/d' \
+            -e '/^[[:space:]]*linux-musl-arm[[:space:]]*$/d' \
+            scripts/create-release-archives.sh
+
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: 10.0.401
@@ -169,8 +192,8 @@ jobs:
         run: |
           set -euo pipefail
           for rid in \
-            linux-x64 linux-x86 linux-arm linux-arm64 \
-            linux-musl-x64 linux-musl-arm linux-musl-arm64 \
+            linux-x64 linux-x86 linux-arm64 \
+            linux-musl-x64 linux-musl-arm64 \
             freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
             ./build.sh --packages --framework net10.0 --runtime "$rid"
           done
@@ -408,7 +431,7 @@ jobs:
           ref: ${{ needs.validate.outputs.tag }}
           persist-credentials: false
 
-      - uses: azure/setup-helm@9bc31f7d9a5c081ad5e950ef2551dd05c33a4b51 # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Render release-versioned chart
         env:
@@ -456,8 +479,8 @@ jobs:
         run: |
           set -euo pipefail
           for rid in \
-            linux-x64 linux-x86 linux-arm linux-arm64 \
-            linux-musl-x64 linux-musl-arm linux-musl-arm64 \
+            linux-x64 linux-x86 linux-arm64 \
+            linux-musl-x64 linux-musl-arm64 \
             freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
             if [[ "$rid" == win-* ]]; then
               asset="BookshelfNG-${TAG}-${rid}.zip"
@@ -903,7 +926,7 @@ jobs:
           name: bookshelfng-helm
           path: dist-release
 
-      - uses: azure/setup-helm@9bc31f7d9a5c081ad5e950ef2551dd05c33a4b51 # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 

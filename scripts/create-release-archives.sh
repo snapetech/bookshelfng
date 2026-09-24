@@ -19,10 +19,8 @@ source_date_epoch="$(git show -s --format=%ct "$tag")"
 release_rids=(
   linux-x64
   linux-x86
-  linux-arm
   linux-arm64
   linux-musl-x64
-  linux-musl-arm
   linux-musl-arm64
   freebsd-x64
   osx-x64
