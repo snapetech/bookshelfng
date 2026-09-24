@@ -268,7 +268,6 @@ jobs:
         run: |
           set -euo pipefail
           ./build.sh --backend --frontend --enable-extra-platforms \
-            --msbuild-arg="-p:RuntimeIdentifiers=${BOOKSHELF_RUNTIME_IDENTIFIERS//;/%3B}" \
             --msbuild-arg=-p:SelfContained=true
 
       - name: Package all supported runtime identifiers
