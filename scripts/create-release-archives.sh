@@ -14,7 +14,7 @@ mkdir -p "$output_dir"
 if [[ "$output_dir" != /* ]]; then
   output_dir="$(cd "$output_dir" && pwd)"
 fi
-source_date_epoch="$(git show -s --format=%ct "$tag")"
+source_date_epoch="$(git show -s --format=%ct "${tag}^{commit}")"
 
 release_rids=(
   linux-x64

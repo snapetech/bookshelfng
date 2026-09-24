@@ -237,6 +237,17 @@ jobs:
             -e '/^[[:space:]]*linux-arm[[:space:]]*$/d' \
             -e '/^[[:space:]]*linux-musl-arm[[:space:]]*$/d' \
             scripts/create-release-archives.sh
+          python3 - <<'PY'
+          from pathlib import Path
+
+          helper = Path("scripts/create-release-archives.sh")
+          contents = helper.read_text()
+          old = 'source_date_epoch="$(git show -s --format=%ct "$tag")"'
+          new = 'source_date_epoch="$(git show -s --format=%ct "${tag}^{commit}")"'
+          if contents.count(old) != 1:
+              raise SystemExit("Cannot align archive helper timestamp lookup for this tag.")
+          helper.write_text(contents.replace(old, new, 1))
+          PY
 
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
