@@ -960,13 +960,32 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return books;
             }
 
-            var authors = resource.Authors.Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
-            var series = resource.Series.Select(MapSeries).ToList();
+            var works = resource.Works ?? new List<WorkResource>();
+            var authorResources = (resource.Authors ?? new List<AuthorResource>())
+                .Concat(works.Where(x => x?.Authors != null).SelectMany(x => x.Authors))
+                .Where(x => x != null && x.ForeignId > 0)
+                .GroupBy(x => x.ForeignId)
+                .Select(x => x.First())
+                .ToList();
+            var authors = authorResources.Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
+            var seriesResources = (resource.Series ?? new List<SeriesResource>()).Where(x => x != null).ToList();
+            var series = seriesResources.Select(MapSeries).ToList();
 
-            foreach (var work in resource.Works)
+            foreach (var work in works)
             {
+                if (work == null)
+                {
+                    continue;
+                }
+
                 var book = MapBook(work);
-                var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
+                var authorId = GetAuthorId(work).ToString();
+
+                if (authorId == "0")
+                {
+                    _logger.Debug("Skipping metadata work {0} because it has no author mapping", work.ForeignId);
+                    continue;
+                }
 
                 if (attachDatabaseEntities)
                 {
@@ -987,7 +1006,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 books.Add(book);
             }
 
-            MapSeriesLinks(series, books, resource.Series);
+            MapSeriesLinks(series, books, seriesResources);
 
             return books;
         }
@@ -1304,7 +1323,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             // only take series where there are some works
-            foreach (var s in resource.Where(x => x.LinkItems.Any()))
+            foreach (var s in resource.Where(x => x?.LinkItems?.Any() == true))
             {
                 if (seriesDict.TryGetValue(s.ForeignId.ToString(), out var curr))
                 {
@@ -1453,15 +1472,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static int GetAuthorId(WorkResource b)
         {
-            // Check if Books collection is null before attempting LINQ operations
-            if (b.Books == null || !b.Books.Any())
+            var book = b.Books?.Where(x => x != null)
+                .OrderByDescending(x => x.RatingCount * x.AverageRating)
+                .FirstOrDefault(x => x.Contributors?.Any(c => c != null && c.ForeignId > 0) == true);
+            var contributorId = book?.Contributors?.FirstOrDefault(x => x != null && x.ForeignId > 0)?.ForeignId ?? 0;
+
+            if (contributorId > 0)
             {
-                return 0;
+                return contributorId;
             }
 
-            var book = b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating)
-                .FirstOrDefault(x => x.Contributors != null && x.Contributors.Any());
-            return book?.Contributors?.FirstOrDefault()?.ForeignId ?? 0;
+            return b.Authors?.FirstOrDefault(x => x != null && x.ForeignId > 0)?.ForeignId ?? 0;
         }
     }
 }
