@@ -741,11 +741,12 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
                     try
                     {
                         var work = book?["editions"] is JArray ? MapWork(book) : GetWork(workId.ToString(CultureInfo.InvariantCulture), interactiveSearch);
-                        if (GetAuthorIds(work).Contains(id))
-                        {
-                            works.Add(work);
-                            _workCache.Set(workId.ToString(CultureInfo.InvariantCulture), work, TimeSpan.FromHours(6));
-                        }
+
+                        // The contribution query is scoped to this author. Keep
+                        // its work even when canonicalization or role mapping
+                        // omits the author from the nested contributor list.
+                        works.Add(work);
+                        _workCache.Set(workId.ToString(CultureInfo.InvariantCulture), work, TimeSpan.FromHours(6));
                     }
                     catch (BookInfoException ex)
                     {
@@ -1457,17 +1458,6 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
             return role.IsNullOrWhiteSpace() ||
                    role.Equals("author", StringComparison.OrdinalIgnoreCase) ||
                    role.Equals("author/narrator", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static IEnumerable<int> GetAuthorIds(WorkResource work)
-        {
-            return (work?.Authors ?? new List<AuthorResource>())
-                .Select(x => x.ForeignId)
-                .Concat((work?.Books ?? new List<BookResource>())
-                    .SelectMany(x => x.Contributors ?? new List<ContributorResource>())
-                    .Select(x => x.ForeignId))
-                .Where(x => x != 0)
-                .Distinct();
         }
 
         private static object GetCacheLock(string key)

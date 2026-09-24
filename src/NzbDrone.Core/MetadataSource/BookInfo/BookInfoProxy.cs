@@ -1268,8 +1268,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             var metadata = MapAuthorMetadata(resource);
 
+            // Author resources come from an author-scoped endpoint. Do not
+            // discard a catalog work because its nested contributor IDs are
+            // absent or use a different canonical-work identity.
             var books = resource.Works
-                .Where(x => x.ForeignId > 0 && HasAuthor(x, resource.ForeignId))
+                .Where(x => x.ForeignId > 0)
                 .Select(MapBook)
                 .ToList();
 
@@ -1459,13 +1462,6 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var book = b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating)
                 .FirstOrDefault(x => x.Contributors != null && x.Contributors.Any());
             return book?.Contributors?.FirstOrDefault()?.ForeignId ?? 0;
-        }
-
-        private static bool HasAuthor(WorkResource work, int authorId)
-        {
-            return work?.Authors?.Any(x => x.ForeignId == authorId) == true ||
-                   work?.Books?.SelectMany(x => x.Contributors ?? new List<ContributorResource>())
-                       .Any(x => x.ForeignId == authorId) == true;
         }
     }
 }
