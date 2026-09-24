@@ -252,7 +252,7 @@ class MediaManagement extends Component {
                             advancedSettings={advancedSettings}
                             isAdvanced={true}
                           >
-                            <FormLabel>{translate('ImportExtraFiles')}</FormLabel>
+                            <FormLabel>{translate('ExtraFileExtensions')}</FormLabel>
 
                             <FormInputGroup
                               type={inputTypes.TEXT}
