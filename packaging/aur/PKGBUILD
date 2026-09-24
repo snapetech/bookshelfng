@@ -1,0 +1,29 @@
+pkgname=bookshelfng-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Standalone book library manager and download automation server'
+arch=('x86_64')
+url='https://github.com/snapetech/bookshelfng'
+license=('GPL3')
+depends=('glibc' 'gcc-libs' 'icu' 'openssl' 'sqlite')
+optdepends=('ffmpeg: create chaptered audiobook files')
+backup=('etc/bookshelfng/bookshelfng.env')
+install=bookshelfng.install
+source=("https://github.com/snapetech/bookshelfng/releases/download/main-v${pkgver}/BookshelfNG-main-v${pkgver}-linux-x64.tar.gz"
+        'bookshelfng.service'
+        'bookshelfng.env'
+        'bookshelfng.sysusers'
+        'bookshelfng.tmpfiles')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -d "${pkgdir}/usr/lib/bookshelfng" "${pkgdir}/usr/bin" "${pkgdir}/etc/bookshelfng"
+  install -d "${pkgdir}/usr/lib/systemd/system" "${pkgdir}/usr/lib/sysusers.d" "${pkgdir}/usr/lib/tmpfiles.d"
+  cp -a "${srcdir}/BookshelfNG-main-v${pkgver}-linux-x64/." "${pkgdir}/usr/lib/bookshelfng/"
+  install -Dm644 "${srcdir}/bookshelfng.service" "${pkgdir}/usr/lib/systemd/system/bookshelfng.service"
+  install -Dm644 "${srcdir}/bookshelfng.env" "${pkgdir}/etc/bookshelfng/bookshelfng.env"
+  install -Dm644 "${srcdir}/bookshelfng.sysusers" "${pkgdir}/usr/lib/sysusers.d/bookshelfng.conf"
+  install -Dm644 "${srcdir}/bookshelfng.tmpfiles" "${pkgdir}/usr/lib/tmpfiles.d/bookshelfng.conf"
+  chmod -R u=rwX,go=rX "${pkgdir}/usr/lib/bookshelfng"
+  ln -s /usr/lib/bookshelfng/Readarr "${pkgdir}/usr/bin/bookshelfng"
+}

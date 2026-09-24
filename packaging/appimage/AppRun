@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+HERE="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bookshelfng"
+mkdir -p "$DATA_DIR"
+exec "$HERE/usr/bin/Readarr" -nobrowser "-data=$DATA_DIR" "$@"

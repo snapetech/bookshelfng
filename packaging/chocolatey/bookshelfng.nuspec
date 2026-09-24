@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>bookshelfng</id>
+    <version>0.0.0</version>
+    <title>BookshelfNG</title>
+    <authors>Snapetech</authors>
+    <owners>Snapetech</owners>
+    <projectUrl>https://github.com/snapetech/bookshelfng</projectUrl>
+    <packageSourceUrl>https://github.com/snapetech/bookshelfng/tree/main/packaging/chocolatey</packageSourceUrl>
+    <docsUrl>https://github.com/snapetech/bookshelfng#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/snapetech/bookshelfng/issues</bugTrackerUrl>
+    <licenseUrl>https://github.com/snapetech/bookshelfng/blob/main/LICENSE.md</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>BookshelfNG is a standalone book library manager and download automation server. It runs locally and provides its own web interface.</description>
+    <summary>Standalone book library manager and download automation server</summary>
+    <tags>books book-library readarr bookshelfng</tags>
+    <dependencies>
+      <dependency id="nssm" version="2.24.101" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

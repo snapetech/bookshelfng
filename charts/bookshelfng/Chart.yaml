@@ -1,0 +1,16 @@
+apiVersion: v2
+name: bookshelfng
+description: Self-hosted book library management and download automation
+type: application
+version: 0.1.0
+appVersion: "0.4.21"
+home: https://github.com/snapetech/bookshelfng
+sources:
+  - https://github.com/snapetech/bookshelfng
+maintainers:
+  - name: Snapetech
+    url: https://github.com/snapetech
+keywords:
+  - books
+  - readarr
+  - bookshelfng

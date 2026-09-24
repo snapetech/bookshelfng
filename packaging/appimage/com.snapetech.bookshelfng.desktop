@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=BookshelfNG
+Comment=Standalone book library manager and download automation server
+Exec=BookshelfNG
+Icon=bookshelfng
+Terminal=true
+Categories=Utility;Network;

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>BookshelfNG</Name>
+  <Repository>snapetech/bookshelfng:hardcover</Repository>
+  <Registry>https://hub.docker.com/r/snapetech/bookshelfng</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/snapetech/bookshelfng/issues</Support>
+  <Project>https://github.com/snapetech/bookshelfng</Project>
+  <Overview>Standalone book library manager and download automation server. Set the image tag to softcover for the Open Library metadata default, or hardcover for the Hardcover default.</Overview>
+  <Category>MediaApp:Books</Category>
+  <WebUI>http://[IP]:[PORT:8787]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/snapetech/bookshelfng/main/packaging/unraid/bookshelfng.xml</TemplateURL>
+  <Config Name="Application Data" Target="/config" Default="/mnt/user/appdata/bookshelfng" Mode="rw" Description="BookshelfNG database, settings, metadata cache, and logs." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/bookshelfng</Config>
+  <Config Name="Books and Audiobooks" Target="/books" Default="/mnt/user/books" Mode="rw" Description="Optional library path. Add additional library mappings as needed." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/books</Config>
+  <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="BookshelfNG web interface port." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+</Container>

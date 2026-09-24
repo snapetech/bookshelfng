@@ -1,0 +1,17 @@
+Source: bookshelfng
+Section: web
+Priority: optional
+Maintainer: BookshelfNG maintainers <noreply@github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/snapetech/bookshelfng
+
+Package: bookshelfng
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, libicu74 | libicu76 | libicu70, libssl3t64 | libssl3, libsqlite3-0
+Recommends: ffmpeg
+Description: standalone book library manager and download automation server
+ BookshelfNG manages authors and books, monitors libraries and indexers, and
+ automates book downloads. It runs as a local web application and supports
+ optional runtime metadata catalogs.

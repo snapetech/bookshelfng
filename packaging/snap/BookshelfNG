@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+mkdir -p "$SNAP_COMMON"
+exec "$SNAP/bin/Readarr" -nobrowser "-data=$SNAP_COMMON" "$@"

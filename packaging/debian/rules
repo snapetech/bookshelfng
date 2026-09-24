@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	install -d debian/bookshelfng/usr/lib/bookshelfng
+	install -d debian/bookshelfng/usr/bin debian/bookshelfng/etc/bookshelfng
+	install -d debian/bookshelfng/lib/systemd/system
+	install -d debian/bookshelfng/usr/lib/sysusers.d debian/bookshelfng/usr/lib/tmpfiles.d
+	cp -a dist/. debian/bookshelfng/usr/lib/bookshelfng/
+	ln -s /usr/lib/bookshelfng/Readarr debian/bookshelfng/usr/bin/bookshelfng
+	install -m 0644 packaging/systemd/bookshelfng.service debian/bookshelfng/lib/systemd/system/bookshelfng.service
+	install -m 0644 packaging/systemd/bookshelfng.env debian/bookshelfng/etc/bookshelfng/bookshelfng.env
+	install -m 0644 packaging/systemd/bookshelfng.sysusers debian/bookshelfng/usr/lib/sysusers.d/bookshelfng.conf
+	install -m 0644 packaging/systemd/bookshelfng.tmpfiles debian/bookshelfng/usr/lib/tmpfiles.d/bookshelfng.conf
+	chmod -R u=rwX,go=rX debian/bookshelfng/usr/lib/bookshelfng

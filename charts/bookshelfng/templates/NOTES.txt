@@ -1,0 +1,9 @@
+BookshelfNG is running as a single-replica StatefulSet with persistent storage.
+
+Access the web interface through the Service:
+  kubectl port-forward svc/{{ include "bookshelfng.fullname" . }} 8787:{{ .Values.service.port }}
+  open http://localhost:8787
+
+The default image tag selects Hardcover metadata defaults. Set image.tag=softcover
+to use the Softcover image profile. Catalog providers can also be changed from
+BookshelfNG Settings after installation.

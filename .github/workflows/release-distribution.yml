@@ -1,0 +1,932 @@
+name: Release Distributions
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Verified BookshelfNG main release tag
+        required: true
+        type: string
+      softcover_digest:
+        description: Published Softcover container digest
+        required: true
+        type: string
+      hardcover_digest:
+        description: Published Hardcover container digest
+        required: true
+        type: string
+    secrets:
+      AUR_SSH_KEY:
+        required: false
+      COPR_LOGIN:
+        required: false
+      COPR_TOKEN:
+        required: false
+      GPG_PRIVATE_KEY:
+        required: false
+      LAUNCHPAD_PPA:
+        required: false
+      SNAPCRAFT_STORE_CREDENTIALS:
+        required: false
+      CHOCOLATEY_API_KEY:
+        required: false
+      DISCORD_RELEASE_WEBHOOK:
+        required: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: bookshelfng-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      chart_version: ${{ steps.version.outputs.chart_version }}
+    steps:
+      - name: Resolve version
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          [[ "$tag" =~ ^main-v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Invalid BookshelfNG stable tag: $tag" >&2
+            exit 2
+          }
+          version="${tag#main-v}"
+          chart_version="$(awk -F. '{ printf "%s.%s.%s-%s", $1, $2, $3, $4 }' <<< "$version")"
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "chart_version=$chart_version"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release tag is reachable from main
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+          git merge-base --is-ancestor "$TAG^{commit}" refs/remotes/origin/main || {
+            echo "Release tag $TAG is not reachable from main." >&2
+            exit 1
+          }
+
+  build-platform-runtime-packs:
+    name: Build Linux x86 and FreeBSD .NET 10 runtime packs
+    needs: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: |
+            10.0.110
+            10.0.111
+            10.0.401
+          dotnet-quality: ga
+
+      - name: Build and verify platform packs
+        env:
+          DOTNETVERSION: 10.0.401
+          PLATFORM_RUNTIME_PACKS_OUTPUT: ${{ github.workspace }}/_temp/platform-runtime-packs
+        run: ./scripts/build-dotnet10-platform-runtime-packs.sh
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-platform-runtime-packs
+          path: _temp/platform-runtime-packs/
+          if-no-files-found: error
+          retention-days: 1
+
+  build-release-assets:
+    name: Build self-contained platform archives
+    needs: [validate, build-platform-runtime-packs]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: 10.0.401
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.19.4
+          cache: yarn
+
+      - name: Enable pinned Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.19 --activate
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bookshelfng-platform-runtime-packs
+          path: _temp/platform-runtime-packs
+
+      - name: Build all supported .NET 10 runtimes
+        env:
+          BUILD_SOURCEBRANCHNAME: main
+          CUSTOM_RUNTIME_PACKS_DIR: ${{ github.workspace }}/_temp/platform-runtime-packs/packages
+          DOTNETVERSION: 10.0.401
+          READARRVERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          ./build.sh --backend --frontend --enable-extra-platforms --msbuild-arg=-p:SelfContained=true
+
+      - name: Package all supported runtime identifiers
+        env:
+          BUILD_SOURCEBRANCHNAME: main
+          READARRVERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          for rid in \
+            linux-x64 linux-x86 linux-arm linux-arm64 \
+            linux-musl-x64 linux-musl-arm linux-musl-arm64 \
+            freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
+            ./build.sh --packages --framework net10.0 --runtime "$rid"
+          done
+
+      - name: Create versioned archives and checksums
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: ./scripts/create-release-archives.sh "$TAG" dist-release
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-release-assets
+          path: dist-release/
+          if-no-files-found: error
+          retention-days: 1
+
+  build-linux-packages:
+    name: Build Debian, RPM, AppImage, and Flatpak packages
+    needs: [validate, build-release-assets]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bookshelfng-release-assets
+          path: dist-release
+
+      - name: Prepare Linux x64 archive
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          archive="BookshelfNG-${TAG}-linux-x64.tar.gz"
+          mkdir -p dist
+          tar -xzf "dist-release/$archive" --strip-components=1 -C dist
+          test -x dist/Readarr
+
+      - name: Build Debian package
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper devscripts dpkg-dev
+          package_root="$RUNNER_TEMP/bookshelfng-deb"
+          mkdir -p "$package_root/debian" "$package_root/packaging"
+          cp -a packaging/debian/. "$package_root/debian/"
+          cp -a packaging/systemd "$package_root/packaging/"
+          cp -a dist "$package_root/dist"
+          cp LICENSE.md "$package_root/"
+          cat > "$package_root/debian/changelog" <<EOF
+          bookshelfng (${VERSION}-1) stable; urgency=medium
+
+            * BookshelfNG ${VERSION} release.
+
+           -- BookshelfNG maintainers <noreply@github.com>  $(date -R)
+          EOF
+          chmod 0755 "$package_root/debian/rules"
+          cd "$package_root"
+          dpkg-buildpackage -us -uc -b
+          mkdir -p "$GITHUB_WORKSPACE/dist-added"
+          cp ../bookshelfng_*.deb "$GITHUB_WORKSPACE/dist-added/"
+
+      - name: Build RPM package and COPR source package
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rpm
+          rpm_top="$RUNNER_TEMP/rpmbuild"
+          mkdir -p "$rpm_top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+          cp "dist-release/BookshelfNG-${{ needs.validate.outputs.tag }}-linux-x64.tar.gz" "$rpm_top/SOURCES/bookshelfng-${VERSION}.tar.gz"
+          cp packaging/systemd/bookshelfng.{service,env,sysusers,tmpfiles} "$rpm_top/SOURCES/"
+          cp packaging/rpm/bookshelfng.spec "$rpm_top/SPECS/"
+          sed -i "s/^Version:.*$/Version:        ${VERSION}/; s/^Release:.*$/Release:        1%{?dist}/" "$rpm_top/SPECS/bookshelfng.spec"
+          rpmbuild -ba --define "_topdir $rpm_top" "$rpm_top/SPECS/bookshelfng.spec"
+          cp "$rpm_top/RPMS/x86_64"/*.rpm dist-release/
+          cp "$rpm_top/SRPMS"/*.src.rpm dist-release/
+
+      - name: Build AppImage
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          appdir="$RUNNER_TEMP/BookshelfNG.AppDir"
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libicu70 libssl3 libsqlite3-0
+          mkdir -p "$appdir/usr/lib/bookshelfng" "$appdir/usr/bin" \
+            "$appdir/usr/lib" \
+            "$appdir/usr/share/applications" "$appdir/usr/share/icons/hicolor/scalable/apps"
+          cp -a dist/. "$appdir/usr/lib/bookshelfng/"
+          cp -a /usr/lib/x86_64-linux-gnu/libicu*.so* "$appdir/usr/lib/"
+          cp -a /usr/lib/x86_64-linux-gnu/libssl.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
+            /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 "$appdir/usr/lib/"
+          ln -s ../lib/bookshelfng/Readarr "$appdir/usr/bin/Readarr"
+          cp packaging/appimage/AppRun "$appdir/AppRun"
+          chmod 0755 "$appdir/AppRun"
+          cp packaging/appimage/com.snapetech.bookshelfng.desktop "$appdir/BookshelfNG.desktop"
+          cp frontend/src/Content/Images/logo.svg "$appdir/usr/share/icons/hicolor/scalable/apps/bookshelfng.svg"
+          linuxdeploy_url='https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage'
+          curl --fail --location --retry 3 --silent --show-error "$linuxdeploy_url" -o "$RUNNER_TEMP/linuxdeploy"
+          chmod 0755 "$RUNNER_TEMP/linuxdeploy"
+          APPIMAGE_EXTRACT_AND_RUN=1 "$RUNNER_TEMP/linuxdeploy" --appdir "$appdir" \
+            --executable "$appdir/usr/lib/bookshelfng/Readarr" \
+            --desktop-file "$appdir/BookshelfNG.desktop" \
+            --icon-file "$appdir/usr/share/icons/hicolor/scalable/apps/bookshelfng.svg"
+          appimagetool_url='https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage'
+          curl --fail --location --retry 3 --silent --show-error "$appimagetool_url" -o "$RUNNER_TEMP/appimagetool"
+          chmod 0755 "$RUNNER_TEMP/appimagetool"
+          APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 "$RUNNER_TEMP/appimagetool" "$appdir" \
+            "dist-release/BookshelfNG-${TAG}-x86_64.AppImage"
+
+      - name: Build Flatpak bundle
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          mkdir -p packaging/flatpak/src
+          cp -a dist/. packaging/flatpak/src/
+          flatpak-builder --force-clean --user --install-deps-from=flathub \
+            --repo="$RUNNER_TEMP/bookshelfng-flatpak-repo" \
+            "$RUNNER_TEMP/bookshelfng-flatpak-build" packaging/flatpak/com.snapetech.BookshelfNG.yml
+          flatpak build-bundle "$RUNNER_TEMP/bookshelfng-flatpak-repo" \
+            "dist-release/BookshelfNG-${TAG}.flatpak" com.snapetech.BookshelfNG stable \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Add checksums
+        run: |
+          set -euo pipefail
+          for asset in dist-release/*.deb dist-release/*.rpm dist-release/*.src.rpm dist-release/*.AppImage dist-release/*.flatpak; do
+            [[ -f "$asset" ]] || continue
+            cp "$asset" dist-added/
+          done
+          (
+            cd dist-added
+            for asset in *; do
+              [[ -f "$asset" ]] || continue
+              sha256sum "$asset" > "$asset.sha256"
+            done
+          )
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-linux-packages
+          path: dist-added/
+          if-no-files-found: error
+          retention-days: 1
+
+  build-snap:
+    name: Build Snap
+    needs: [validate, build-release-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8b0e5a5461e7c # v8.0.1
+        with:
+          name: bookshelfng-release-assets
+          path: dist-release
+
+      - name: Prepare Snap source tree
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p packaging/snap/src/bin
+          tar -xzf "dist-release/BookshelfNG-${TAG}-linux-x64.tar.gz" --strip-components=1 -C packaging/snap/src
+          cp packaging/snap/BookshelfNG packaging/snap/src/bin/BookshelfNG
+          chmod 0755 packaging/snap/src/bin/BookshelfNG
+          sed -i "s/^version: .*/version: '${VERSION}'/" packaging/snap/snapcraft.yaml
+
+      - uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
+        id: build
+        with:
+          path: packaging/snap
+
+      - name: Stage Snap artifact
+        run: |
+          set -euo pipefail
+          mkdir -p dist-release
+          cp "${{ steps.build.outputs.snap }}" dist-release/
+          mkdir -p dist-added
+          snap_asset="$(find dist-release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+          test -n "$snap_asset"
+          snap_name="$(basename "$snap_asset")"
+          cp "$snap_asset" dist-added/
+          (cd dist-added && sha256sum "$snap_name" > "$snap_name.sha256")
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-snap
+          path: dist-added/
+          if-no-files-found: error
+          retention-days: 1
+
+  build-helm:
+    name: Package Helm chart
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - uses: azure/setup-helm@9bc31f7d9a5c081ad5e950ef2551dd05c33a4b51 # v5
+
+      - name: Render release-versioned chart
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          CHART_VERSION: ${{ needs.validate.outputs.chart_version }}
+        run: |
+          set -euo pipefail
+          sed -i "s/^version:.*/version: ${CHART_VERSION}/; s/^appVersion:.*/appVersion: \"${VERSION}\"/" charts/bookshelfng/Chart.yaml
+          helm lint charts/bookshelfng
+          helm package charts/bookshelfng --destination dist-release
+          for chart in dist-release/*.tgz; do
+            sha256sum "$chart" > "$chart.sha256"
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-helm
+          path: dist-release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-github-release:
+    name: Publish GitHub release assets
+    needs: [validate, build-release-assets, build-linux-packages, build-snap, build-helm]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8b0e5a5461e7c # v8.0.1
+        with:
+          pattern: bookshelfng-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify checksums and release inventory
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for rid in \
+            linux-x64 linux-x86 linux-arm linux-arm64 \
+            linux-musl-x64 linux-musl-arm linux-musl-arm64 \
+            freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
+            if [[ "$rid" == win-* ]]; then
+              asset="BookshelfNG-${TAG}-${rid}.zip"
+            else
+              asset="BookshelfNG-${TAG}-${rid}.tar.gz"
+            fi
+            test -f "release-assets/$asset"
+            test -f "release-assets/$asset.sha256"
+            (cd release-assets && sha256sum -c "$asset.sha256")
+          done
+          for pattern in '*.deb' '*.rpm' '*.AppImage' '*.flatpak' '*.snap' '*.tgz'; do
+            compgen -G "release-assets/$pattern" >/dev/null || {
+              echo "Missing required release asset matching $pattern" >&2
+              exit 1
+            }
+          done
+          for asset in release-assets/*.deb release-assets/*.rpm release-assets/*.src.rpm \
+            release-assets/*.AppImage release-assets/*.flatpak release-assets/*.snap release-assets/*.tgz; do
+            [[ -f "$asset" ]] || continue
+            checksum="$asset.sha256"
+            test -f "$checksum"
+            (cd release-assets && sha256sum -c "$(basename "$checksum")")
+          done
+
+      - name: Upload assets and publish draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" release-assets/* --clobber
+          gh release edit "$TAG" --draft=false
+
+  publisher-credentials:
+    name: Check optional publisher credentials
+    needs: [validate]
+    runs-on: ubuntu-latest
+    outputs:
+      aur: ${{ steps.check.outputs.aur }}
+      copr: ${{ steps.check.outputs.copr }}
+      ppa: ${{ steps.check.outputs.ppa }}
+      snap: ${{ steps.check.outputs.snap }}
+      chocolatey: ${{ steps.check.outputs.chocolatey }}
+    steps:
+      - id: check
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
+          COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          set -euo pipefail
+          for name in aur copr ppa snap chocolatey; do
+            echo "$name=false" >> "$GITHUB_OUTPUT"
+          done
+          [[ -n "$AUR_SSH_KEY" ]] && echo 'aur=true' >> "$GITHUB_OUTPUT" || echo 'AUR_SSH_KEY is not set; AUR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          [[ -n "$COPR_LOGIN" && -n "$COPR_TOKEN" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'COPR_LOGIN or COPR_TOKEN is not set; COPR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          [[ -n "$GPG_PRIVATE_KEY" && -n "$LAUNCHPAD_PPA" ]] && echo 'ppa=true' >> "$GITHUB_OUTPUT" || echo 'GPG_PRIVATE_KEY or LAUNCHPAD_PPA is not set; PPA upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          [[ -n "$SNAPCRAFT_STORE_CREDENTIALS" ]] && echo 'snap=true' >> "$GITHUB_OUTPUT" || echo 'SNAPCRAFT_STORE_CREDENTIALS is not set; Snap Store upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          [[ -n "$CHOCOLATEY_API_KEY" ]] && echo 'chocolatey=true' >> "$GITHUB_OUTPUT" || echo 'CHOCOLATEY_API_KEY is not set; Chocolatey upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+
+  publish-aur:
+    name: Publish AUR package
+    needs: [validate, publish-github-release, publisher-credentials]
+    if: needs.publisher-credentials.outputs.aur == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - name: Download Linux x64 archive and calculate source checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --pattern "BookshelfNG-${TAG}-linux-x64.tar.gz" --dir "$RUNNER_TEMP"
+          archive="$RUNNER_TEMP/BookshelfNG-${TAG}-linux-x64.tar.gz"
+          checksum="$(sha256sum "$archive" | awk '{print $1}')"
+          echo "ARCHIVE_SHA256=$checksum" >> "$GITHUB_ENV"
+
+      - name: Prepare AUR package files
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/aur-package"
+          mkdir -p "$work"
+          cp packaging/aur/PKGBUILD "$work/PKGBUILD"
+          cp packaging/aur/bookshelfng.install "$work/"
+          cp packaging/systemd/bookshelfng.{service,env,sysusers,tmpfiles} "$work/"
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" "$work/PKGBUILD"
+          service_sha="$(sha256sum "$work/bookshelfng.service" | awk '{print $1}')"
+          env_sha="$(sha256sum "$work/bookshelfng.env" | awk '{print $1}')"
+          sysusers_sha="$(sha256sum "$work/bookshelfng.sysusers" | awk '{print $1}')"
+          tmpfiles_sha="$(sha256sum "$work/bookshelfng.tmpfiles" | awk '{print $1}')"
+          python3 - "$work/PKGBUILD" "$ARCHIVE_SHA256" "$service_sha" "$env_sha" "$sysusers_sha" "$tmpfiles_sha" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          path = Path(sys.argv[1])
+          checksums = sys.argv[2:]
+          text = path.read_text()
+          replacement = "sha256sums=(" + " ".join(f"'{value}'" for value in checksums) + ")"
+          updated, count = re.subn(r"^sha256sums=.*$", replacement, text, count=1, flags=re.MULTILINE)
+          if count != 1:
+              raise SystemExit("PKGBUILD must contain exactly one sha256sums array")
+          path.write_text(updated)
+          PY
+          bash packaging/scripts/validate-aur-pkgbuild-hashes.sh "$work/PKGBUILD"
+          key="$RUNNER_TEMP/aur-key"
+          printf '%s\n' "$AUR_SSH_KEY" > "$key"
+          chmod 0600 "$key"
+          install -d -m 0700 ~/.ssh
+          install -m 0600 "$key" ~/.ssh/aur
+          cat > ~/.ssh/known_hosts <<'EOF'
+          aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN
+          EOF
+          expected_fingerprint='SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4'
+          actual_fingerprint="$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk '{print $2}')"
+          [[ "$actual_fingerprint" == "$expected_fingerprint" ]] || {
+            echo 'Pinned AUR SSH host key fingerprint mismatch.' >&2
+            exit 1
+          }
+          cat > ~/.ssh/config <<'EOF'
+          Host aur.archlinux.org
+            User aur
+            IdentityFile ~/.ssh/aur
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            GlobalKnownHostsFile /dev/null
+            BatchMode yes
+          EOF
+          chmod 0600 ~/.ssh/config ~/.ssh/known_hosts
+          git clone "https://aur.archlinux.org/bookshelfng-bin.git" "$work/repo" || {
+            git -c init.defaultBranch=master clone "ssh://aur@aur.archlinux.org/bookshelfng-bin.git" "$work/repo"
+          }
+          cd "$work/repo"
+          git remote set-url --push origin ssh://aur@aur.archlinux.org/bookshelfng-bin.git
+          cp "$work/PKGBUILD" PKGBUILD
+          cp "$work/bookshelfng.install" .
+          cp "$work"/bookshelfng.{service,env,sysusers,tmpfiles} .
+          git config user.name 'BookshelfNG Release Automation'
+          git config user.email 'noreply@github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Update to ${VERSION}"
+          fi
+          git push origin HEAD:master
+
+      - name: Remove AUR SSH credentials
+        if: always()
+        run: rm -f -- ~/.ssh/aur ~/.ssh/config ~/.ssh/known_hosts
+
+  publish-copr:
+    name: Publish COPR build
+    needs: [validate, publish-github-release, publisher-credentials]
+    if: needs.publisher-credentials.outputs.copr == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - name: Download release archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: gh release download "$TAG" --pattern "BookshelfNG-${TAG}-linux-x64.tar.gz"
+
+      - name: Build source RPM
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rpm
+          rpm_top="$RUNNER_TEMP/rpmbuild"
+          mkdir -p "$rpm_top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+          cp "BookshelfNG-${TAG}-linux-x64.tar.gz" "$rpm_top/SOURCES/bookshelfng-${VERSION}.tar.gz"
+          cp packaging/systemd/bookshelfng.{service,env,sysusers,tmpfiles} "$rpm_top/SOURCES/"
+          cp packaging/rpm/bookshelfng.spec "$rpm_top/SPECS/"
+          sed -i "s/^Version:.*$/Version:        ${VERSION}/; s/^Release:.*$/Release:        1%{?dist}/" "$rpm_top/SPECS/bookshelfng.spec"
+          rpmbuild -bs --define "_topdir $rpm_top" "$rpm_top/SPECS/bookshelfng.spec"
+          srpm="$(find "$rpm_top/SRPMS" -maxdepth 1 -name '*.src.rpm' -print -quit)"
+          test -n "$srpm"
+
+      - name: Configure COPR
+        env:
+          COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
+          COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
+          COPR_USERNAME: ${{ vars.COPR_USERNAME || 'snapetech' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config
+          cat > ~/.config/copr <<EOF
+          [copr-cli]
+          login = ${COPR_LOGIN}
+          username = ${COPR_USERNAME}
+          token = ${COPR_TOKEN}
+          copr_url = https://copr.fedorainfracloud.org
+          EOF
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv
+          python3 -m venv "$RUNNER_TEMP/copr"
+          "$RUNNER_TEMP/copr/bin/pip" install copr-cli
+          echo "$RUNNER_TEMP/copr/bin" >> "$GITHUB_PATH"
+
+      - name: Submit SRPM to COPR
+        env:
+          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'snapetech/bookshelfng' }}
+        run: |
+          set -euo pipefail
+          srpm="$(find "$RUNNER_TEMP/rpmbuild/SRPMS" -maxdepth 1 -name '*.src.rpm' -print -quit)"
+          copr-cli build "$COPR_PROJECT" "$srpm" --nowait
+
+  publish-ppa:
+    name: Publish signed Launchpad PPA source package
+    needs: [validate, publish-github-release, publisher-credentials]
+    if: needs.publisher-credentials.outputs.ppa == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - name: Download release archive and prepare signed package
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper devscripts dpkg-dev gnupg dput
+          gh release download "$TAG" --pattern "BookshelfNG-${TAG}-linux-x64.tar.gz" --dir "$RUNNER_TEMP"
+          package_root="$RUNNER_TEMP/bookshelfng-ppa"
+          mkdir -p "$package_root/debian" "$package_root/packaging" "$package_root/dist"
+          cp -a packaging/debian/. "$package_root/debian/"
+          cp -a packaging/systemd "$package_root/packaging/"
+          tar -xzf "$RUNNER_TEMP/BookshelfNG-${TAG}-linux-x64.tar.gz" --strip-components=1 -C "$package_root/dist"
+          cp LICENSE.md "$package_root/"
+          find "$package_root/dist" -type f | sed "s#^$package_root/##" > "$package_root/debian/source/include-binaries"
+          ppa_revision="$(date -u +%Y%m%d%H%M)"
+          cat > "$package_root/debian/changelog" <<EOF
+          bookshelfng (${VERSION}+ppa${ppa_revision}~noble) noble; urgency=medium
+
+            * BookshelfNG ${VERSION} release.
+
+           -- BookshelfNG maintainers <noreply@github.com>  $(date -R)
+          EOF
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          fingerprint="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
+          test -n "$fingerprint"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          chmod 0755 "$package_root/debian/rules"
+          cd "$package_root"
+          debuild -S -sa -k"$fingerprint"
+
+      - name: Upload to configured Launchpad PPA
+        env:
+          LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA }}
+        run: |
+          set -euo pipefail
+          [[ "$LAUNCHPAD_PPA" =~ ^ppa:[^/]+/[^/]+$ ]] || {
+            echo 'LAUNCHPAD_PPA must be ppa:<owner>/<archive>.' >&2
+            exit 2
+          }
+          shorthand="${LAUNCHPAD_PPA#ppa:}"
+          owner="${shorthand%%/*}"
+          archive="${shorthand#*/}"
+          owner="${owner#\~}"
+          path="~${owner}/ubuntu/${archive}"
+          archive_api="https://api.launchpad.net/1.0/~${owner}/+archive/ubuntu/${archive}"
+          curl --fail --silent --show-error "$archive_api" >/dev/null || {
+            echo "Launchpad PPA does not exist or is not public: $LAUNCHPAD_PPA" >&2
+            exit 1
+          }
+          {
+            printf '[bookshelfng-ppa]\n'
+            printf 'fqdn = ppa.launchpad.net\n'
+            printf 'method = ftp\n'
+            printf 'incoming = %s\n' "$path"
+            printf 'login = anonymous\n'
+            printf 'allow_unsigned_uploads = 0\n'
+          } > ~/.dput.cf
+          changes="$(find "$RUNNER_TEMP" -maxdepth 2 -name '*.changes' -print -quit)"
+          test -n "$changes"
+          dput -f bookshelfng-ppa "$changes"
+
+  publish-snap:
+    name: Publish Snap to stable channel
+    needs: [validate, build-snap, publish-github-release, publisher-credentials]
+    if: needs.publisher-credentials.outputs.snap == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8b0e5a5461e7c # v8.0.1
+        with:
+          name: bookshelfng-snap
+          path: dist-release
+
+      - name: Resolve Snap artifact path
+        id: snap
+        shell: bash
+        run: |
+          set -euo pipefail
+          snap="$(find dist-release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+          test -n "$snap"
+          echo "path=$snap" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Snap
+        uses: snapcore/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.snap.outputs.path }}
+          release: stable
+
+  publish-chocolatey:
+    name: Publish Chocolatey package
+    needs: [validate, publish-github-release, publisher-credentials]
+    if: needs.publisher-credentials.outputs.chocolatey == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - name: Download Windows x64 archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        shell: pwsh
+        run: gh release download $env:TAG --pattern "BookshelfNG-$env:TAG-win-x64.zip"
+
+      - name: Prepare and push Chocolatey package
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = "BookshelfNG-$env:TAG-win-x64.zip"
+          $checksum = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $packageDir = Join-Path $env:RUNNER_TEMP 'bookshelfng-choco'
+          New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'tools') | Out-Null
+          Copy-Item packaging/chocolatey/bookshelfng.nuspec $packageDir
+          Copy-Item packaging/chocolatey/tools/* (Join-Path $packageDir 'tools')
+          $nuspec = Join-Path $packageDir 'bookshelfng.nuspec'
+          (Get-Content $nuspec -Raw).Replace('<version>0.0.0</version>', "<version>$env:VERSION</version>") | Set-Content -NoNewline $nuspec
+          $installScript = Join-Path $packageDir 'tools/chocolateyinstall.ps1'
+          $script = Get-Content $installScript -Raw
+          $archiveRoot = "BookshelfNG-$env:TAG-win-x64"
+          $script = $script.Replace('TAG', $env:TAG).Replace('ARCHIVE_ROOT', $archiveRoot).Replace('ARCHIVE', $archive).Replace('SHA256', $checksum)
+          Set-Content -NoNewline $installScript $script
+          choco pack $nuspec --outputdirectory $packageDir
+          $package = Get-ChildItem $packageDir -Filter '*.nupkg' | Select-Object -First 1
+          if (-not $package) { throw 'Chocolatey package was not built.' }
+          choco push $package.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
+
+  publish-helm:
+    name: Publish signed Helm OCI chart
+    needs: [validate, build-helm, publish-github-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8b0e5a5461e7c # v8.0.1
+        with:
+          name: bookshelfng-helm
+          path: dist-release
+
+      - uses: azure/setup-helm@9bc31f7d9a5c081ad5e950ef2551dd05c33a4b51 # v5
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Login to GHCR and publish chart
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          CHART_VERSION: ${{ needs.validate.outputs.chart_version }}
+          COSIGN_YES: 'true'
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | helm registry login ghcr.io --username "$GH_ACTOR" --password-stdin
+          chart="dist-release/bookshelfng-${CHART_VERSION}.tgz"
+          test -f "$chart"
+          helm push "$chart" "oci://ghcr.io/${GITHUB_REPOSITORY}"
+          cosign sign "ghcr.io/${GITHUB_REPOSITORY}/bookshelfng:${CHART_VERSION}"
+
+  announce:
+    name: Announce completed release
+    needs:
+      - validate
+      - publish-github-release
+      - publisher-credentials
+      - publish-aur
+      - publish-copr
+      - publish-ppa
+      - publish-snap
+      - publish-chocolatey
+      - publish-helm
+    if: >-
+      ${{
+        always() &&
+        needs.publish-github-release.result == 'success' &&
+        needs.publish-aur.result != 'failure' &&
+        needs.publish-copr.result != 'failure' &&
+        needs.publish-ppa.result != 'failure' &&
+        needs.publish-snap.result != 'failure' &&
+        needs.publish-chocolatey.result != 'failure' &&
+        needs.publish-helm.result != 'failure'
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Send release announcement
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          SOFTCOVER_DIGEST: ${{ inputs.softcover_digest }}
+          HARDCOVER_DIGEST: ${{ inputs.hardcover_digest }}
+        run: |
+          set -euo pipefail
+          test -n "$DISCORD_WEBHOOK" || {
+            echo 'DISCORD_RELEASE_WEBHOOK is required to complete a release announcement.' >&2
+            exit 1
+          }
+          release_body="$(gh release view "$TAG" --json body --jq .body)"
+          if [[ -z "$release_body" ]]; then
+            release_body='Standalone BookshelfNG builds and packages are available. See the release for platform downloads and checksums.'
+          fi
+          if (( ${#release_body} > 3500 )); then
+            release_body="${release_body:0:3497}…"
+          fi
+          release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+          workflow_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          jq -n \
+            --arg title "BookshelfNG ${VERSION} is available" \
+            --arg url "$release_url" \
+            --arg description "$release_body" \
+            --arg softcover "ghcr.io/${GITHUB_REPOSITORY}:softcover" \
+            --arg softcover_digest "$SOFTCOVER_DIGEST" \
+            --arg hardcover "ghcr.io/${GITHUB_REPOSITORY}:hardcover" \
+            --arg hardcover_digest "$HARDCOVER_DIGEST" \
+            --arg workflow "$workflow_url" \
+            '{
+              username: "BookshelfNG Releases",
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $description,
+                color: 5814783,
+                fields: [
+                  { name: "Softcover image", value: ("`" + $softcover + "`"), inline: false },
+                  { name: "Softcover digest", value: ("`" + $softcover_digest + "`"), inline: false },
+                  { name: "Hardcover image", value: ("`" + $hardcover + "`"), inline: false },
+                  { name: "Hardcover digest", value: ("`" + $hardcover_digest + "`"), inline: false },
+                  { name: "Downloads", value: $url, inline: false },
+                  { name: "Build", value: $workflow, inline: false }
+                ]
+              }]
+            }' > "$RUNNER_TEMP/discord-release.json"
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            -X POST \
+            --data "@$RUNNER_TEMP/discord-release.json" \
+            "$DISCORD_WEBHOOK"

@@ -107,6 +107,22 @@ up your root folder, metadata source, indexers, and download clients. The
 `softcover` image is available for Goodreads-compatible libraries. Both
 published Linux images support `amd64` and `arm64` hosts.
 
+## Standalone app
+
+BookshelfNG also runs directly on Windows, macOS, Linux, and FreeBSD. Native
+release archives include the .NET runtime and web UI; they do not require
+SeerrNG or a container runtime. Start an extracted Linux, macOS, or FreeBSD
+archive with:
+
+```sh
+./Readarr -nobrowser -data="$HOME/.local/share/bookshelfng"
+```
+
+On Windows, run `Readarr.exe` and set a persistent data path under
+`%LOCALAPPDATA%`. Then open `http://localhost:8787`. The
+[standalone installation guide](docs/standalone-install.md) covers platform
+archives, data migration, system services, and package-specific setup.
+
 ## Optional audiobook M4B merging
 
 To combine a multi-track audiobook download into a single chaptered M4B, set
@@ -366,9 +382,14 @@ GitHub Actions publishes these rolling and versioned container tags:
 - `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
 
 Tagged `main-v*` builds also publish a GitHub Release with curated release
-notes and announce the successfully built softcover and hardcover images to
-Discord. Pull requests require a release-note fragment for user-facing changes;
-internal-only work must be marked `release-note: none`. See
+notes, platform archives, checksums, and native Linux packages, then announce
+the release to Discord. AUR, COPR, PPA, Snap Store, Chocolatey, and Helm
+publication are wired to the same verified tag flow; external stores require
+their publisher credentials and repository registration. The Flatpak is
+attached as a GitHub Release bundle and is not published to Flathub. See the
+[distribution setup and publisher requirements](docs/distribution.md) for
+channel details. Pull requests require a release-note fragment for user-facing
+changes; internal-only work must be marked `release-note: none`. See
 [`release-notes/README.md`](./release-notes/README.md) for the format and
 preview command.
 
@@ -383,6 +404,8 @@ you can also authenticate with package read access.
 - [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
 - [Author metadata storage, refresh policy, and troubleshooting](docs/author-metadata-refresh.md)
 - [.NET 10 platform builds for Linux x86 and FreeBSD](docs/dotnet-10-platform-builds.md)
+- [Standalone installation and platform support](docs/standalone-install.md)
+- [Release distribution channels and publisher setup](docs/distribution.md)
 - [Optional diagnostics module](src/Bookshelf.Diagnostics/README.md)
 - [Release-note format and preview](release-notes/README.md)
 - [SeerrNG migration metadata source matrix](https://github.com/Snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-metadata-sources.md)

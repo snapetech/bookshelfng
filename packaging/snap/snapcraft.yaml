@@ -1,0 +1,32 @@
+name: bookshelfng
+base: core24
+version: '0.0.0'
+summary: Standalone book library manager and download automation server
+title: BookshelfNG
+license: GPL-3.0-or-later
+contact: https://github.com/snapetech/bookshelfng/issues
+website: https://github.com/snapetech/bookshelfng
+source-code: https://github.com/snapetech/bookshelfng
+issues: https://github.com/snapetech/bookshelfng/issues
+description: |
+  BookshelfNG is a standalone web application for managing authors and books,
+  monitoring libraries and indexers, and automating book downloads. Hardcover,
+  Open Library, and other metadata catalogs are optional runtime sources.
+grade: stable
+confinement: strict
+platforms:
+  amd64:
+    build-on: amd64
+    build-for: amd64
+
+apps:
+  bookshelfng:
+    command: bin/BookshelfNG
+    plugs: [network, network-bind, home, removable-media]
+
+parts:
+  bookshelfng:
+    plugin: dump
+    source: src
+    organize:
+      Readarr: bin/Readarr
