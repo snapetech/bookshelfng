@@ -1,8 +1,14 @@
-FROM ghcr.io/linuxserver/baseimage-alpine:3.21
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.24 AS dotnet-runtime
+
+FROM ghcr.io/linuxserver/baseimage-alpine:3.24
+
+COPY --from=dotnet-runtime /usr/share/dotnet /usr/share/dotnet
 
 ARG TARGETPLATFORM
 
-ENV XDG_CONFIG_HOME="/config/xdg" \
+ENV DOTNET_ROOT=/usr/share/dotnet \
+    PATH="/usr/share/dotnet:${PATH}" \
+    XDG_CONFIG_HOME="/config/xdg" \
     COMPlus_EnableDiagnostics=0 \
     TMPDIR=/run/readarr-temp
 
@@ -11,6 +17,10 @@ RUN apk add -U --upgrade --no-cache \
     icu-libs \
     sqlite-libs \
     xmlstarlet
+
+RUN test -x /usr/share/dotnet/dotnet && \
+    test -d /usr/share/dotnet/shared/Microsoft.NETCore.App/10.0.12 && \
+    test -d /usr/share/dotnet/shared/Microsoft.AspNetCore.App/10.0.12
 
 ARG GIT_BRANCH
 ARG COMMIT_HASH
