@@ -203,6 +203,11 @@ namespace NzbDrone.Core.Download
 
                 return ProcessedDecisionResult.Grabbed;
             }
+            catch (ExistingTorrentFoundException ex)
+            {
+                _logger.Debug(ex, "Skipping release because it is already in a download client. " + remoteBook.ToString()?.ReplaceLineEndings(""));
+                return ProcessedDecisionResult.Skipped;
+            }
             catch (ReleaseUnavailableException)
             {
                 _logger.Warn("Failed to download release from indexer, no longer available. " + remoteBook.ToString()?.ReplaceLineEndings(""));

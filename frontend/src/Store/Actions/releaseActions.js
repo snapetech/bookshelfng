@@ -273,7 +273,13 @@ export const actionHandlers = handleThunks({
   [GRAB_RELEASE]: function(getState, payload, dispatch) {
     const guid = payload.guid;
 
-    dispatch(updateRelease({ guid, isGrabbing: true }));
+    dispatch(updateRelease({
+      guid,
+      isGrabbing: true,
+      existingTorrentAvailable: false,
+      existingTorrentMessage: null,
+      grabError: null
+    }));
 
     const promise = createAjaxRequest({
       url: '/release',
@@ -293,13 +299,16 @@ export const actionHandlers = handleThunks({
     });
 
     promise.fail((xhr) => {
-      const grabError = xhr.responseJSON && xhr.responseJSON.message || 'Failed to add to download queue';
+      const response = xhr.responseJSON || {};
+      const grabError = response.message || 'Failed to add to download queue';
 
       dispatch(updateRelease({
         guid,
         isGrabbing: false,
         isGrabbed: false,
-        grabError
+        grabError,
+        existingTorrentAvailable: response.code === 'existingTorrent',
+        existingTorrentMessage: response.code === 'existingTorrent' ? grabError : null
       }));
     });
   }

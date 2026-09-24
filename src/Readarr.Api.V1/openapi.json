@@ -12976,6 +12976,9 @@
           "downloadClient": {
             "type": "string",
             "nullable": true
+          },
+          "adoptExistingTorrent": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

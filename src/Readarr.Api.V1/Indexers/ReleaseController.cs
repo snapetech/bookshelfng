@@ -124,7 +124,30 @@ namespace Readarr.Api.V1.Indexers
                     throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unable to parse books in the release");
                 }
 
-                await _downloadService.DownloadReport(remoteBook, release.DownloadClientId);
+                if (release.AdoptExistingTorrent)
+                {
+                    await _downloadService.AdoptExistingTorrent(remoteBook, release.DownloadClientId);
+                }
+                else
+                {
+                    await _downloadService.DownloadReport(remoteBook, release.DownloadClientId);
+                }
+            }
+            catch (ExistingTorrentFoundException ex)
+            {
+                return Conflict(new
+                {
+                    code = "existingTorrent",
+                    message = ex.Message
+                });
+            }
+            catch (ExistingTorrentNotFoundException ex)
+            {
+                return Conflict(new
+                {
+                    code = "existingTorrentUnavailable",
+                    message = ex.Message
+                });
             }
             catch (ReleaseDownloadException ex)
             {

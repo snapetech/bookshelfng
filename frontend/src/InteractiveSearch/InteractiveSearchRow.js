@@ -66,8 +66,15 @@ class InteractiveSearchRow extends Component {
     super(props, context);
 
     this.state = {
-      isConfirmGrabModalOpen: false
+      isConfirmGrabModalOpen: false,
+      isAdoptExistingTorrentModalOpen: false
     };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!prevProps.existingTorrentAvailable && this.props.existingTorrentAvailable) {
+      this.setState({ isAdoptExistingTorrentModalOpen: true });
+    }
   }
 
   //
@@ -109,6 +116,28 @@ class InteractiveSearchRow extends Component {
 
   onGrabCancel = () => {
     this.setState({ isConfirmGrabModalOpen: false });
+  };
+
+  onAdoptExistingTorrentConfirm = () => {
+    this.setState({ isAdoptExistingTorrentModalOpen: false });
+
+    const {
+      guid,
+      indexerId,
+      searchPayload,
+      onGrabPress
+    } = this.props;
+
+    onGrabPress({
+      guid,
+      indexerId,
+      ...searchPayload,
+      adoptExistingTorrent: true
+    });
+  };
+
+  onAdoptExistingTorrentCancel = () => {
+    this.setState({ isAdoptExistingTorrentModalOpen: false });
   };
 
   //
@@ -256,6 +285,16 @@ class InteractiveSearchRow extends Component {
           onConfirm={this.onGrabConfirm}
           onCancel={this.onGrabCancel}
         />
+
+        <ConfirmModal
+          isOpen={this.state.isAdoptExistingTorrentModalOpen}
+          kind={kinds.WARNING}
+          title={translate('AdoptExistingTorrent')}
+          message={translate('AdoptExistingTorrentMessageText', [this.props.existingTorrentMessage])}
+          confirmLabel={translate('Adopt')}
+          onConfirm={this.onAdoptExistingTorrentConfirm}
+          onCancel={this.onAdoptExistingTorrentCancel}
+        />
       </TableRow>
     );
   }
@@ -284,6 +323,8 @@ InteractiveSearchRow.propTypes = {
   isGrabbing: PropTypes.bool.isRequired,
   isGrabbed: PropTypes.bool.isRequired,
   grabError: PropTypes.string,
+  existingTorrentAvailable: PropTypes.bool,
+  existingTorrentMessage: PropTypes.string,
   longDateFormat: PropTypes.string.isRequired,
   timeFormat: PropTypes.string.isRequired,
   searchPayload: PropTypes.object.isRequired,
@@ -294,7 +335,8 @@ InteractiveSearchRow.defaultProps = {
   indexerFlags: 0,
   rejections: [],
   isGrabbing: false,
-  isGrabbed: false
+  isGrabbed: false,
+  existingTorrentAvailable: false
 };
 
 export default InteractiveSearchRow;

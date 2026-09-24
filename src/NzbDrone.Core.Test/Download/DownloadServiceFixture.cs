@@ -7,11 +7,13 @@ using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
+using NzbDrone.Common.TPL;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 
@@ -253,6 +255,84 @@ namespace NzbDrone.Core.Test.Download
 
             mockTorrent.Verify(c => c.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Once());
             mockUsenet.Verify(c => c.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
+        }
+
+        [Test]
+        public void should_report_an_existing_torrent_instead_of_downloading_it_again()
+        {
+            var mockTorrent = WithTorrentClient();
+            var infoHash = "abcdef123456";
+            _parseResult.Release = Builder<TorrentInfo>.CreateNew()
+                .With(v => v.DownloadProtocol = DownloadProtocol.Torrent)
+                .With(v => v.InfoHash = infoHash)
+                .With(v => v.IndexerId = 0)
+                .Build();
+            mockTorrent.Setup(v => v.GetItems())
+                .Returns(new[] { new DownloadClientItem { DownloadId = infoHash.ToUpperInvariant(), Title = "Existing torrent" } });
+
+            var exception = Assert.ThrowsAsync<ExistingTorrentFoundException>(async () => await Subject.DownloadReport(_parseResult, null));
+
+            Assert.That(exception.DownloadTitle, Is.EqualTo("Existing torrent"));
+            mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
+            VerifyEventNotPublished<BookGrabbedEvent>();
+        }
+
+        [Test]
+        public async Task should_adopt_an_existing_torrent_without_downloading_it_again()
+        {
+            var mockTorrent = WithTorrentClient();
+            var infoHash = "abcdef123456";
+            _parseResult.Release = Builder<TorrentInfo>.CreateNew()
+                .With(v => v.DownloadProtocol = DownloadProtocol.Torrent)
+                .With(v => v.InfoHash = infoHash)
+                .With(v => v.IndexerId = 0)
+                .Build();
+            mockTorrent.Setup(v => v.GetItems())
+                .Returns(new[] { new DownloadClientItem { DownloadId = infoHash.ToUpperInvariant(), Title = "Existing torrent" } });
+
+            await Subject.AdoptExistingTorrent(_parseResult, null);
+
+            mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
+            Mocker.GetMock<IRateLimitService>()
+                .Verify(v => v.WaitAndPulseAsync(It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never());
+            Mocker.GetMock<IIndexerStatusService>()
+                .Verify(v => v.RecordSuccess(It.IsAny<int>()), Times.Never());
+            Mocker.GetMock<IEventAggregator>()
+                .Verify(v => v.PublishEvent(It.Is<BookGrabbedEvent>(e => e.DownloadId == infoHash.ToUpperInvariant())), Times.Once());
+        }
+
+        [Test]
+        public void should_not_adopt_a_torrent_that_is_no_longer_in_the_download_client()
+        {
+            var mockTorrent = WithTorrentClient();
+            _parseResult.Release = Builder<TorrentInfo>.CreateNew()
+                .With(v => v.DownloadProtocol = DownloadProtocol.Torrent)
+                .With(v => v.InfoHash = "abcdef123456")
+                .With(v => v.IndexerId = 0)
+                .Build();
+            mockTorrent.Setup(v => v.GetItems()).Returns(Array.Empty<DownloadClientItem>());
+
+            Assert.ThrowsAsync<ExistingTorrentNotFoundException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
+
+            mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
+            VerifyEventNotPublished<BookGrabbedEvent>();
+        }
+
+        [Test]
+        public void should_not_adopt_a_torrent_when_the_client_cannot_be_checked()
+        {
+            var mockTorrent = WithTorrentClient();
+            _parseResult.Release = Builder<TorrentInfo>.CreateNew()
+                .With(v => v.DownloadProtocol = DownloadProtocol.Torrent)
+                .With(v => v.InfoHash = "abcdef123456")
+                .With(v => v.IndexerId = 0)
+                .Build();
+            mockTorrent.Setup(v => v.GetItems()).Throws(new DownloadClientException("Client unavailable"));
+
+            Assert.ThrowsAsync<DownloadClientException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
+
+            mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
+            VerifyEventNotPublished<BookGrabbedEvent>();
         }
     }
 }

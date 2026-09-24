@@ -68,6 +68,9 @@ namespace Readarr.Api.V1.Indexers
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string DownloadClient { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool AdoptExistingTorrent { get; set; }
     }
 
     public static class ReleaseResourceMapper
