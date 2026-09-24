@@ -119,7 +119,10 @@ archive with:
 ```
 
 On Windows, run `Readarr.exe` and set a persistent data path under
-`%LOCALAPPDATA%`. Then open `http://localhost:8787`. The
+`%LOCALAPPDATA%`, or use the Windows x64 setup installer attached to each
+release. The installer registers BookshelfNG as a service and backs up the
+existing Readarr-compatible data before upgrades. Then open
+`http://localhost:8787`. The
 [standalone installation guide](docs/standalone-install.md) covers platform
 archives, data migration, system services, and package-specific setup.
 
@@ -388,10 +391,10 @@ GitHub Actions publishes these rolling and versioned container tags:
 - `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
 
 Tagged `main-v*` builds also publish a GitHub Release with curated release
-notes, platform archives, checksums, and native Linux packages, then announce
-the release to Discord. AUR, COPR, PPA, Snap Store, Chocolatey, and Helm
-publication are wired to the same verified tag flow; external stores require
-their publisher credentials and repository registration. The Flatpak is
+notes, platform archives, the Windows x64 setup installer, checksums, and native
+Linux packages, then announce the release to Discord. The AUR, COPR, PPA, Snap
+Store, Chocolatey, and Helm channels use the same verified tag flow. External
+stores require publisher credentials and repository registration. The Flatpak is
 attached as a GitHub Release bundle and is not published to Flathub. See the
 [distribution setup and publisher requirements](docs/distribution.md) for
 channel details. Pull requests require a release-note fragment for user-facing

@@ -33,6 +33,11 @@ On Windows, use `Readarr.exe` and a data directory under `%LOCALAPPDATA%`:
 .\Readarr.exe -nobrowser "-data=$env:LOCALAPPDATA\BookshelfNG"
 ```
 
+Each release also includes a Windows x64 setup installer. Run it as
+administrator to install BookshelfNG as a Windows service. Before upgrading, it
+backs up the existing Readarr-compatible installation and can restore that
+backup if the new service does not start.
+
 Open `http://localhost:8787` in a browser. Keep the data directory on persistent
 storage and back it up before replacing an installation. To migrate a Docker
 library, stop the container and copy its `/config` contents into the chosen
@@ -69,6 +74,8 @@ lists the `slskdn/bookshelfng` COPR project, enable it with
 If `bookshelfng-bin` is published to AUR, install it with an AUR helper such as
 `paru -S bookshelfng-bin`. A Launchpad PPA is published only when an existing
 PPA and signing key are configured; use the target named in the release.
+When the Chocolatey package channel is enabled, install it from an elevated
+PowerShell prompt with `choco install bookshelfng`.
 
 Configuration overrides can be placed in
 `/etc/bookshelfng/bookshelfng.env`. Package upgrades leave this file and
@@ -96,7 +103,7 @@ snap run bookshelfng
 ```
 
 The `.snap` file is also attached to each GitHub release. To sideload that
-asset, use `sudo snap install --dangerous ./BookshelfNG-main-v*.snap`. Snap data
+asset, use `sudo snap install --dangerous ./bookshelfng_*.snap`. Snap data
 is kept in the Snap's persistent common data directory. Connect `removable-media`
 only if your libraries are on removable or mounted external storage:
 

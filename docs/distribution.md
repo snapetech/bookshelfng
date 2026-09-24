@@ -10,7 +10,7 @@ release and sends the existing Discord announcement.
 
 | Channel | Distribution | Notes |
 | --- | --- | --- |
-| GitHub Releases | Self-contained Windows, macOS, Linux, and FreeBSD archives | Every asset has a SHA-256 file. Linux x86 and FreeBSD use the pinned .NET 10 runtime pack process. |
+| GitHub Releases | Self-contained Windows, macOS, Linux, and FreeBSD archives; Windows x64 setup installer | Every asset has a SHA-256 file. Linux x86 and FreeBSD use the pinned .NET 10 runtime pack process. |
 | Debian / Ubuntu | `.deb` package | Installs a systemd service and `/var/lib/bookshelfng` data directory. |
 | Fedora / RPM | `.rpm` and COPR SRPM | Service package; COPR repository is `slskdn/bookshelfng`. |
 | Arch Linux | `bookshelfng-bin` on AUR | Binary package with systemd service files. |

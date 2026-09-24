@@ -180,6 +180,20 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: ./scripts/create-release-archives.sh "$TAG" dist-release
 
+      - name: Build Windows x64 setup installer
+        env:
+          BUILD_SOURCEBRANCHNAME: main
+          READARRVERSION: ${{ needs.validate.outputs.version }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          ./build.sh --installer
+          source="distribution/windows/setup/output/BookshelfNG.Installer.${READARRVERSION}.win-x64.exe"
+          target="dist-release/BookshelfNG-${TAG}-windows-x64-setup.exe"
+          test -s "$source"
+          cp "$source" "$target"
+          (cd dist-release && sha256sum "$(basename "$target")" > "$(basename "$target").sha256")
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bookshelfng-release-assets
@@ -460,6 +474,10 @@ jobs:
             test -f "release-assets/$asset.sha256"
             (cd release-assets && sha256sum -c "$asset.sha256")
           done
+          installer="BookshelfNG-${TAG}-windows-x64-setup.exe"
+          test -f "release-assets/$installer"
+          test -f "release-assets/$installer.sha256"
+          (cd release-assets && sha256sum -c "$installer.sha256")
           for pattern in '*.deb' '*.rpm' '*.AppImage' '*.flatpak' '*.snap' '*.tgz'; do
             compgen -G "release-assets/$pattern" >/dev/null || {
               echo "Missing required release asset matching $pattern" >&2
