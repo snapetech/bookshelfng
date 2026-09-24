@@ -989,6 +989,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 book.UseDbFieldsFrom(dbBook);
 
+                // UseDbFieldsFrom gives the book a database Id, so import no longer swaps in the
+                // DB copy and UpgradeBookFile reads BookFiles straight off this instance.
+                book.BookFiles = dbBook.BookFiles;
+
                 var editions = _editionService.GetEditionsByBook(dbBook.Id).ToDictionary(x => x.ForeignEditionId);
 
                 // If we have any database editions, exactly one will be monitored.
@@ -1000,6 +1004,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     if (editions.TryGetValue(edition.ForeignEditionId, out var dbEdition))
                     {
                         edition.UseDbFieldsFrom(dbEdition);
+                        edition.BookFiles = dbEdition.BookFiles;
                     }
                 }
 
