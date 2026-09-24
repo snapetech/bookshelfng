@@ -258,12 +258,6 @@
         "resolved": "17.0.24",
         "contentHash": "hA7bacntMiZv1Yf9xtjwl/GP3GT1mG84QxhAk7ijAUD0pJhJaVVwXScE13vMpXnNtlaRDW6SeyZdWg2j2qrh4w=="
       },
-      "TagLibSharp-Lidarr": {
-        "type": "Direct",
-        "requested": "[2.2.0.19, )",
-        "resolved": "2.2.0.19",
-        "contentHash": "7l/0/yD91NQRJYt4DadyI1yuLqrLjt509b2peDO9Authzm3cHTxCk1su9LVi9CQu35MG9wnoAw/ingqtc/+jAQ=="
-      },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
         "resolved": "2.6.2",

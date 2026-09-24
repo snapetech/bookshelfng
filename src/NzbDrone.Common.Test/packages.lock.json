@@ -722,8 +722,7 @@
           "Servarr.FluentMigrator.Runner.SQLite": "[3.3.2.9, )",
           "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IO.Abstractions": "[17.0.24, )",
-          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )",
-          "TagLibSharp-Lidarr": "[2.2.0.19, )"
+          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )"
         }
       },
       "readarr.host": {
@@ -1193,12 +1192,6 @@
         "requested": "[4.6.1, )",
         "resolved": "4.6.1",
         "contentHash": "+RJT4qaekpZ7DDLhf+LTjq+E48jieKiY9ulJ+BoxKmZblIJfIJT8Ufcaa/clQqnYvWs8jugfGSMu8ylS0caG0w=="
-      },
-      "TagLibSharp-Lidarr": {
-        "type": "CentralTransitive",
-        "requested": "[2.2.0.19, )",
-        "resolved": "2.2.0.19",
-        "contentHash": "7l/0/yD91NQRJYt4DadyI1yuLqrLjt509b2peDO9Authzm3cHTxCk1su9LVi9CQu35MG9wnoAw/ingqtc/+jAQ=="
       }
     },
     "net10.0/freebsd-x64": {
