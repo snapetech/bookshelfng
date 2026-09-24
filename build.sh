@@ -135,6 +135,24 @@ EnableExtraPlatforms()
     done
 }
 
+EnableReleaseRuntimePlatforms()
+{
+    # The release workflow sets CUSTOM_RUNTIME_PACKS_DIR when it builds the
+    # full standalone release matrix. Add the remaining official runtime IDs
+    # to the shared projects so PublishAllRids creates each package input.
+    # Keep the regular development build matrix unchanged.
+    if [ -z "${CUSTOM_RUNTIME_PACKS_DIR:-}" ]; then
+        return
+    fi
+
+    local rid
+    for rid in linux-arm64 osx-x64 osx-arm64 win-x64 win-x86; do
+        if ! grep -q "<RuntimeIdentifiers>[^<]*$rid" src/Directory.Build.props; then
+            sed -i'' -e "s#</RuntimeIdentifiers>#;$rid</RuntimeIdentifiers>#" src/Directory.Build.props
+        fi
+    done
+}
+
 PrepareExtraRuntimePacks()
 {
     local sourceFolder="${CUSTOM_RUNTIME_PACKS_DIR:-_temp/platform-runtime-packs}"
@@ -604,6 +622,7 @@ then
     if [ "$ENABLE_EXTRA_PLATFORMS" = "YES" ];
     then
         EnableExtraPlatforms
+        EnableReleaseRuntimePlatforms
         EnableExtraPlatformsInSDK
         PrepareExtraRuntimePacks
     fi
