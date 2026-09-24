@@ -41,6 +41,20 @@ namespace NzbDrone.Common.Http
     public class HttpClient : IHttpClient
     {
         private const int MaxRedirects = 5;
+        private static readonly HashSet<string> SafeCrossOriginRedirectHeaders = new (StringComparer.OrdinalIgnoreCase)
+        {
+            "Accept",
+            "Accept-Charset",
+            "Accept-Encoding",
+            "Accept-Language",
+            "Cache-Control",
+            "Connection",
+            "Content-Type",
+            "If-Modified-Since",
+            "If-None-Match",
+            "Range",
+            "User-Agent"
+        };
 
         private readonly Logger _logger;
         private readonly IRateLimitService _rateLimitService;
@@ -74,7 +88,16 @@ namespace NzbDrone.Common.Http
 
                 do
                 {
-                    request.Url += new HttpUri(response.Headers.GetSingleValue("Location"));
+                    var redirectRequest = response.Request ?? request;
+                    var sourceUrl = redirectRequest.Url;
+                    var destinationUrl = sourceUrl + new HttpUri(response.Headers.GetSingleValue("Location"));
+                    if (IsCrossOriginRedirect(sourceUrl, destinationUrl) && HasSensitiveRequestData(redirectRequest, cookieContainer))
+                    {
+                        throw new WebException("Refusing to redirect a request containing credentials or a body to another origin", WebExceptionStatus.ProtocolError);
+                    }
+
+                    request = redirectRequest;
+                    request.Url = destinationUrl;
                     autoRedirectChain.Add(request.Url.ToString());
 
                     _logger.Trace("Redirected to {0}", request.Url);
@@ -121,6 +144,31 @@ namespace NzbDrone.Common.Http
             }
 
             return response;
+        }
+
+        private static bool IsCrossOriginRedirect(HttpUri source, HttpUri destination)
+        {
+            var sourceUri = (Uri)source;
+            var destinationUri = (Uri)destination;
+
+            return !string.Equals(sourceUri.Scheme, destinationUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
+                   !string.Equals(sourceUri.IdnHost, destinationUri.IdnHost, StringComparison.OrdinalIgnoreCase) ||
+                   sourceUri.Port != destinationUri.Port;
+        }
+
+        private static bool HasSensitiveRequestData(HttpRequest request, CookieContainer cookieContainer)
+        {
+            if (request.Credentials != null ||
+                request.Content != null ||
+                request.ContentData != null ||
+                request.Cookies.Count != 0 ||
+                !string.IsNullOrEmpty(((Uri)request.Url).UserInfo) ||
+                cookieContainer.GetCookieHeader((Uri)request.Url).IsNotNullOrWhiteSpace())
+            {
+                return true;
+            }
+
+            return request.Headers.Any(header => !SafeCrossOriginRedirectHeaders.Contains(header.Key));
         }
 
         public HttpResponse Execute(HttpRequest request)
