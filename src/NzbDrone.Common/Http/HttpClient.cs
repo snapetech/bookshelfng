@@ -41,19 +41,13 @@ namespace NzbDrone.Common.Http
     public class HttpClient : IHttpClient
     {
         private const int MaxRedirects = 5;
-        private static readonly HashSet<string> SafeCrossOriginRedirectHeaders = new (StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> SensitiveCrossOriginRedirectHeaders = new (StringComparer.OrdinalIgnoreCase)
         {
-            "Accept",
-            "Accept-Charset",
-            "Accept-Encoding",
-            "Accept-Language",
-            "Cache-Control",
-            "Connection",
-            "Content-Type",
-            "If-Modified-Since",
-            "If-None-Match",
-            "Range",
-            "User-Agent"
+            "Authorization",
+            "Cookie",
+            "Cookie2",
+            "Proxy-Authorization",
+            "Set-Cookie"
         };
 
         private readonly Logger _logger;
@@ -93,7 +87,7 @@ namespace NzbDrone.Common.Http
                     var destinationUrl = sourceUrl + new HttpUri(response.Headers.GetSingleValue("Location"));
                     if (IsCrossOriginRedirect(sourceUrl, destinationUrl) && HasSensitiveRequestData(redirectRequest, cookieContainer))
                     {
-                        throw new WebException("Refusing to redirect a request containing credentials or a body to another origin", WebExceptionStatus.ProtocolError);
+                        throw new WebException("Refusing to redirect a request containing credentials, cookies, or a body to another origin", WebExceptionStatus.ProtocolError);
                     }
 
                     request = redirectRequest;
@@ -168,7 +162,19 @@ namespace NzbDrone.Common.Http
                 return true;
             }
 
-            return request.Headers.Any(header => !SafeCrossOriginRedirectHeaders.Contains(header.Key));
+            return request.Headers.Any(header => IsSensitiveRedirectHeader(header.Key));
+        }
+
+        private static bool IsSensitiveRedirectHeader(string name)
+        {
+            return SensitiveCrossOriginRedirectHeaders.Contains(name) ||
+                   name.Contains("auth", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("credential", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("cookie", StringComparison.OrdinalIgnoreCase) ||
+                   (name.Contains("api", StringComparison.OrdinalIgnoreCase) && name.Contains("key", StringComparison.OrdinalIgnoreCase));
         }
 
         public HttpResponse Execute(HttpRequest request)

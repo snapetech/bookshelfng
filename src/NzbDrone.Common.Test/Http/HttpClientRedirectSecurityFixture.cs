@@ -95,6 +95,18 @@ namespace NzbDrone.Common.Test.Http
             Assert.That(_requests, Has.Count.EqualTo(2));
         }
 
+        [Test]
+        public async Task should_follow_redirects_with_unrelated_custom_headers()
+        {
+            var request = CreateRequest();
+            request.Headers.Add("X-Request-Trace", "trace-id");
+
+            var response = await Subject.ExecuteAsync(request);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(_requests, Has.Count.EqualTo(2));
+        }
+
         private static HttpRequest CreateRequest()
         {
             var request = new HttpRequest("https://configured-service.example/api/resource")
