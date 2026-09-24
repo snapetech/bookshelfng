@@ -69,6 +69,5 @@
     <PackageVersion Include="System.Text.Encoding.CodePages" Version="10.0.12" />
     <PackageVersion Include="System.Text.Json" Version="10.0.12" />
     <PackageVersion Include="System.ValueTuple" Version="4.6.1" />
-    <PackageVersion Include="TagLibSharp-Lidarr" Version="2.2.0.19" />
   </ItemGroup>
 </Project>

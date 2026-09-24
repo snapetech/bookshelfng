@@ -1,0 +1,9 @@
+<Project>
+
+  <PropertyGroup>
+    <RepositoryUrl>https://github.com/lidarr/taglib-sharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

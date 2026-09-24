@@ -26,7 +26,6 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="RestSharp" />
     <PackageReference Include="System.IO.Abstractions" />
-    <PackageReference Include="TagLibSharp-Lidarr" />
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="Equ" />
     <PackageReference Include="MonoTorrent" />
@@ -34,6 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Common\Readarr.Common.csproj" />
+    <ProjectReference Include="..\TagLibSharp\src\TaglibSharp\TaglibSharp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Localization\Core\**">
