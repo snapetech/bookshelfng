@@ -57,6 +57,17 @@ namespace NzbDrone.Core.Books
             _authorMetadataService.Upsert(newAuthor.Metadata.Value);
             newAuthor.AuthorMetadataId = newAuthor.Metadata.Value.Id;
 
+            // Different provider IDs can resolve to the same canonical author
+            // metadata row. Authors are unique by AuthorMetadataId, so return
+            // the existing author instead of failing the insert with a SQLite
+            // constraint error.
+            var existingAuthor = _authorService.GetAuthorByMetadataId(newAuthor.AuthorMetadataId);
+            if (existingAuthor != null)
+            {
+                _logger.Info("Author metadata [{0}] is already linked to [{1}]; skipping duplicate add", newAuthor.AuthorMetadataId, existingAuthor.Name);
+                return existingAuthor;
+            }
+
             // add the author itself
             return _authorService.AddAuthor(newAuthor, doRefresh);
         }
@@ -86,7 +97,16 @@ namespace NzbDrone.Core.Books
             _authorMetadataService.UpsertMany(authorsToAdd.Select(x => x.Metadata.Value).ToList());
             authorsToAdd.ForEach(x => x.AuthorMetadataId = x.Metadata.Value.Id);
 
-            return _authorService.AddAuthors(authorsToAdd, doRefresh);
+            var metadataIds = new HashSet<int>();
+            var uniqueAuthors = authorsToAdd.Where(x => metadataIds.Add(x.AuthorMetadataId) &&
+                _authorService.GetAuthorByMetadataId(x.AuthorMetadataId) == null).ToList();
+
+            if (uniqueAuthors.Count != authorsToAdd.Count)
+            {
+                _logger.Info("Skipped {0} authors that were already present or resolved to duplicate metadata", authorsToAdd.Count - uniqueAuthors.Count);
+            }
+
+            return uniqueAuthors.Count == 0 ? new List<Author>() : _authorService.AddAuthors(uniqueAuthors, doRefresh);
         }
 
         private Author AddSkyhookData(Author newAuthor)
