@@ -25,24 +25,24 @@ public class Kavita : NotificationBase<KavitaSettings>
     {
         var allPaths = message.BookFiles.Select(v => v.Path).Distinct();
         var path = Directory.GetParent(allPaths.First())?.FullName;
-        Notify(Settings, BOOK_DOWNLOADED_TITLE_BRANDED, path);
+        Notify(Settings, path);
     }
 
     public override void OnBookDelete(BookDeleteMessage deleteMessage)
     {
         var allPaths = deleteMessage.Book.BookFiles.Value.Select(v => v.Path).Distinct();
         var path = Directory.GetParent(allPaths.First())?.FullName;
-        Notify(Settings, BOOK_FILE_DELETED_TITLE_BRANDED, path);
+        Notify(Settings, path);
     }
 
     public override void OnBookFileDelete(BookFileDeleteMessage message)
     {
-        Notify(Settings, BOOK_FILE_DELETED_TITLE_BRANDED, Directory.GetParent(message.BookFile.Path)?.FullName);
+        Notify(Settings, Directory.GetParent(message.BookFile.Path)?.FullName);
     }
 
     public override void OnBookRetag(BookRetagMessage message)
     {
-        Notify(Settings, BOOK_RETAGGED_TITLE_BRANDED, Directory.GetParent(message.BookFile.Path)?.FullName);
+        Notify(Settings, Directory.GetParent(message.BookFile.Path)?.FullName);
     }
 
     public override string Name => "Kavita";
@@ -56,13 +56,13 @@ public class Kavita : NotificationBase<KavitaSettings>
         return new ValidationResult(failures);
     }
 
-    private void Notify(KavitaSettings settings, string header, string message)
+    private void Notify(KavitaSettings settings, string folderPath)
     {
         try
         {
-            if (Settings.Notify)
+            if (Settings.Notify && folderPath.IsNotNullOrWhiteSpace())
             {
-                _kavitaService.Notify(Settings, $"{header} - {message}");
+                _kavitaService.Notify(Settings, folderPath);
             }
         }
         catch (SocketException ex)
