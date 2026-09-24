@@ -235,6 +235,17 @@ runtime catalogs and stable IDs, durable author refresh policy, optional
 diagnostics module, richer book lookup API response, qBittorrent 5.2
 authentication, and current image/release automation.
 
+BookshelfNG also retains workflow features from Readarr that the brief
+Bookshelf README does not enumerate: existing-library scans, quality-based
+upgrades and renaming, interactive release search for compatible indexers,
+configurable re-search after failed downloads, and Calibre Content Server
+integration for adding books and converting ebook formats. These are part of
+the inherited application workflow, not BookshelfNG-specific additions. See
+the [interactive search API](../src/Readarr.Api.V1/Indexers/ReleaseController.cs),
+[failed-download re-search handler](../src/NzbDrone.Core/Download/RedownloadFailedDownloadService.cs),
+[Calibre Content Server client](../src/NzbDrone.Core/Books/Calibre/CalibreProxy.cs),
+and [library upgrade path](../src/NzbDrone.Core/MediaFiles/UpgradeMediaFileService.cs).
+
 The upstream READMEs do not capture every compatibility detail in the running
 code. In particular, BookshelfNG's direct Hardcover client, provider-specific
 detail routes, migration boundary, author reuse rules, optional-module

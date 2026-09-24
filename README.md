@@ -51,9 +51,17 @@ recovery.
   multiple tracks for one edition can be merged into a single M4B when
   `BOOKSHELF_M4B_MERGE=true` and an FFmpeg executable is available. This is
   opt-in; the standard Docker image includes FFmpeg.
-- **Keep the familiar automation.** Monitor authors and books, search RSS
-  feeds, apply quality and metadata profiles, manage download clients, scan
-  and import existing files, and rename and upgrade releases automatically.
+- **Keep the familiar automation.** Monitor authors and books, watch indexer
+  RSS feeds for releases, search for missing monitored books, apply quality
+  and metadata profiles, manage download clients, scan and import existing
+  files, and rename or upgrade releases automatically.
+- **Search and recover downloads.** Use interactive release search to choose
+  an available release when an indexer supports it. BookshelfNG can search
+  again after a failed download; automatic grabs and manually selected grabs
+  have separate re-search settings.
+- **Connect a Calibre Content Server.** Configure a Calibre library as a root
+  folder to add imported books to the library, sync metadata, and convert into
+  configured output formats.
 - **Keep library activity private.** BookshelfNG removes Servarr's Sentry
   analytics and exception-reporting integration. An independent diagnostics
   module is available for operators who explicitly install and enable it; the
@@ -99,7 +107,8 @@ services:
 
 Start it with `docker compose up -d`, then open `http://localhost:8787` to set
 up your root folder, metadata source, indexers, and download clients. The
-`softcover` image is available for Goodreads-compatible libraries.
+`softcover` image is available for Goodreads-compatible libraries. Both
+published Linux images support `amd64` and `arm64` hosts.
 
 ## Optional audiobook M4B merging
 
