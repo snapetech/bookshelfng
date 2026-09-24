@@ -29,6 +29,25 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
         }
 
         [Test]
+        public void init_should_apply_hardcover_popularity_default_case_insensitively()
+        {
+            var previousValue = Environment.GetEnvironmentVariable("HARDCOVER");
+
+            try
+            {
+                Environment.SetEnvironmentVariable("HARDCOVER", "TRUE");
+                Subject.Handle(new ApplicationStartedEvent());
+
+                Mocker.GetMock<IMetadataProfileRepository>()
+                    .Verify(v => v.Insert(It.Is<MetadataProfile>(x => x.Name == "Standard" && x.MinPopularity == 50)), Times.Once());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("HARDCOVER", previousValue);
+            }
+        }
+
+        [Test]
 
         //This confirms that new profiles are added only if no other profiles exists.
         //We don't want to keep adding them back if a user deleted them on purpose.
