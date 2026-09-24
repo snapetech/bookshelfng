@@ -15,6 +15,11 @@ on:
         description: Published Hardcover container digest
         required: true
         type: string
+      runtime_pack_run_id:
+        description: Optional successful runtime-pack artifact run for a retry
+        required: false
+        type: string
+        default: ""
     secrets:
       AUR_SSH_KEY:
         required: false
@@ -46,10 +51,18 @@ on:
         description: Published Hardcover container digest
         required: true
         type: string
+      runtime_pack_run_id:
+        description: Optional successful runtime-pack artifact run for a retry
+        required: false
+        type: string
+        default: ""
 
 permissions:
   actions: read
   contents: read
+
+env:
+  BOOKSHELF_RUNTIME_IDENTIFIERS: linux-x64;linux-x86;linux-arm64;linux-musl-x64;linux-musl-arm64;freebsd-x64;osx-x64;osx-arm64;win-x64;win-x86
 
 concurrency:
   group: bookshelfng-release-${{ inputs.tag }}
@@ -100,8 +113,53 @@ jobs:
             exit 1
           }
 
+      - name: Validate reused runtime-pack artifact
+        if: inputs.runtime_pack_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNTIME_PACK_RUN_ID: ${{ inputs.runtime_pack_run_id }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse "$TAG^{commit}")"
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID")"
+          runtime_pack_sha="$(jq -r '.head_sha' <<<"$run_json")"
+          git merge-base --is-ancestor "$runtime_pack_sha" "$source_sha" || {
+            echo "Runtime-pack artifact run is not from the release tag's history." >&2
+            exit 1
+          }
+          git diff --quiet "$runtime_pack_sha" "$source_sha" -- \
+            scripts/build-dotnet10-platform-runtime-packs.sh \
+            src/Directory.Build.props src/NuGet.config || {
+            echo "Runtime-pack build inputs changed since run $RUNTIME_PACK_RUN_ID." >&2
+            exit 1
+          }
+          git show "$runtime_pack_sha:.github/workflows/release-distribution.yml" \
+            | sed -n '/^  build-platform-runtime-packs:/,/^  build-release-assets:/p' \
+            | sed '$d' > "$RUNNER_TEMP/runtime-pack-source-job.yml"
+          git show "$source_sha:.github/workflows/release-distribution.yml" \
+            | sed -n '/^  build-platform-runtime-packs:/,/^  build-release-assets:/p' \
+            | sed '$d' > "$RUNNER_TEMP/runtime-pack-tag-job.yml"
+          cmp -s "$RUNNER_TEMP/runtime-pack-source-job.yml" "$RUNNER_TEMP/runtime-pack-tag-job.yml" || {
+            echo "Runtime-pack workflow job changed since run $RUNTIME_PACK_RUN_ID." >&2
+            exit 1
+          }
+          jobs_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID/jobs?per_page=100")"
+          jq -e 'any(.jobs[]; .name == "Build Linux x86 and FreeBSD .NET 10 runtime packs" and .conclusion == "success")' \
+            <<<"$jobs_json" >/dev/null || {
+              echo "Runtime-pack build did not succeed in run $RUNTIME_PACK_RUN_ID." >&2
+              exit 1
+            }
+          artifacts_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_PACK_RUN_ID/artifacts?per_page=100")"
+          jq -e 'any(.artifacts[]; .name == "bookshelfng-platform-runtime-packs" and .expired == false)' \
+            <<<"$artifacts_json" >/dev/null || {
+              echo "Runtime-pack artifact is missing or expired in run $RUNTIME_PACK_RUN_ID." >&2
+              exit 1
+            }
+
   build-platform-runtime-packs:
     name: Build Linux x86 and FreeBSD .NET 10 runtime packs
+    if: inputs.runtime_pack_run_id == ''
     needs: validate
     runs-on: ubuntu-22.04
     timeout-minutes: 360
@@ -135,10 +193,15 @@ jobs:
 
   build-release-assets:
     name: Build self-contained platform archives
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      (needs.build-platform-runtime-packs.result == 'success' || inputs.runtime_pack_run_id != '')
     needs: [validate, build-platform-runtime-packs]
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     permissions:
+      actions: read
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -174,6 +237,8 @@ jobs:
         with:
           name: bookshelfng-platform-runtime-packs
           path: _temp/platform-runtime-packs
+          run-id: ${{ inputs.runtime_pack_run_id != '' && inputs.runtime_pack_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Build all supported .NET 10 runtimes
         env:
@@ -183,7 +248,9 @@ jobs:
           READARRVERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
-          ./build.sh --backend --frontend --enable-extra-platforms --msbuild-arg=-p:SelfContained=true
+          ./build.sh --backend --frontend --enable-extra-platforms \
+            --msbuild-arg="-p:RuntimeIdentifiers=${BOOKSHELF_RUNTIME_IDENTIFIERS}" \
+            --msbuild-arg=-p:SelfContained=true
 
       - name: Package all supported runtime identifiers
         env:
@@ -191,10 +258,8 @@ jobs:
           READARRVERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
-          for rid in \
-            linux-x64 linux-x86 linux-arm64 \
-            linux-musl-x64 linux-musl-arm64 \
-            freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
+          IFS=';' read -r -a runtime_identifiers <<< "$BOOKSHELF_RUNTIME_IDENTIFIERS"
+          for rid in "${runtime_identifiers[@]}"; do
             ./build.sh --packages --framework net10.0 --runtime "$rid"
           done
 
@@ -478,10 +543,8 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          for rid in \
-            linux-x64 linux-x86 linux-arm64 \
-            linux-musl-x64 linux-musl-arm64 \
-            freebsd-x64 osx-x64 osx-arm64 win-x64 win-x86; do
+          IFS=';' read -r -a runtime_identifiers <<< "$BOOKSHELF_RUNTIME_IDENTIFIERS"
+          for rid in "${runtime_identifiers[@]}"; do
             if [[ "$rid" == win-* ]]; then
               asset="BookshelfNG-${TAG}-${rid}.zip"
             else
