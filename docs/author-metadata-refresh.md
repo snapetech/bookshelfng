@@ -107,6 +107,15 @@ without a usable reset header causes a one-minute pause. Calls made during the
 pause fail without sending another request. Network failures and transient
 server errors use a bounded retry policy; a 429 is not retried into the limit.
 
+The client also reads the daily quota from `RateLimit-Policy` and remaining
+capacity from `RateLimit`, with legacy daily limit and remaining headers as a
+fallback. Background catalog lookups stop before using the final 10% of the
+reported daily quota, rounded up to at least one request. Explicit catalog
+searches from the user interface can use that reserve, while still respecting
+an actual rate-limit pause or exhausted bucket. Background lookup resumes when
+the reported daily window resets. The reserve is calculated from the API
+response, so it follows the quota assigned to the Hardcover account.
+
 Pacing and cooldown state are process-local. Separate BookshelfNG instances do
 not share response caches or coordinate their request rate, even if they use
 the same Hardcover token or outbound IP. Run one metadata-active instance per

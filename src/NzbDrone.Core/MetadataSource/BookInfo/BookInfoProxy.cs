@@ -154,6 +154,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Tuple<string, Book, List<AuthorMetadata>> GetBookInfo(string foreignBookId)
         {
+            return GetBookInfo(foreignBookId, false);
+        }
+
+        private Tuple<string, Book, List<AuthorMetadata>> GetBookInfo(string foreignBookId, bool interactiveSearch)
+        {
             if (_additionalBookMetadataProxy.HandlesBookId(foreignBookId))
             {
                 return ApplyFieldSourcePreferences(_additionalBookMetadataProxy.GetBook(foreignBookId));
@@ -166,12 +171,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (TryGetNamespacedId(foreignBookId, "hardcover:", out var hardcoverBookId))
             {
-                return ApplyFieldSourcePreferences(GetHardcoverBook(hardcoverBookId));
+                return ApplyFieldSourcePreferences(GetHardcoverBook(hardcoverBookId, true, interactiveSearch));
             }
 
             if (_hardcoverMetadataProxy.IsNativeEnabled)
             {
-                var resource = _hardcoverMetadataProxy.GetWork(foreignBookId);
+                var resource = _hardcoverMetadataProxy.GetWork(foreignBookId, interactiveSearch);
                 var book = MapBook(resource);
                 var authorId = GetAuthorId(resource).ToString();
                 var metadata = resource.Authors.Select(MapAuthorMetadata).ToList();
@@ -204,7 +209,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<object> SearchForNewEntity(string title)
         {
-            var books = SearchForNewBook(title, null, false);
+            var books = SearchForNewBook(title, null, false, true);
 
             var result = new List<object>();
             foreach (var book in books)
@@ -224,7 +229,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Author> SearchForNewAuthor(string title)
         {
-            var books = SearchForNewBook(title, null);
+            var books = SearchForNewBook(title, null, true, true);
 
             return books
                 .Select(x => x.Author.Value)
@@ -232,7 +237,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .ToList();
         }
 
-        public List<Book> SearchForNewBook(string title, string author, bool getAllEditions = true)
+        public List<Book> SearchForNewBook(string title, string author, bool getAllEditions = true, bool interactiveSearch = false)
         {
             if (_additionalBookMetadataProxy.HandlesBookId(title))
             {
@@ -242,7 +247,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (TryGetNamespacedId(title, "metadata-api:", out _) ||
                 TryGetNamespacedId(title, "hardcover:", out _))
             {
-                return new List<Book> { GetBookInfo(title).Item2 };
+                return new List<Book> { GetBookInfo(title, interactiveSearch).Item2 };
             }
 
             if (_additionalBookMetadataProxy.HandlesAuthorId(title))
@@ -306,7 +311,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     q = slug;
                 }
 
-                return SearchWithAdditional(q, getAllEditions);
+                return SearchWithAdditional(q, getAllEditions, interactiveSearch);
             }
             catch (HttpException ex)
             {
@@ -330,7 +335,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return SearchWithAdditional(asin, true);
         }
 
-        private List<Book> SearchWithAdditional(string query, bool getAllEditions)
+        private List<Book> SearchWithAdditional(string query, bool getAllEditions, bool interactiveSearch = false)
         {
             var defaultPrimarySource = _hardcoverMetadataProxy.IsNativeEnabled
                 ? AdditionalMetadataSources.Hardcover
@@ -365,7 +370,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 {
                     if (provider == AdditionalMetadataSources.Hardcover)
                     {
-                        books.AddRange(SearchHardcoverCatalog(query, provider != defaultPrimarySource));
+                        books.AddRange(SearchHardcoverCatalog(query, provider != defaultPrimarySource, interactiveSearch));
                     }
                     else if (provider == AdditionalMetadataSources.MetadataApi)
                     {
@@ -491,15 +496,15 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .ToList();
         }
 
-        private List<Book> SearchHardcoverCatalog(string query, bool namespaceIds)
+        private List<Book> SearchHardcoverCatalog(string query, bool namespaceIds, bool interactiveSearch)
         {
             var books = new List<Book>();
-            var results = _hardcoverMetadataProxy.Search(query) ?? new List<SearchJsonResource>();
+            var results = _hardcoverMetadataProxy.Search(query, interactiveSearch) ?? new List<SearchJsonResource>();
             foreach (var result in results.Where(x => x.WorkId > 0).DistinctBy(x => x.WorkId))
             {
                 try
                 {
-                    books.Add(GetHardcoverBook(result.WorkId.ToString(), namespaceIds).Item2);
+                    books.Add(GetHardcoverBook(result.WorkId.ToString(), namespaceIds, interactiveSearch).Item2);
                 }
                 catch (Exception e)
                 {
@@ -510,9 +515,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return books;
         }
 
-        private Tuple<string, Book, List<AuthorMetadata>> GetHardcoverBook(string workId, bool namespaceIds = true)
+        private Tuple<string, Book, List<AuthorMetadata>> GetHardcoverBook(string workId, bool namespaceIds = true, bool interactiveSearch = false)
         {
-            var resource = _hardcoverMetadataProxy.GetWork(workId);
+            var resource = _hardcoverMetadataProxy.GetWork(workId, interactiveSearch);
             var book = MapBook(resource);
             var authors = resource.Authors.Select(MapAuthorMetadata).ToList();
             var authorId = GetAuthorId(resource).ToString();

@@ -3,6 +3,13 @@
   margin-bottom: 10px;
 }
 
+.searchOptions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
 .searchIconContainer {
   width: 58px;
   height: 46px;

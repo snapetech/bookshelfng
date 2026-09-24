@@ -118,6 +118,13 @@ export const actionHandlers = handleThunks({
     });
   },
 
+  [CLEAR_SEARCH_RESULTS]: function() {
+    if (abortCurrentRequest) {
+      abortCurrentRequest();
+      abortCurrentRequest = null;
+    }
+  },
+
   [ADD_AUTHOR]: function(getState, payload, dispatch) {
     dispatch(set({ section, isAdding: true }));
 

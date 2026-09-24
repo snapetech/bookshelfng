@@ -3,7 +3,8 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { clearSearchResults, getSearchResults } from 'Store/Actions/searchActions';
-import { fetchRootFolders } from 'Store/Actions/settingsActions';
+import { fetchDevelopmentSettings, fetchRootFolders } from 'Store/Actions/settingsActions';
+import createSettingsSectionSelector from 'Store/Selectors/createSettingsSectionSelector';
 import parseUrl from 'Utilities/String/parseUrl';
 import AddNewItem from './AddNewItem';
 
@@ -12,13 +13,15 @@ function createMapStateToProps() {
     (state) => state.search,
     (state) => state.authors.items.length,
     (state) => state.router.location,
-    (search, existingAuthorsCount, location) => {
+    createSettingsSectionSelector('development'),
+    (search, existingAuthorsCount, location, developmentSettings) => {
       const { params } = parseUrl(location.search);
 
       return {
         ...search,
         term: params.term,
-        hasExistingAuthors: existingAuthorsCount > 0
+        hasExistingAuthors: existingAuthorsCount > 0,
+        metadataSource: developmentSettings.metadataSource?.value
       };
     }
   );
@@ -27,7 +30,8 @@ function createMapStateToProps() {
 const mapDispatchToProps = {
   getSearchResults,
   clearSearchResults,
-  fetchRootFolders
+  fetchRootFolders,
+  fetchDevelopmentSettings
 };
 
 class AddNewItemConnector extends Component {
@@ -43,6 +47,7 @@ class AddNewItemConnector extends Component {
 
   componentDidMount() {
     this.props.fetchRootFolders();
+    this.props.fetchDevelopmentSettings();
   }
 
   componentWillUnmount() {
@@ -71,6 +76,11 @@ class AddNewItemConnector extends Component {
   };
 
   onClearSearch = () => {
+    if (this._searchTimeout) {
+      clearTimeout(this._searchTimeout);
+      this._searchTimeout = null;
+    }
+
     this.props.clearSearchResults();
   };
 
@@ -98,7 +108,8 @@ AddNewItemConnector.propTypes = {
   term: PropTypes.string,
   getSearchResults: PropTypes.func.isRequired,
   clearSearchResults: PropTypes.func.isRequired,
-  fetchRootFolders: PropTypes.func.isRequired
+  fetchRootFolders: PropTypes.func.isRequired,
+  fetchDevelopmentSettings: PropTypes.func.isRequired
 };
 
 export default connect(createMapStateToProps, mapDispatchToProps)(AddNewItemConnector);

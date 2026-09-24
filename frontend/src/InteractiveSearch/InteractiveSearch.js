@@ -115,7 +115,7 @@ function InteractiveSearch(props) {
       {
         !isFetching && error ?
           <div className={styles.blankpad}>
-            Unable to load results for this book search. Try again later
+            {translate('InteractiveSearchFailed')}
           </div> :
           null
       }

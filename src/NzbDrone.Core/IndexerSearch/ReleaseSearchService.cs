@@ -88,9 +88,14 @@ namespace NzbDrone.Core.IndexerSearch
         {
             var series = _seriesService.GetById(seriesId);
             var author = _authorService.GetAuthor(authorId);
-            var books = GetSeriesBooks(seriesId, authorId);
 
-            if (series == null || !books.Any())
+            if (series == null || author == null)
+            {
+                return new List<DownloadDecision>();
+            }
+
+            var books = GetSeriesBooks(seriesId, authorId);
+            if (!books.Any())
             {
                 return new List<DownloadDecision>();
             }
@@ -116,8 +121,15 @@ namespace NzbDrone.Core.IndexerSearch
         public List<Book> GetSeriesBooks(int seriesId, int authorId)
         {
             var author = _authorService.GetAuthor(authorId);
+            if (author == null)
+            {
+                return new List<Book>();
+            }
+
             var links = _seriesBookLinkService.GetLinksBySeriesAndAuthor(seriesId, author.ForeignAuthorId);
-            var positions = links.ToDictionary(x => x.BookId, x => x.SeriesPosition);
+            var positions = links
+                .GroupBy(x => x.BookId)
+                .ToDictionary(x => x.Key, x => x.Min(link => link.SeriesPosition));
 
             return _bookService.GetBooks(positions.Keys)
                 .OrderBy(x => positions[x.Id])

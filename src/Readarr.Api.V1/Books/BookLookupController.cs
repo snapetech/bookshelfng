@@ -23,7 +23,7 @@ namespace Readarr.Api.V1.Books
         [HttpGet]
         public object Search(string term)
         {
-            var searchResults = _searchProxy.SearchForNewBook(term, null);
+            var searchResults = _searchProxy.SearchForNewBook(term, null, interactiveSearch: true);
             return MapToResource(searchResults).ToList();
         }
 

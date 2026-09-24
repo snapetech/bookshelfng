@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
+import CheckInput from 'Components/Form/CheckInput';
 import TextInput from 'Components/Form/TextInput';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -15,6 +16,16 @@ import AddNewAuthorSearchResultConnector from './Author/AddNewAuthorSearchResult
 import AddNewBookSearchResultConnector from './Book/AddNewBookSearchResultConnector';
 import styles from './AddNewItem.css';
 
+const SEARCH_AS_YOU_TYPE_KEY = 'bookshelfng.addNewItem.searchAsYouType';
+
+function getSearchAsYouTypePreference() {
+  try {
+    return window.localStorage.getItem(SEARCH_AS_YOU_TYPE_KEY) === 'true';
+  } catch (error) {
+    return false;
+  }
+}
+
 class AddNewItem extends Component {
 
   //
@@ -25,15 +36,18 @@ class AddNewItem extends Component {
 
     this.state = {
       term: props.term || '',
-      isFetching: false
+      isFetching: false,
+      searchAsYouTypeEnabled: getSearchAsYouTypePreference()
     };
   }
 
   componentDidMount() {
     const term = this.state.term;
 
-    if (term) {
+    if (term && this.state.searchAsYouTypeEnabled) {
       this.props.onSearchChange(term);
+    } else if (term) {
+      this.props.onClearSearch();
     }
   }
 
@@ -44,11 +58,16 @@ class AddNewItem extends Component {
     } = this.props;
 
     if (term && term !== prevProps.term) {
+      const searchAsYouTypeEnabled = this.state.searchAsYouTypeEnabled;
       this.setState({
         term,
-        isFetching: true
+        isFetching: searchAsYouTypeEnabled
       });
-      this.props.onSearchChange(term);
+      if (searchAsYouTypeEnabled) {
+        this.props.onSearchChange(term);
+      } else {
+        this.props.onClearSearch();
+      }
     } else if (isFetching !== prevProps.isFetching) {
       this.setState({
         isFetching
@@ -61,9 +80,10 @@ class AddNewItem extends Component {
 
   onSearchInputChange = ({ value }) => {
     const hasValue = !!value.trim();
+    const searchAsYouTypeEnabled = this.state.searchAsYouTypeEnabled;
 
-    this.setState({ term: value, isFetching: hasValue }, () => {
-      if (hasValue) {
+    this.setState({ term: value, isFetching: hasValue && searchAsYouTypeEnabled }, () => {
+      if (hasValue && searchAsYouTypeEnabled) {
         this.props.onSearchChange(value);
       } else {
         this.props.onClearSearch();
@@ -71,9 +91,62 @@ class AddNewItem extends Component {
     });
   };
 
+  onSearchAsYouTypeChange = ({ value }) => {
+    const enabled = value === true;
+    const term = this.state.term;
+
+    try {
+      window.localStorage.setItem(SEARCH_AS_YOU_TYPE_KEY, enabled ? 'true' : 'false');
+    } catch (error) {
+      // Keep the preference for this page when browser storage is unavailable.
+    }
+
+    this.setState({
+      searchAsYouTypeEnabled: enabled,
+      isFetching: enabled && !!term.trim()
+    }, () => {
+      if (enabled && term.trim()) {
+        this.props.onSearchChange(term);
+      } else {
+        this.props.onClearSearch();
+      }
+    });
+  };
+
+  onSearchPress = () => {
+    const term = this.state.term.trim();
+
+    if (term) {
+      this.setState({ isFetching: true }, () => this.props.onSearchChange(term));
+    } else {
+      this.props.onClearSearch();
+    }
+  };
+
+  onSearchInputKeyDown = (event) => {
+    if (event.target.name === 'searchBox' && event.key === 'Enter' && !this.state.searchAsYouTypeEnabled) {
+      event.preventDefault();
+      this.onSearchPress();
+    }
+  };
+
   onClearSearchPress = () => {
-    this.setState({ term: '' });
+    this.setState({ term: '', isFetching: false });
     this.props.onClearSearch();
+  };
+
+  renderMetadataIdLink = () => {
+    const source = (this.props.metadataSource || '').toLowerCase();
+
+    if (source.includes('hardcover')) {
+      return <Link to="https://hardcover.app">Hardcover ID</Link>;
+    }
+
+    if (source.includes('bookinfo.pro')) {
+      return <Link to="https://www.goodreads.com">Goodreads ID</Link>;
+    }
+
+    return 'metadata catalog ID';
   };
 
   //
@@ -92,7 +165,7 @@ class AddNewItem extends Component {
     return (
       <PageContent title={translate('AddNewItem')}>
         <PageContentBody>
-          <div className={styles.searchContainer}>
+          <div className={styles.searchContainer} onKeyDown={this.onSearchInputKeyDown}>
             <div className={styles.searchIconContainer}>
               <Icon
                 name={icons.SEARCH}
@@ -118,6 +191,25 @@ class AddNewItem extends Component {
                 size={20}
               />
             </Button>
+          </div>
+
+          <div className={styles.searchOptions}>
+            <CheckInput
+              name="searchAsYouType"
+              value={this.state.searchAsYouTypeEnabled}
+              helpText={translate('SearchAsYouType')}
+              onChange={this.onSearchAsYouTypeChange}
+            />
+
+            {
+              !this.state.searchAsYouTypeEnabled &&
+                <Button
+                  kind={kinds.PRIMARY}
+                  onPress={this.onSearchPress}
+                >
+                  {translate('Search')}
+                </Button>
+            }
           </div>
 
           {
@@ -174,7 +266,7 @@ class AddNewItem extends Component {
                 </div>
                 <div>
                   You can also search using the
-                  <Link to="https://goodreads.com"> Goodreads ID </Link>
+                  {this.renderMetadataIdLink()}
                   of a book (e.g. edition:656), work (e.g. work:4912783) or author (e.g. author:128382), the isbn (e.g. isbn:067003469X) or the asin (e.g. asin:B00JCDK5ME)
                 </div>
               </div>
@@ -189,7 +281,7 @@ class AddNewItem extends Component {
                 </div>
                 <div>
                   You can also search using the
-                  <Link to="https://goodreads.com"> Goodreads ID </Link>
+                  {this.renderMetadataIdLink()}
                   of a book (e.g. edition:656), work (e.g. work:4912783) or author (e.g. author:128382), the isbn (e.g. isbn:067003469X) or the asin (e.g. asin:B00JCDK5ME)
                 </div>
               </div>
@@ -222,6 +314,7 @@ class AddNewItem extends Component {
 
 AddNewItem.propTypes = {
   term: PropTypes.string,
+  metadataSource: PropTypes.string,
   isFetching: PropTypes.bool.isRequired,
   error: PropTypes.object,
   isAdding: PropTypes.bool.isRequired,
