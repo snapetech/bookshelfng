@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import process from 'node:process';
 
@@ -35,6 +36,29 @@ if (!base || !head || !bodyFile) {
 
 const entries = changedReleaseNoteFiles(base, head);
 const modified = entries.filter((entry) => entry.status !== 'A');
+const tagNames = execFileSync('git', ['tag', '--list', 'main-v*'], {
+  encoding: 'utf8',
+})
+  .split('\n')
+  .filter(Boolean);
+const restoredToTaggedVersion = (entry) => {
+  const current = fs.readFileSync(entry.file, 'utf8');
+  return tagNames.some((tag) => {
+    try {
+      return (
+        execFileSync('git', ['show', `${tag}:${entry.file}`], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }) === current
+      );
+    } catch {
+      return false;
+    }
+  });
+};
+const untaggedModifications = modified.filter(
+  (entry) => !restoredToTaggedVersion(entry)
+);
 const { notes, errors } = readReleaseNotes(
   entries.filter((entry) => entry.status === 'A')
 );
@@ -42,9 +66,15 @@ const body = fs.readFileSync(bodyFile, 'utf8');
 const explicitNoReleaseNote = hasExplicitNoReleaseNote(body);
 const issues = [...errors];
 
-for (const entry of modified) {
+for (const entry of untaggedModifications) {
   issues.push(
     `${entry.file}: release-note fragments are append-only; add a new fragment instead of modifying an old one`
+  );
+}
+
+if (modified.length > untaggedModifications.length && !explicitNoReleaseNote) {
+  issues.push(
+    'restoring a tagged release-note fragment is internal-only; explicitly mark the change `release-note: none`'
   );
 }
 
