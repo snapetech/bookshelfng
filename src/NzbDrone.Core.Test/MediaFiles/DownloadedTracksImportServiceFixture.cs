@@ -44,6 +44,17 @@ namespace NzbDrone.Core.Test.MediaFiles
                   .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), true, null, ImportMode.Auto))
                   .Returns(new List<ImportResult>());
 
+            Mocker.GetMock<IAudiobookM4bMergeService>()
+                  .Setup(s => s.Prepare(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<DownloadClientItem>()))
+                  .Returns((List<ImportDecision<LocalBook>> decisions, DownloadClientItem _) => new AudiobookM4bMergeBatch
+                  {
+                      Decisions = decisions,
+                      Merges = new List<AudiobookM4bMerge>()
+                  });
+
+            Mocker.GetMock<IAudiobookM4bMergeService>()
+                  .Setup(s => s.Complete(It.IsAny<AudiobookM4bMergeBatch>(), It.IsAny<List<ImportResult>>(), It.IsAny<ImportMode>(), It.IsAny<DownloadClientItem>()));
+
             var downloadItem = Builder<DownloadClientItem>.CreateNew()
                 .With(v => v.DownloadId = "sab1")
                 .With(v => v.Status = DownloadItemStatus.Downloading)
@@ -105,6 +116,20 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.ProcessRootFolder(DiskProvider.GetDirectoryInfo(_droneFactory));
 
             Mocker.GetMock<IParsingService>().Verify(c => c.GetAuthor("foldername"), Times.Once());
+        }
+
+        [Test]
+        public void should_prepare_and_complete_audiobook_merge_for_download_imports()
+        {
+            GivenSuccessfulImport();
+            var author = Builder<Author>.CreateNew().Build();
+
+            Subject.ProcessPath(_subFolders[0], ImportMode.Auto, author, _trackedDownload.DownloadItem);
+
+            Mocker.GetMock<IAudiobookM4bMergeService>()
+                .Verify(s => s.Prepare(It.IsAny<List<ImportDecision<LocalBook>>>(), _trackedDownload.DownloadItem), Times.Once());
+            Mocker.GetMock<IAudiobookM4bMergeService>()
+                .Verify(s => s.Complete(It.IsAny<AudiobookM4bMergeBatch>(), It.IsAny<List<ImportResult>>(), ImportMode.Auto, _trackedDownload.DownloadItem), Times.Once());
         }
 
         [Test]
