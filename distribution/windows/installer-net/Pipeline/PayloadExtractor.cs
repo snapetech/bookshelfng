@@ -98,7 +98,7 @@ public static class PayloadExtractor
         {
             ct.ThrowIfCancellationRequested();
 
-            var destPath = Path.Combine(destDir, entry.FullName);
+            var destPath = GetContainedEntryPath(destDir, entry.FullName);
             var destSubDir = Path.GetDirectoryName(destPath);
             if (destSubDir != null)
             {
@@ -123,5 +123,24 @@ public static class PayloadExtractor
         progress.Report(new ExtractProgress(totalEntries, totalEntries));
         log.Report(new LogLine(LogStream.Stdout, $"[payload] Extracted {extracted}/{totalEntries} files."));
         await Task.CompletedTask;
+    }
+
+    private static string GetContainedEntryPath(string destDir, string entryPath)
+    {
+        var root = Path.GetFullPath(destDir);
+        var rootPrefix = Path.EndsInDirectorySeparator(root)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+        var destination = Path.GetFullPath(Path.Combine(rootPrefix, entryPath));
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (!destination.StartsWith(rootPrefix, comparison))
+        {
+            throw new InvalidDataException($"Archive entry '{entryPath}' is outside the payload directory.");
+        }
+
+        return destination;
     }
 }
