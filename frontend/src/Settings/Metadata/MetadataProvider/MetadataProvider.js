@@ -107,6 +107,7 @@ function MetadataProvider(props) {
   const apifyTokenFromEnvironment = settings.apifyTokenFromEnvironment?.value;
   const apifyTemplateFromEnvironment = settings.apifyGoodreadsInputTemplateFromEnvironment?.value;
   const openLibraryEmailFromEnvironment = settings.openLibraryContactEmailFromEnvironment?.value;
+  const environmentOverrideHelpText = translate('MetadataProviderCredentialEnvironmentOverride');
 
   return (
 
@@ -183,6 +184,7 @@ function MetadataProvider(props) {
                   helpText={translate('HardcoverApiTokenHelpText')}
                   onChange={onInputChange}
                   {...settings.hardcoverAuth}
+                  helpTexts={hardcoverAuthFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={hardcoverAuthFromEnvironment}
                   autoComplete="new-password"
                 />
@@ -197,9 +199,6 @@ function MetadataProvider(props) {
                     onChange={onInputChange}
                     {...settings.clearHardcoverAuth}
                   />
-                )}
-                {hardcoverAuthFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
                 )}
               </FormGroup>
             </FieldSet>
@@ -232,11 +231,9 @@ function MetadataProvider(props) {
                   name="openLibraryContactEmail"
                   onChange={onInputChange}
                   {...settings.openLibraryContactEmail}
+                  helpTexts={openLibraryEmailFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={openLibraryEmailFromEnvironment}
                 />
-                {openLibraryEmailFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
 
               <FormGroup>
@@ -247,6 +244,7 @@ function MetadataProvider(props) {
                   placeholder={translate('EnterToReplaceSavedKey')}
                   onChange={onInputChange}
                   {...settings.googleBooksApiKey}
+                  helpTexts={googleBooksKeyFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={googleBooksKeyFromEnvironment}
                   autoComplete="new-password"
                 />
@@ -262,9 +260,6 @@ function MetadataProvider(props) {
                     {...settings.clearGoogleBooksApiKey}
                   />
                 )}
-                {googleBooksKeyFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
 
               <FormGroup>
@@ -275,6 +270,7 @@ function MetadataProvider(props) {
                   placeholder={translate('EnterToReplaceSavedKey')}
                   onChange={onInputChange}
                   {...settings.europeanaApiKey}
+                  helpTexts={europeanaKeyFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={europeanaKeyFromEnvironment}
                   autoComplete="new-password"
                 />
@@ -290,9 +286,6 @@ function MetadataProvider(props) {
                     {...settings.clearEuropeanaApiKey}
                   />
                 )}
-                {europeanaKeyFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
 
               <FormGroup>
@@ -303,6 +296,7 @@ function MetadataProvider(props) {
                   placeholder="publisher~actor-name"
                   onChange={onInputChange}
                   {...settings.apifyGoodreadsActor}
+                  helpTexts={apifyActorFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={apifyActorFromEnvironment}
                 />
                 {settings.apifyGoodreadsActor?.value && !apifyActorFromEnvironment && (
@@ -314,9 +308,6 @@ function MetadataProvider(props) {
                     {...settings.clearApifyGoodreadsActor}
                   />
                 )}
-                {apifyActorFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
 
               <FormGroup>
@@ -327,6 +318,7 @@ function MetadataProvider(props) {
                   placeholder={translate('EnterToReplaceSavedKey')}
                   onChange={onInputChange}
                   {...settings.apifyToken}
+                  helpTexts={apifyTokenFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={apifyTokenFromEnvironment}
                   autoComplete="new-password"
                 />
@@ -342,9 +334,6 @@ function MetadataProvider(props) {
                     {...settings.clearApifyToken}
                   />
                 )}
-                {apifyTokenFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
 
               <FormGroup>
@@ -356,11 +345,9 @@ function MetadataProvider(props) {
                   helpText={translate('ApifyGoodreadsInputTemplateHelpText')}
                   onChange={onInputChange}
                   {...settings.apifyGoodreadsInputTemplate}
+                  helpTexts={apifyTemplateFromEnvironment ? [environmentOverrideHelpText] : []}
                   isDisabled={apifyTemplateFromEnvironment}
                 />
-                {apifyTemplateFromEnvironment && (
-                  <p className="helpText">{translate('MetadataProviderCredentialEnvironmentOverride')}</p>
-                )}
               </FormGroup>
             </FieldSet>
 
