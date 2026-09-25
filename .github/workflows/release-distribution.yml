@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: ""
+      channels:
+        description: Package publishers to run (all, or a comma-separated subset of aur,copr,ppa,chocolatey,helm)
+        required: false
+        type: string
+        default: all
       skip_announcement:
         description: Skip Discord announcement when retrying distribution
         required: false
@@ -57,6 +62,11 @@ on:
         required: false
         type: string
         default: ""
+      channels:
+        description: Package publishers to run (all, or a comma-separated subset of aur,copr,ppa,chocolatey,helm)
+        required: false
+        type: string
+        default: all
       skip_announcement:
         description: Skip Discord announcement for a manual distribution retry
         required: false
@@ -676,7 +686,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.publish-github-release.result == 'success' &&
       needs.publisher-credentials.result == 'success' &&
-      needs.publisher-credentials.outputs.aur == 'true'
+      needs.publisher-credentials.outputs.aur == 'true' &&
+      (inputs.channels == 'all' || contains(inputs.channels, 'aur'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -803,7 +814,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.publish-github-release.result == 'success' &&
       needs.publisher-credentials.result == 'success' &&
-      needs.publisher-credentials.outputs.copr == 'true'
+      needs.publisher-credentials.outputs.copr == 'true' &&
+      (inputs.channels == 'all' || contains(inputs.channels, 'copr'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -836,7 +848,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.publish-github-release.result == 'success' &&
       needs.publisher-credentials.result == 'success' &&
-      needs.publisher-credentials.outputs.ppa == 'true'
+      needs.publisher-credentials.outputs.ppa == 'true' &&
+      (inputs.channels == 'all' || contains(inputs.channels, 'ppa'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -921,7 +934,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.publish-github-release.result == 'success' &&
       needs.publisher-credentials.result == 'success' &&
-      needs.publisher-credentials.outputs.chocolatey == 'true'
+      needs.publisher-credentials.outputs.chocolatey == 'true' &&
+      (inputs.channels == 'all' || contains(inputs.channels, 'chocolatey'))
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -951,14 +965,16 @@ jobs:
           New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'tools') | Out-Null
           Copy-Item packaging/chocolatey/bookshelfng.nuspec $packageDir
           Copy-Item packaging/chocolatey/tools/* (Join-Path $packageDir 'tools')
+          $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
           $nuspec = Join-Path $packageDir 'bookshelfng.nuspec'
-          (Get-Content $nuspec -Raw).Replace('<version>0.0.0</version>', "<version>$env:VERSION</version>") | Set-Content -NoNewline $nuspec
+          $nuspecContent = (Get-Content $nuspec -Raw).Replace('<version>0.0.0</version>', "<version>$env:VERSION</version>")
+          [System.IO.File]::WriteAllText($nuspec, $nuspecContent, $utf8NoBom)
           $installScript = Join-Path $packageDir 'tools/chocolateyinstall.ps1'
           $script = Get-Content $installScript -Raw
           $archiveRoot = "BookshelfNG-$env:TAG-win-x64"
           $script = $script.Replace('__RELEASE_TAG__', $env:TAG).Replace('__ARCHIVE_ROOT__', $archiveRoot).Replace('__ARCHIVE__', $archive).Replace('__SHA256__', $checksum)
           if ($script -match '__[A-Z_]+__') { throw 'The Chocolatey install script still has an unresolved release placeholder.' }
-          Set-Content -NoNewline $installScript $script
+          [System.IO.File]::WriteAllText($installScript, $script, $utf8NoBom)
           choco pack $nuspec --outputdirectory $packageDir
           $package = Get-ChildItem $packageDir -Filter '*.nupkg' | Select-Object -First 1
           if (-not $package) { throw 'Chocolatey package was not built.' }
@@ -971,7 +987,8 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       needs.build-helm.result == 'success' &&
-      needs.publish-github-release.result == 'success'
+      needs.publish-github-release.result == 'success' &&
+      (inputs.channels == 'all' || contains(inputs.channels, 'helm'))
     runs-on: ubuntu-latest
     permissions:
       contents: read

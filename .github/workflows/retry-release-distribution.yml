@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: ""
+      channels:
+        description: Package publishers to run (all, or a comma-separated subset of aur,copr,ppa,chocolatey,helm)
+        required: false
+        type: string
+        default: all
       skip_announcement:
         description: Prevent a duplicate Discord announcement (true by default for retries)
         required: false
@@ -44,5 +49,6 @@ jobs:
       softcover_digest: ${{ inputs.softcover_digest }}
       hardcover_digest: ${{ inputs.hardcover_digest }}
       runtime_pack_run_id: ${{ inputs.runtime_pack_run_id }}
+      channels: ${{ inputs.channels }}
       skip_announcement: ${{ inputs.skip_announcement }}
     secrets: inherit
