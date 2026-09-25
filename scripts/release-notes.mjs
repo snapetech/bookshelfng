@@ -284,14 +284,17 @@ export function injectCuratedNotes(changelog, curatedNotes) {
 }
 
 export function hasExplicitNoReleaseNote(body) {
-  const visibleBody = body
-    .replace(/<!--[\s\S]*?-->/gu, '')
-    .replace(/^\s*-\s*\[\s\][^\n]*$/gimu, '');
+  const bodyWithoutUncheckedOptions = body.replace(
+    /^[\t ]*-[\t ]*\[[\t ]\][^\n]*$/gimu,
+    ''
+  );
 
   return (
-    /release-note\s*:\s*none/iu.test(visibleBody) ||
-    /-\s*\[x\][^\n]*(?:internal-only|no user-facing release note)/iu.test(
-      visibleBody
+    /^[\t ]*`?release-note[\t ]*:[\t ]*none`?[\t ]*$/imu.test(
+      bodyWithoutUncheckedOptions
+    ) ||
+    /^[\t ]*-[\t ]*\[x\][^\n]*(?:internal-only|no user-facing release note)[^\n]*$/gimu.test(
+      bodyWithoutUncheckedOptions
     )
   );
 }
