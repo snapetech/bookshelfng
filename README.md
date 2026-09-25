@@ -446,6 +446,7 @@ you can also authenticate with package read access.
 - [Metadata providers and configuration](#metadata-sources)
 - [Moving an existing library to Hardcover](#moving-an-existing-library-to-hardcover)
 - [Author metadata storage, refresh policy, and troubleshooting](docs/author-metadata-refresh.md)
+- [Reporting issues and collecting useful logs](docs/reporting-issues.md)
 - [.NET 10 platform builds for Linux x86 and FreeBSD](docs/dotnet-10-platform-builds.md)
 - [Standalone installation and platform support](docs/standalone-install.md)
 - [Release distribution channels and publisher setup](docs/distribution.md)

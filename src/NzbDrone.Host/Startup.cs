@@ -74,13 +74,15 @@ namespace NzbDrone.Host
                     builder =>
                     builder.AllowAnyOrigin()
                     .AllowAnyMethod()
-                    .AllowAnyHeader());
+                    .AllowAnyHeader()
+                    .WithExposedHeaders("X-Bookshelf-Request-Id"));
 
                 options.AddPolicy("AllowGet",
                     builder =>
                     builder.AllowAnyOrigin()
                     .WithMethods("GET", "OPTIONS")
-                    .AllowAnyHeader());
+                    .AllowAnyHeader()
+                    .WithExposedHeaders("X-Bookshelf-Request-Id"));
             });
 
             services

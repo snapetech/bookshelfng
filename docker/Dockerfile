@@ -25,13 +25,27 @@ RUN test -x /usr/share/dotnet/dotnet && \
 ARG GIT_BRANCH
 ARG COMMIT_HASH
 ARG BUILD_DATE
+ARG IMAGE_VERSION=unknown
+ARG IMAGE_FLAVOR=unknown
 ARG METADATA_URL=https://api.bookinfo.pro
 ARG HARDCOVER
 
-LABEL maintainer="pennydreadful"
+LABEL maintainer="pennydreadful" \
+    org.opencontainers.image.version=${IMAGE_VERSION} \
+    org.opencontainers.image.revision=${COMMIT_HASH} \
+    org.opencontainers.image.ref.name=${GIT_BRANCH} \
+    com.snapetech.bookshelf.flavor=${IMAGE_FLAVOR} \
+    com.snapetech.bookshelf.image-tag=${IMAGE_FLAVOR}-v${IMAGE_VERSION}
 
 ENV METADATA_URL=${METADATA_URL}
 ENV HARDCOVER=${HARDCOVER}
+ENV BOOKSHELF_IMAGE_VERSION=${IMAGE_VERSION} \
+    BOOKSHELF_IMAGE_REVISION=${COMMIT_HASH} \
+    BOOKSHELF_IMAGE_REF=${GIT_BRANCH} \
+    BOOKSHELF_IMAGE_FLAVOR=${IMAGE_FLAVOR} \
+    BOOKSHELF_IMAGE_TAG=${IMAGE_FLAVOR}-v${IMAGE_VERSION} \
+    BOOKSHELF_IMAGE_BUILD_DATE=${BUILD_DATE} \
+    BOOKSHELF_CONTAINER=true
 
 RUN mkdir -p /app/readarr
 
@@ -46,8 +60,13 @@ RUN --mount=type=bind,source=_output,target=_output \
     esac; \
     cp -r /_output/UI /app/readarr/bin/UI
 
-RUN echo -e "UpdateMethod=docker\nBranch=${GIT_BRANCH}\nPackageVersion=${COMMIT_HASH}}\nPackageAuthor=pennydreadful" > /app/readarr/package_info && \
-    printf "version: ${COMMIT_HASH}}\nBuild-date: ${BUILD_DATE}" > /build_version
+RUN test -s /app/readarr/bin/UI/index.html && \
+    test -n "$(find /app/readarr/bin/UI -type f -name '*.js' -print -quit)" && \
+    test -n "$(find /app/readarr/bin/UI -type f -name '*.css' -print -quit)"
+
+RUN printf 'UpdateMethod=docker\nBranch=%s\nPackageVersion=%s\nPackageAuthor=pennydreadful\nReleaseVersion=%s\n' \
+        "${GIT_BRANCH}" "${COMMIT_HASH}" "${IMAGE_VERSION}" > /app/readarr/package_info && \
+    printf 'version: %s\nBuild-date: %s\n' "${COMMIT_HASH}" "${BUILD_DATE}" > /build_version
 
 # copy local files
 COPY docker/root/ /

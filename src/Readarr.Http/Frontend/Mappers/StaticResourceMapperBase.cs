@@ -47,7 +47,9 @@ namespace Readarr.Http.Frontend.Mappers
                 });
             }
 
-            _logger.Warn("File {0} not found", filePath);
+            var requestedResource = (resourceUrl ?? "").ReplaceLineEndings("");
+            var sanitizedPath = filePath.ReplaceLineEndings("");
+            _logger.Warn("UI resource {0} mapped to {1}, but the file was not found", requestedResource, sanitizedPath);
 
             return null;
         }

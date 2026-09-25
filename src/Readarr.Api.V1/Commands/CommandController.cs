@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using NzbDrone.Common.Composition;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Common.TPL;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Messaging.Commands;
@@ -24,6 +27,7 @@ namespace Readarr.Api.V1.Commands
     {
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly KnownTypes _knownTypes;
+        private readonly Logger _logger;
         private readonly Debouncer _debouncer;
         private readonly Dictionary<int, CommandResource> _pendingUpdates;
 
@@ -31,11 +35,13 @@ namespace Readarr.Api.V1.Commands
 
         public CommandController(IManageCommandQueue commandQueueManager,
                              IBroadcastSignalRMessage signalRBroadcaster,
-                             KnownTypes knownTypes)
+                             KnownTypes knownTypes,
+                             Logger logger)
             : base(signalRBroadcaster)
         {
             _commandQueueManager = commandQueueManager;
             _knownTypes = knownTypes;
+            _logger = logger;
 
             _debouncer = new Debouncer(SendUpdates, TimeSpan.FromSeconds(0.1));
             _pendingUpdates = new Dictionary<int, CommandResource>();
@@ -45,7 +51,15 @@ namespace Readarr.Api.V1.Commands
 
         protected override CommandResource GetResourceById(int id)
         {
-            return _commandQueueManager.Get(id).ToResource();
+            try
+            {
+                return _commandQueueManager.Get(id).ToResource();
+            }
+            catch (ModelNotFoundException)
+            {
+                _logger.Debug("Command {0} was not found in the active queue or command database; returning 404 (requestId={1})", id, GetRequestId());
+                throw;
+            }
         }
 
         [RestPostById]
@@ -72,7 +86,23 @@ namespace Readarr.Api.V1.Commands
 
             var trackedCommand = _commandQueueManager.Push(command, priority, CommandTrigger.Manual);
 
+            _logger.Debug("Manual command accepted: id={0}; name={1}; priority={2}; requestId={3}",
+                trackedCommand.Id,
+                trackedCommand.Name,
+                trackedCommand.Priority,
+                GetRequestId());
+
             return Created(trackedCommand.Id);
+        }
+
+        private string GetRequestId()
+        {
+            if (HttpContext.Items.TryGetValue("ApiRequestSequenceID", out var requestId))
+            {
+                return Convert.ToString(requestId, CultureInfo.InvariantCulture);
+            }
+
+            return HttpContext.TraceIdentifier;
         }
 
         [HttpGet]

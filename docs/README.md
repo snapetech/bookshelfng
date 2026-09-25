@@ -12,6 +12,7 @@ metadata provider configuration.
 | [Search and downloads](search-and-downloads.md) | Add-page search, indexer release search, existing-torrent adoption, and ignoring queue items |
 | [Series pack search](series-pack-search.md) | Searching a series and reviewing multi-book packs in Manual Import |
 | [Author metadata refresh](author-metadata-refresh.md) | Stored author metadata, refresh schedule, request limits, and troubleshooting |
+| [Reporting issues](reporting-issues.md) | Which application and container logs to include for UI and API failures |
 
 ## Audiobooks and integrations
 

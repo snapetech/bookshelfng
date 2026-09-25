@@ -190,6 +190,8 @@ jobs:
             GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
             COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
             BUILD_DATE=${{ env.DATE }}
+            IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
+            IMAGE_FLAVOR=softcover
 
       - uses: docker/build-push-action@v6
         id: hardcover_image
@@ -204,6 +206,8 @@ jobs:
             GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
             COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
             BUILD_DATE=${{ env.DATE }}
+            IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
+            IMAGE_FLAVOR=hardcover
             METADATA_URL=https://hardcover.bookinfo.pro
             HARDCOVER=true
 
