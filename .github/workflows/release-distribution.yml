@@ -491,6 +491,7 @@ jobs:
           mkdir -p packaging/flatpak/src
           cp -a dist/. packaging/flatpak/src/
           flatpak-builder --force-clean \
+            --default-branch=stable \
             --repo="$RUNNER_TEMP/bookshelfng-flatpak-repo" \
             "$RUNNER_TEMP/bookshelfng-flatpak-build" packaging/flatpak/com.snapetech.BookshelfNG.yml
           flatpak build-bundle "$RUNNER_TEMP/bookshelfng-flatpak-repo" \
