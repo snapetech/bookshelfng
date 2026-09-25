@@ -28,9 +28,7 @@ on:
     secrets:
       AUR_SSH_KEY:
         required: false
-      COPR_LOGIN:
-        required: false
-      COPR_TOKEN:
+      COPR_WEBHOOK_URL:
         required: false
       GPG_PRIVATE_KEY:
         required: false
@@ -654,8 +652,7 @@ jobs:
       - id: check
         env:
           AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
-          COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
-          COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
+          COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
@@ -665,7 +662,7 @@ jobs:
             echo "$name=false" >> "$GITHUB_OUTPUT"
           done
           [[ -n "$AUR_SSH_KEY" ]] && echo 'aur=true' >> "$GITHUB_OUTPUT" || echo 'AUR_SSH_KEY is not set; AUR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
-          [[ -n "$COPR_LOGIN" && -n "$COPR_TOKEN" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'COPR_LOGIN or COPR_TOKEN is not set; COPR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          [[ -n "$COPR_WEBHOOK_URL" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'COPR_WEBHOOK_URL is not set; COPR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
           [[ -n "$GPG_PRIVATE_KEY" && -n "$LAUNCHPAD_PPA" ]] && echo 'ppa=true' >> "$GITHUB_OUTPUT" || echo 'GPG_PRIVATE_KEY or LAUNCHPAD_PPA is not set; PPA upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
           [[ -n "$CHOCOLATEY_API_KEY" ]] && echo 'chocolatey=true' >> "$GITHUB_OUTPUT" || echo 'CHOCOLATEY_API_KEY is not set; Chocolatey upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
 
@@ -797,7 +794,7 @@ jobs:
         run: rm -f -- ~/.ssh/aur ~/.ssh/config ~/.ssh/known_hosts
 
   publish-copr:
-    name: Publish COPR build
+    name: Trigger COPR build
     needs: [validate, publish-github-release, publisher-credentials]
     if: >-
       always() &&
@@ -809,101 +806,25 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.validate.outputs.tag }}
-          persist-credentials: false
-
-      - name: Download release archive
+      - name: Trigger COPR custom source build
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.validate.outputs.tag }}
-        run: gh release download "$TAG" --pattern "BookshelfNG-${TAG}-linux-x64.tar.gz"
-
-      - name: Build source RPM
-        env:
-          VERSION: ${{ needs.validate.outputs.version }}
+          COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rpm
-          rpm_top="$RUNNER_TEMP/rpmbuild"
-          mkdir -p "$rpm_top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-          cp "BookshelfNG-${TAG}-linux-x64.tar.gz" "$rpm_top/SOURCES/bookshelfng-${VERSION}.tar.gz"
-          cp packaging/systemd/bookshelfng.{service,env,sysusers,tmpfiles} "$rpm_top/SOURCES/"
-          cp packaging/rpm/bookshelfng.spec "$rpm_top/SPECS/"
-          sed -i "s/^Version:.*$/Version:        ${VERSION}/; s/^Release:.*$/Release:        1%{?dist}/" "$rpm_top/SPECS/bookshelfng.spec"
-          rpmbuild -bs --define "_topdir $rpm_top" "$rpm_top/SPECS/bookshelfng.spec"
-          srpm="$(find "$rpm_top/SRPMS" -maxdepth 1 -name '*.src.rpm' -print -quit)"
-          test -n "$srpm"
-
-      - name: Configure COPR
-        env:
-          COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
-          COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
-          COPR_USERNAME: ${{ vars.COPR_USERNAME || 'slskdn' }}
-          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
-        run: |
-          set -euo pipefail
-          install -d -m 0700 ~/.config
-          cat > ~/.config/copr <<EOF
-          [copr-cli]
-          login = ${COPR_LOGIN}
-          username = ${COPR_USERNAME}
-          token = ${COPR_TOKEN}
-          copr_url = https://copr.fedorainfracloud.org
-          EOF
-          chmod 0600 ~/.config/copr
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv
-          python3 -m venv "$RUNNER_TEMP/copr"
-          "$RUNNER_TEMP/copr/bin/python" -m pip install --upgrade pip copr-cli
-          echo "$RUNNER_TEMP/copr/bin" >> "$GITHUB_PATH"
-          export PATH="$RUNNER_TEMP/copr/bin:$PATH"
-          copr-cli whoami
-
-      - name: Ensure COPR project exists
-        env:
-          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
-        run: |
-          set -euo pipefail
-          owner="$(copr-cli whoami)"
-          project="${COPR_PROJECT:-bookshelfng}"
-          [[ "$project" != */* ]] || {
-            echo 'COPR_PROJECT must be a project name without an owner prefix.' >&2
-            exit 2
-          }
-          full_name="${owner}/${project}"
-          instructions="dnf copr enable ${full_name} && dnf install bookshelfng"
-          chroots=(fedora-44-x86_64 fedora-rawhide-x86_64)
-          copr_args=()
-          for chroot in "${chroots[@]}"; do
-            copr_args+=(--chroot "$chroot")
-          done
-          if copr-cli get "$project" >/dev/null 2>&1; then
-            copr-cli modify "$project" \
-              "${copr_args[@]}" \
-              --description "BookshelfNG RPM builds" \
-              --instructions "$instructions"
-          else
-            copr-cli create "$project" \
-              "${copr_args[@]}" \
-              --description "BookshelfNG RPM builds" \
-              --instructions "$instructions"
+          test -n "$COPR_WEBHOOK_URL"
+          response="$(curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --max-time 60 \
+            --header 'Content-Type: text/plain' \
+            --data-binary "$TAG" \
+            "$COPR_WEBHOOK_URL")"
+          echo "COPR accepted the build trigger for ${TAG}. The custom source downloads and verifies the release SRPM."
+          if [[ -n "$response" ]]; then
+            echo 'COPR webhook returned a response; see the job log if COPR reports an error.'
           fi
-
-      - name: Submit SRPM to COPR
-        env:
-          COPR_PROJECT: ${{ vars.COPR_PROJECT || 'bookshelfng' }}
-        run: |
-          set -euo pipefail
-          srpm="$(find "$RUNNER_TEMP/rpmbuild/SRPMS" -maxdepth 1 -name '*.src.rpm' -print -quit)"
-          copr-cli build \
-            --chroot fedora-44-x86_64 \
-            --chroot fedora-rawhide-x86_64 \
-            --nowait \
-            "$COPR_PROJECT" "$srpm"
 
   publish-ppa:
     name: Publish signed Launchpad PPA source package
