@@ -452,6 +452,8 @@ jobs:
             "$appdir/usr/lib" \
             "$appdir/usr/share/applications" "$appdir/usr/share/icons/hicolor/scalable/apps"
           cp -a dist/. "$appdir/usr/lib/bookshelfng/"
+          # The optional .NET trace provider requires the unavailable LTTng ABI 0.
+          find "$appdir/usr/lib/bookshelfng" -name libcoreclrtraceptprovider.so -delete
           cp -a /usr/lib/x86_64-linux-gnu/libicu*.so* "$appdir/usr/lib/"
           cp -a /usr/lib/x86_64-linux-gnu/libssl.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
             /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 "$appdir/usr/lib/"
