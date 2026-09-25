@@ -636,7 +636,9 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "$TAG" release-assets/* --clobber
+          mapfile -d '' release_files < <(find release-assets -mindepth 1 -maxdepth 1 -type f -print0)
+          ((${#release_files[@]} > 0))
+          gh release upload "$TAG" "${release_files[@]}" --clobber
           gh release edit "$TAG" --draft=false
 
   publisher-credentials:
