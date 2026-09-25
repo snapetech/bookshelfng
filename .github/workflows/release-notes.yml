@@ -27,6 +27,9 @@ jobs:
           node-version: '22.22.2'
           package-manager-cache: false
 
+      - name: Test release-note selection
+        run: node --test scripts/release-notes.test.mjs
+
       - name: Validate release-note fragment or explicit opt-out
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
