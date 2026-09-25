@@ -11,7 +11,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -d /app/lib/bookshelfng /app/bin
-      - cp -a src/. /app/lib/bookshelfng/
+      - cp -a . /app/lib/bookshelfng/
       - |
         cat > /app/bin/bookshelfng-wrapper <<'EOF'
         #!/usr/bin/env sh
