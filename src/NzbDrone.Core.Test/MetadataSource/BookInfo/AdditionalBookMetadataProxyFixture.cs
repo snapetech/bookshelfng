@@ -35,9 +35,11 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
                         ? request.Url.Path.EndsWith("/books/", StringComparison.Ordinal) ? GutendexSearchResponse() : GutendexDetailResponse()
                         : request.Url.Host == "archive.org"
                             ? request.Url.Path.EndsWith("advancedsearch.php", StringComparison.Ordinal) ? InternetArchiveSearchResponse() : InternetArchiveDetailResponse()
-                            : request.Url.Path.EndsWith("search.json", StringComparison.Ordinal)
-                                ? SearchResponse()
-                                : DetailResponse();
+                            : request.Url.Host == "www.loc.gov"
+                                ? request.Url.Path.EndsWith("/books/", StringComparison.Ordinal) ? LocSearchResponse() : LocDetailResponse()
+                                : request.Url.Path.EndsWith("search.json", StringComparison.Ordinal)
+                                    ? SearchResponse()
+                                    : DetailResponse();
                     return BookInfoTestData.TypedJsonResponse<JObject>(request, resource);
                 });
 
@@ -180,6 +182,30 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
             author.Books.Value.Should().ContainSingle().Which.ForeignBookId.Should().Be(book.ForeignBookId);
         }
 
+        [Test]
+        public void should_upgrade_historical_loc_http_ids_and_skip_invalid_search_rows()
+        {
+            Environment.SetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES", "loc");
+            var proxy = CreateProxy();
+
+            var books = proxy.Search("Alice's Adventures in Wonderland");
+
+            books.Should().ContainSingle();
+            books[0].ForeignBookId.Should().StartWith("loc:");
+            books[0].Links.Should().ContainSingle().Which.Url.Should().StartWith("https://www.loc.gov/item/");
+
+            var detail = proxy.GetBook(books[0].ForeignBookId);
+
+            detail.Item2.ForeignBookId.Should().Be(books[0].ForeignBookId);
+            Mocker.GetMock<ICachedHttpResponseService>().Verify(x => x.Get<JObject>(
+                It.Is<HttpRequest>(request =>
+                    request.Url.Scheme == "https" &&
+                    request.Url.Host == "www.loc.gov" &&
+                    request.Url.Path.EndsWith("/item/2017645977/", StringComparison.Ordinal)),
+                true,
+                It.IsAny<TimeSpan>()), Times.Once());
+        }
+
         private AdditionalBookMetadataProxy CreateProxy() => new (
             Mocker.GetMock<IHttpClient>().Object,
             Mocker.GetMock<ICachedHttpResponseService>().Object,
@@ -268,6 +294,32 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
             ["date"] = "1994",
             ["language"] = "eng",
             ["isbn"] = new JArray("1850812330", "9781850812333")
+        };
+
+        private static JObject LocSearchResponse() => new ()
+        {
+            ["results"] = new JArray
+            {
+                new JObject { ["id"] = "https://catalog.example/item/not-a-loc-record/", ["title"] = new JArray("Invalid row") },
+                LocRecord()
+            }
+        };
+
+        private static JObject LocDetailResponse() => new ()
+        {
+            ["item"] = LocRecord()
+        };
+
+        private static JObject LocRecord() => new ()
+        {
+            ["id"] = "http://www.loc.gov/item/2017645977/",
+            ["title"] = "Alice's Adventures in Wonderland",
+            ["contributors"] = new JArray("Lewis Carroll"),
+            ["publisher"] = new JArray("Macmillan"),
+            ["language"] = new JArray("English"),
+            ["date"] = "1865",
+            ["description"] = new JArray("A girl follows a white rabbit."),
+            ["subjects"] = new JArray("Fantasy")
         };
 
         private static string NdlSearchResponse() => @"

@@ -590,7 +590,20 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .Build();
             var response = _cachedHttpClient.Get<JObject>(request, true, TimeSpan.FromDays(1)).Resource;
             return (response["results"] as JArray ?? new JArray())
-                .OfType<JObject>().Select(MapLocRecord).Where(x => x != null).ToList();
+                .OfType<JObject>().Select(MapLocSearchRecord).Where(x => x != null).ToList();
+        }
+
+        private Book MapLocSearchRecord(JObject record)
+        {
+            try
+            {
+                return MapLocRecord(record);
+            }
+            catch (BookInfoException e)
+            {
+                _logger.Warn(e, "Ignoring Library of Congress search result with an invalid record URL");
+                return null;
+            }
         }
 
         private List<Book> SearchEuropeana(string query)
@@ -1290,13 +1303,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private static Uri DecodeLocUrl(string value) => SafeLocUri(Decode(value));
         private static Uri SafeLocUri(string value)
         {
-            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
-                !(uri.Host.Equals("www.loc.gov", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("loc.gov", StringComparison.OrdinalIgnoreCase)))
+            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+                !(uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                  uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)) ||
+                !(uri.Host.Equals("www.loc.gov", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("loc.gov", StringComparison.OrdinalIgnoreCase)) ||
+                !uri.IsDefaultPort)
             {
                 throw new BookInfoException("Library of Congress returned an invalid record URL.");
             }
 
-            return uri;
+            return uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                ? new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri
+                : uri;
         }
     }
 }
