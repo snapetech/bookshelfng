@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: ""
+      skip_announcement:
+        description: Skip Discord announcement when retrying distribution
+        required: false
+        type: boolean
+        default: false
     secrets:
       AUR_SSH_KEY:
         required: false
@@ -54,6 +59,11 @@ on:
         required: false
         type: string
         default: ""
+      skip_announcement:
+        description: Skip Discord announcement when retrying distribution
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   actions: read
@@ -1086,7 +1096,8 @@ jobs:
     if: >-
       ${{
         always() &&
-        needs.publish-github-release.result == 'success'
+        needs.publish-github-release.result == 'success' &&
+        inputs.skip_announcement != true
       }}
     runs-on: ubuntu-latest
     permissions:

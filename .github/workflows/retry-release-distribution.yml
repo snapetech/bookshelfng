@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: ""
+      skip_announcement:
+        description: Prevent a duplicate Discord announcement (true by default for retries)
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   actions: read
@@ -39,4 +44,5 @@ jobs:
       softcover_digest: ${{ inputs.softcover_digest }}
       hardcover_digest: ${{ inputs.hardcover_digest }}
       runtime_pack_run_id: ${{ inputs.runtime_pack_run_id }}
+      skip_announcement: ${{ inputs.skip_announcement }}
     secrets: inherit
