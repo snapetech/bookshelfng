@@ -1,0 +1,31 @@
+[Unit]
+Description=BookshelfNG ebook and audiobook library manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP__
+Group=__APP__
+WorkingDirectory=__INSTALL_DIR__
+Environment="Readarr__Server__BindAddress=127.0.0.1"
+Environment="Readarr__Server__Port=__PORT__"
+Environment="Readarr__Server__UrlBase=__PATH__"
+ExecStart=__INSTALL_DIR__/Readarr -nobrowser -data=__DATA_DIR__
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGINT
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=__APP__
+
+[Install]
+WantedBy=multi-user.target

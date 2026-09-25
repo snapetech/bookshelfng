@@ -1,0 +1,88 @@
+#:schema https://raw.githubusercontent.com/YunoHost/apps/main/schemas/manifest.v2.schema.json
+
+packaging_format = 2
+
+id = "bookshelfng"
+name = "BookshelfNG"
+description.en = "An evolution of Readarr with more ebook and audiobook metadata, edition matching, formats, and integrations"
+version = "0.4.21.37~ynh1"
+maintainers = ["snapetech"]
+
+[upstream]
+license = "GPL-3.0-or-later"
+website = "https://github.com/snapetech/bookshelfng"
+userdoc = "https://github.com/snapetech/bookshelfng#readme"
+admindoc = "https://github.com/snapetech/bookshelfng/blob/main/docs/standalone-install.md"
+code = "https://github.com/snapetech/bookshelfng"
+
+[integration]
+yunohost = ">= 12.1.17"
+helpers_version = "2.1"
+architectures = ["amd64", "arm64"]
+multi_instance = true
+ldap = false
+sso = false
+disk = "1G"
+ram.runtime = "1G"
+
+[install]
+  [install.domain]
+  type = "domain"
+
+  [install.path]
+  type = "path"
+  default = "/bookshelfng"
+  pattern = { regexp = "^/[^/]+(/[^/]+)*$", error = "Choose a non-root URL path such as /bookshelfng." }
+
+  [install.init_main_permission]
+  type = "group"
+  default = "admins"
+
+[resources]
+  [resources.sources]
+    [resources.sources.main]
+    in_subdir = true
+    format = "tar.gz"
+    amd64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.37/BookshelfNG-main-v0.4.21.37-linux-x64.tar.gz"
+    amd64.sha256 = "a13707ece111a3391e886a82b560937322b127a94de2ab7f54ba2f0d1ab02f5c"
+    arm64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.37/BookshelfNG-main-v0.4.21.37-linux-arm64.tar.gz"
+    arm64.sha256 = "1377630f6f88bb8d688865b5db2ff25a729a89bd68caefde3f80d2e872831ac2"
+    autoupdate.strategy = "latest_github_release"
+    autoupdate.version_regex = "^main-v(.*)$"
+    autoupdate.asset.amd64 = "^BookshelfNG-main-v.*-linux-x64\\.tar\\.gz$"
+    autoupdate.asset.arm64 = "^BookshelfNG-main-v.*-linux-arm64\\.tar\\.gz$"
+
+  [resources.system_user]
+
+  [resources.install_dir]
+
+  [resources.data_dir]
+
+  [resources.permissions]
+  main.url = "/"
+  main.auth_header = false
+
+  [resources.ports]
+  main.default = 8787
+
+  [resources.apt]
+  packages = ["libsqlite3-0", "rsync"]
+  packages_from_raw_bash = """
+  set -eu
+
+  if apt-cache show libssl3t64 2>/dev/null | grep -q '^Package: libssl3t64$'; then
+    printf '%s\\n' libssl3t64
+  elif apt-cache show libssl3 2>/dev/null | grep -q '^Package: libssl3$'; then
+    printf '%s\\n' libssl3
+  else
+    echo "No compatible OpenSSL 3 runtime package was found." >&2
+    exit 1
+  fi
+
+  icu_package=$(apt-cache pkgnames libicu | grep -E '^libicu[0-9]+$' | sort -V | tail -n 1 || true)
+  if [ -z "$icu_package" ]; then
+    echo "No ICU runtime package was found." >&2
+    exit 1
+  fi
+  printf '%s\\n' "$icu_package"
+  """

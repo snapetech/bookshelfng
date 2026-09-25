@@ -1,0 +1,1 @@
+Open the app at the domain and path selected during installation. Configure metadata catalogs, download clients, indexers, and library folders in BookshelfNG. Give the app's YunoHost service account access to every library and download folder it needs.

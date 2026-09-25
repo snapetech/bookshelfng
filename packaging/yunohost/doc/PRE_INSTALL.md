@@ -1,0 +1,1 @@
+Choose a domain and non-root URL path for BookshelfNG. Before adding existing library folders, make sure the app's YunoHost service account can read and write to those folders. Existing book and audiobook files remain in their current locations and are not copied into the app data directory.
