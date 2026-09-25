@@ -146,9 +146,9 @@ existing Readarr-compatible data before upgrades. Then open
 [standalone installation guide](docs/standalone-install.md) covers platform
 archives, data migration, system services, and package-specific setup.
 
-The release pipeline builds `.deb`, RPM, Snap, Flatpak bundle, AppImage,
-Chocolatey, and Helm artifacts, and supports AUR, COPR, and Ubuntu PPA
-publishing when those publisher accounts are connected. See the
+The release pipeline builds `.deb`, RPM, Flatpak bundle, AppImage, and Helm
+artifacts, and supports AUR, COPR, Ubuntu PPA, and Chocolatey publishing when
+those publisher accounts are connected. See the
 [distribution channels guide](docs/distribution.md) for package links,
 repository setup, and release details.
 
@@ -420,8 +420,8 @@ GitHub Actions publishes these rolling and versioned container tags:
 
 Tagged `main-v*` builds also publish a GitHub Release with curated release
 notes, platform archives, the Windows x64 setup installer, checksums, and native
-Linux packages, then announce the release to Discord. The AUR, COPR, PPA, Snap
-Store, Chocolatey, and Helm channels use the same verified tag flow. External
+Linux packages, then announce the release to Discord. The AUR, COPR, PPA,
+Chocolatey, and Helm channels use the same verified tag flow. External
 stores require publisher credentials and repository registration. The Flatpak is
 attached as a GitHub Release bundle and is not published to Flathub. See the
 [distribution setup and publisher requirements](docs/distribution.md) for

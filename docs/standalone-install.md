@@ -92,25 +92,6 @@ chmod +x BookshelfNG-*.AppImage
 ./BookshelfNG-*.AppImage
 ```
 
-## Snap
-
-When the Snap Store channel is enabled for a release, install and start the
-`bookshelfng` Snap:
-
-```sh
-sudo snap install bookshelfng
-snap run bookshelfng
-```
-
-The `.snap` file is also attached to each GitHub release. To sideload that
-asset, use `sudo snap install --dangerous ./bookshelfng_*.snap`. Snap data
-is kept in the Snap's persistent common data directory. Connect `removable-media`
-only if your libraries are on removable or mounted external storage:
-
-```sh
-sudo snap connect bookshelfng:removable-media
-```
-
 ## Flatpak bundle
 
 The `.flatpak` file is a single-file bundle for direct installation. It uses

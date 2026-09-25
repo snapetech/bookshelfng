@@ -15,7 +15,6 @@ release and sends the existing Discord announcement.
 | Fedora / RPM | `.rpm` and COPR SRPM | Service package; COPR repository is `slskdn/bookshelfng`. |
 | Arch Linux | `bookshelfng-bin` on AUR | Binary package with systemd service files. |
 | Ubuntu PPA | Signed source package | Requires the Launchpad PPA and signing key configured in repository Actions secrets. |
-| Snap Store | Strictly confined `bookshelfng` Snap | Requires the Snap name to be registered and store credentials configured. |
 | Flatpak | `.flatpak` bundle on GitHub Releases | Uses Freedesktop Platform 26.08. This bundle is not a Flathub publication. |
 | AppImage | Linux x64 `.AppImage` | Portable launcher; data stays in the user's XDG data directory. |
 | Chocolatey | `bookshelfng` Windows package | Downloads the checksummed x64 release asset and registers a Windows service. |
@@ -37,7 +36,6 @@ before expecting an external package store to receive a release.
 | `COPR_USERNAME` | Repository variable for the COPR account; defaults to `slskdn`. |
 | `GPG_PRIVATE_KEY` | Signs source packages before upload to Launchpad. |
 | `LAUNCHPAD_PPA` | Existing PPA target (`ppa:<owner>/<archive>`), set as an Actions secret or repository variable. |
-| `SNAPCRAFT_STORE_CREDENTIALS` | Uploads the Snap to the stable channel. Use Snapcraft's exported, scope-limited credentials. |
 | `CHOCOLATEY_API_KEY` | Pushes `bookshelfng` packages to Chocolatey Community Repository. |
 | `DISCORD_RELEASE_WEBHOOK` | Required. Sends the curated release notes and image digests to the BookshelfNG release channel. |
 
@@ -54,9 +52,9 @@ verified stable release tags.
 
 ## First publication setup
 
-Before the first external upload, register `bookshelfng` on the Snap Store and
-Chocolatey Community Repository, add the AUR SSH public key to the publisher
-account, and create a Launchpad PPA for the publisher account. The COPR job
+Before the first external upload, register `bookshelfng` on the Chocolatey
+Community Repository, add the AUR SSH public key to the publisher account, and
+create a Launchpad PPA for the publisher account. The COPR job
 creates its project on first release. Add the account credentials above to the
 `snapetech/bookshelfng` repository's Actions secrets. Package identifiers are
 reserved by their respective services, so confirm ownership before the first
