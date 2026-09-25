@@ -284,8 +284,14 @@ export function injectCuratedNotes(changelog, curatedNotes) {
 }
 
 export function hasExplicitNoReleaseNote(body) {
+  const visibleBody = body
+    .replace(/<!--[\s\S]*?-->/gu, '')
+    .replace(/^\s*-\s*\[\s\][^\n]*$/gimu, '');
+
   return (
-    /release-note\s*:\s*none/iu.test(body) ||
-    /-\s*\[x\][^\n]*(?:internal-only|no user-facing release note)/iu.test(body)
+    /release-note\s*:\s*none/iu.test(visibleBody) ||
+    /-\s*\[x\][^\n]*(?:internal-only|no user-facing release note)/iu.test(
+      visibleBody
+    )
   );
 }
