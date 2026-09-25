@@ -1,0 +1,16 @@
+services:
+  bookshelfng:
+    image: docker.io/snapetech/bookshelfng:hardcover-v0.4.21.37
+    container_name: bookshelfng
+    restart: unless-stopped
+    ports:
+      - "8787:8787/tcp"
+    volumes:
+      - bookshelfng-config:/config
+      - bookshelfng-books:/books
+      - bookshelfng-downloads:/downloads
+
+volumes:
+  bookshelfng-config:
+  bookshelfng-books:
+  bookshelfng-downloads:
