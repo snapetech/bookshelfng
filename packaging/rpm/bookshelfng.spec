@@ -1,4 +1,6 @@
 %global _libdir /usr/lib
+# Debian's rpm package lacks the systemd-rpm-macros definition.
+%{!?_unitdir:%global _unitdir /usr/lib/systemd/system}
 # .NET's optional LTTng trace provider links to ABI 0, unavailable on current
 # Fedora/RHEL releases. Keep that optional library from adding an install requirement.
 %global __requires_exclude ^liblttng-ust[.]so[.]0

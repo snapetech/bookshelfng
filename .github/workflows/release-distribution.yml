@@ -432,7 +432,11 @@ jobs:
           fi
           grep -Fqx '%global __requires_exclude ^liblttng-ust[.]so[.]0' "$spec_path"
           sed -i "s/^Version:.*$/Version:        ${VERSION}/; s/^Release:.*$/Release:        1%{?dist}/" "$rpm_top/SPECS/bookshelfng.spec"
-          rpmbuild -ba --define "_topdir $rpm_top" "$rpm_top/SPECS/bookshelfng.spec"
+          # Ubuntu's rpm package does not define systemd macros used by the RPM spec.
+          rpmbuild -ba \
+            --define "_topdir $rpm_top" \
+            --define "_unitdir /usr/lib/systemd/system" \
+            "$rpm_top/SPECS/bookshelfng.spec"
           cp "$rpm_top/RPMS/x86_64"/*.rpm dist-release/
           cp "$rpm_top/SRPMS"/*.src.rpm dist-release/
 
