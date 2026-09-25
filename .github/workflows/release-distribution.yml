@@ -787,7 +787,7 @@ jobs:
             --workdir /tmp \
             --env HOME=/tmp \
             archlinux:base-devel \
-            bash -euc 'mkdir -p /tmp/aur-package && cp -a /pkg/. /tmp/aur-package/ && cd /tmp/aur-package && makepkg --printsrcinfo' > "$work/.SRCINFO"
+            bash -euc 'mkdir -p /tmp/aur-package && cp -R /pkg/. /tmp/aur-package/ && cd /tmp/aur-package && makepkg --printsrcinfo' > "$work/.SRCINFO"
           grep -Fqx "pkgbase = bookshelfng-bin" "$work/.SRCINFO"
           grep -Fqx "pkgver = ${VERSION}" "$work/.SRCINFO"
           key="$RUNNER_TEMP/aur-key"
