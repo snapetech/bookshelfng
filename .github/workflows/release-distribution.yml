@@ -31,8 +31,6 @@ on:
         required: false
       LAUNCHPAD_PPA:
         required: false
-      SNAPCRAFT_STORE_CREDENTIALS:
-        required: false
       CHOCOLATEY_API_KEY:
         required: false
       DISCORD_RELEASE_WEBHOOK:
@@ -520,61 +518,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build-snap:
-    name: Build Snap
-    if: >-
-      always() &&
-      needs.validate.result == 'success' &&
-      needs.build-release-assets.result == 'success'
-    needs: [validate, build-release-assets]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.validate.outputs.tag }}
-          persist-credentials: false
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: bookshelfng-release-assets
-          path: dist-release
-
-      - name: Prepare Snap source tree
-        env:
-          TAG: ${{ needs.validate.outputs.tag }}
-          VERSION: ${{ needs.validate.outputs.version }}
-        run: |
-          set -euo pipefail
-          mkdir -p packaging/snap/src/bin
-          tar -xzf "dist-release/BookshelfNG-${TAG}-linux-x64.tar.gz" --strip-components=1 -C packaging/snap/src
-          cp packaging/snap/BookshelfNG packaging/snap/src/bin/BookshelfNG
-          chmod 0755 packaging/snap/src/bin/BookshelfNG
-          sed -i "s/^version: .*/version: '${VERSION}'/" packaging/snap/snapcraft.yaml
-
-      - uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
-        id: build
-        with:
-          path: packaging/snap
-
-      - name: Stage Snap artifact
-        run: |
-          set -euo pipefail
-          mkdir -p dist-release
-          cp "${{ steps.build.outputs.snap }}" dist-release/
-          mkdir -p dist-added
-          snap_asset="$(find dist-release -maxdepth 1 -type f -name '*.snap' -print -quit)"
-          test -n "$snap_asset"
-          snap_name="$(basename "$snap_asset")"
-          cp "$snap_asset" dist-added/
-          (cd dist-added && sha256sum "$snap_name" > "$snap_name.sha256")
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: bookshelfng-snap
-          path: dist-added/
-          if-no-files-found: error
-          retention-days: 1
-
   build-helm:
     name: Package Helm chart
     needs: [validate]
@@ -621,9 +564,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.build-release-assets.result == 'success' &&
       needs.build-linux-packages.result == 'success' &&
-      needs.build-snap.result == 'success' &&
       needs.build-helm.result == 'success'
-    needs: [validate, build-release-assets, build-linux-packages, build-snap, build-helm]
+    needs: [validate, build-release-assets, build-linux-packages, build-helm]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -666,14 +608,14 @@ jobs:
           test -f "release-assets/$installer"
           test -f "release-assets/$installer.sha256"
           (cd release-assets && sha256sum -c "$installer.sha256")
-          for pattern in '*.deb' '*.rpm' '*.AppImage' '*.flatpak' '*.snap' '*.tgz'; do
+          for pattern in '*.deb' '*.rpm' '*.AppImage' '*.flatpak' '*.tgz'; do
             compgen -G "release-assets/$pattern" >/dev/null || {
               echo "Missing required release asset matching $pattern" >&2
               exit 1
             }
           done
           for asset in release-assets/*.deb release-assets/*.rpm release-assets/*.src.rpm \
-            release-assets/*.AppImage release-assets/*.flatpak release-assets/*.snap release-assets/*.tgz; do
+            release-assets/*.AppImage release-assets/*.flatpak release-assets/*.tgz; do
             [[ -f "$asset" ]] || continue
             checksum="$asset.sha256"
             test -f "$checksum"
@@ -697,7 +639,6 @@ jobs:
       aur: ${{ steps.check.outputs.aur }}
       copr: ${{ steps.check.outputs.copr }}
       ppa: ${{ steps.check.outputs.ppa }}
-      snap: ${{ steps.check.outputs.snap }}
       chocolatey: ${{ steps.check.outputs.chocolatey }}
     steps:
       - id: check
@@ -707,17 +648,15 @@ jobs:
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           LAUNCHPAD_PPA: ${{ secrets.LAUNCHPAD_PPA || vars.LAUNCHPAD_PPA }}
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
         run: |
           set -euo pipefail
-          for name in aur copr ppa snap chocolatey; do
+          for name in aur copr ppa chocolatey; do
             echo "$name=false" >> "$GITHUB_OUTPUT"
           done
           [[ -n "$AUR_SSH_KEY" ]] && echo 'aur=true' >> "$GITHUB_OUTPUT" || echo 'AUR_SSH_KEY is not set; AUR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
           [[ -n "$COPR_LOGIN" && -n "$COPR_TOKEN" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'COPR_LOGIN or COPR_TOKEN is not set; COPR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
           [[ -n "$GPG_PRIVATE_KEY" && -n "$LAUNCHPAD_PPA" ]] && echo 'ppa=true' >> "$GITHUB_OUTPUT" || echo 'GPG_PRIVATE_KEY or LAUNCHPAD_PPA is not set; PPA upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
-          [[ -n "$SNAPCRAFT_STORE_CREDENTIALS" ]] && echo 'snap=true' >> "$GITHUB_OUTPUT" || echo 'SNAPCRAFT_STORE_CREDENTIALS is not set; Snap Store upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
           [[ -n "$CHOCOLATEY_API_KEY" ]] && echo 'chocolatey=true' >> "$GITHUB_OUTPUT" || echo 'CHOCOLATEY_API_KEY is not set; Chocolatey upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
 
   publish-aur:
@@ -781,13 +720,20 @@ jobs:
           PY
           bash packaging/scripts/validate-aur-pkgbuild-hashes.sh "$work/PKGBUILD"
           # Keep AUR metadata in sync with the release-specific PKGBUILD.
-          docker run --rm \
+          # The container runs as an unprivileged uid, so make the public package
+          # inputs readable through the bind mount even if RUNNER_TEMP is private.
+          chmod 0755 "$work"
+          chmod -R a+rX "$work"
+          if ! docker run --rm \
             --user 65534:65534 \
             --volume "$work:/pkg:ro" \
             --workdir /tmp \
             --env HOME=/tmp \
             archlinux:base-devel \
-            bash -euc 'mkdir -p /tmp/aur-package && cp -R /pkg/. /tmp/aur-package/ && cd /tmp/aur-package && makepkg --printsrcinfo' > "$work/.SRCINFO"
+            bash -euc 'mkdir -p /tmp/aur-package && cp -R /pkg/. /tmp/aur-package/ && cd /tmp/aur-package && makepkg --printsrcinfo' > "$work/.SRCINFO"; then
+            cat "$work/.SRCINFO" >&2
+            exit 1
+          fi
           grep -Fqx "pkgbase = bookshelfng-bin" "$work/.SRCINFO"
           grep -Fqx "pkgver = ${VERSION}" "$work/.SRCINFO"
           key="$RUNNER_TEMP/aur-key"
@@ -1030,40 +976,6 @@ jobs:
           test -n "$changes"
           dput -f bookshelfng-ppa "$changes"
 
-  publish-snap:
-    name: Publish Snap to stable channel
-    needs: [validate, build-snap, publish-github-release, publisher-credentials]
-    if: >-
-      always() &&
-      needs.validate.result == 'success' &&
-      needs.build-snap.result == 'success' &&
-      needs.publish-github-release.result == 'success' &&
-      needs.publisher-credentials.result == 'success' &&
-      needs.publisher-credentials.outputs.snap == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: bookshelfng-snap
-          path: dist-release
-
-      - name: Resolve Snap artifact path
-        id: snap
-        shell: bash
-        run: |
-          set -euo pipefail
-          snap="$(find dist-release -maxdepth 1 -type f -name '*.snap' -print -quit)"
-          test -n "$snap"
-          echo "path=$snap" >> "$GITHUB_OUTPUT"
-
-      - name: Publish Snap
-        uses: snapcore/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.snap.outputs.path }}
-          release: stable
-
   publish-chocolatey:
     name: Publish Chocolatey package
     needs: [validate, publish-github-release, publisher-credentials]
@@ -1169,7 +1081,6 @@ jobs:
       - publish-aur
       - publish-copr
       - publish-ppa
-      - publish-snap
       - publish-chocolatey
       - publish-helm
     if: >-
@@ -1197,7 +1108,6 @@ jobs:
           AUR_RESULT: ${{ needs.publish-aur.result }}
           COPR_RESULT: ${{ needs.publish-copr.result }}
           PPA_RESULT: ${{ needs.publish-ppa.result }}
-          SNAP_RESULT: ${{ needs.publish-snap.result }}
           CHOCOLATEY_RESULT: ${{ needs.publish-chocolatey.result }}
           HELM_RESULT: ${{ needs.publish-helm.result }}
         run: |
@@ -1217,7 +1127,7 @@ jobs:
             release_body="${release_body:0:3997}…"
           fi
           failed_publishers=()
-          for channel in AUR COPR PPA SNAP CHOCOLATEY HELM; do
+          for channel in AUR COPR PPA CHOCOLATEY HELM; do
             result_var="${channel}_RESULT"
             result="${!result_var}"
             if [[ "$result" == failure ]]; then
