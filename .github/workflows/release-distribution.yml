@@ -745,7 +745,11 @@ jobs:
             exit 1
           fi
           grep -Fqx "pkgbase = bookshelfng-bin" "$work/.SRCINFO"
-          grep -Fqx "pkgver = ${VERSION}" "$work/.SRCINFO"
+          awk -v expected="$VERSION" '$1 == "pkgver" && $2 == "=" && $3 == expected { found = 1 } END { exit !found }' "$work/.SRCINFO" || {
+            echo "Generated AUR metadata does not contain pkgver ${VERSION}." >&2
+            cat "$work/.SRCINFO" >&2
+            exit 1
+          }
           key="$RUNNER_TEMP/aur-key"
           printf '%s\n' "$AUR_SSH_KEY" > "$key"
           chmod 0600 "$key"

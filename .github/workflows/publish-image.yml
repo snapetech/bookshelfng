@@ -9,8 +9,6 @@ on:
   push:
     branches:
       - develop
-    tags:
-      - "main-*"
     paths-ignore:
       - "README.md"
       - "docs/**"
