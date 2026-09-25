@@ -784,10 +784,10 @@ jobs:
           docker run --rm \
             --user 65534:65534 \
             --volume "$work:/pkg:ro" \
-            --workdir /pkg \
+            --workdir /tmp \
             --env HOME=/tmp \
             archlinux:base-devel \
-            bash -euc 'makepkg --printsrcinfo' > "$work/.SRCINFO"
+            bash -euc 'mkdir -p /tmp/aur-package && cp -a /pkg/. /tmp/aur-package/ && cd /tmp/aur-package && makepkg --printsrcinfo' > "$work/.SRCINFO"
           grep -Fqx "pkgbase = bookshelfng-bin" "$work/.SRCINFO"
           grep -Fqx "pkgver = ${VERSION}" "$work/.SRCINFO"
           key="$RUNNER_TEMP/aur-key"
@@ -900,6 +900,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/copr"
           "$RUNNER_TEMP/copr/bin/python" -m pip install --upgrade pip copr-cli
           echo "$RUNNER_TEMP/copr/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/copr/bin:$PATH"
           copr-cli whoami
 
       - name: Ensure COPR project exists
@@ -1147,6 +1148,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "$GH_TOKEN" | helm registry login ghcr.io --username "$GH_ACTOR" --password-stdin
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GH_ACTOR" --password-stdin
           chart="dist-release/bookshelfng-${CHART_VERSION}.tgz"
           test -f "$chart"
           push_output="$RUNNER_TEMP/helm-push.txt"
@@ -1179,6 +1181,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
       - name: Send release announcement
         env:
           GH_TOKEN: ${{ github.token }}
