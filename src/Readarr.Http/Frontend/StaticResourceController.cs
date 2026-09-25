@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NLog;
 using Readarr.Http.Extensions;
@@ -11,6 +12,7 @@ namespace Readarr.Http.Frontend
 {
     [Authorize(Policy="UI")]
     [ApiController]
+    [AllowCookieRedirect]
     public class StaticResourceController : Controller
     {
         private readonly IEnumerable<IMapHttpRequestsToDisk> _requestMappers;
