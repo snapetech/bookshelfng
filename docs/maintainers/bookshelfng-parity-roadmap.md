@@ -39,6 +39,37 @@ quality choices, and edition preferences. Keep the existing author-level
 settings as defaults for backwards compatibility. Migrate conservatively and
 preview path changes before moving existing files.
 
+This is a cross-cutting storage change. `Author.Path` is used directly by disk
+scanning, import destinations, upgrades,
+moves, deletion safeguards, extra-file handling, and metadata sidecars. It is
+also exposed through the Readarr-compatible API. Implement it in these stages:
+
+1. Add an author-location abstraction that resolves ebook and audiobook paths,
+   with the existing `Author.Path` acting as the fallback for both formats.
+   Keep the legacy API's `path` and `rootFolderPath` behavior intact.
+2. Additive database and API fields express optional per-format roots, quality
+   profiles, and metadata profiles. Existing author settings remain effective
+   whenever a format-specific value is unset.
+3. Route scans and completed/manual imports by the actual file format. Keep
+   one author, book, and edition identity while scanning both locations, and
+   preserve the existing rule that ebook files and audiobook files do not
+   replace one another.
+4. Update upgrade, rename, move, delete, free-space, and root-folder checks to
+   use the selected format location. Apply overlap and same-path safeguards to
+   every configured location.
+5. Place book sidecars next to their owning media file and keep author-level
+   extras in a defined shared location. Update add, edit, and bulk-edit screens
+   to show both format policies.
+6. A format root controls future imports. Moving existing files requires an
+   explicit path preview and reversible move operation.
+
+The implementation inventory has confirmed the single-path assumptions in
+`AuthorPathBuilder`, `DiskScanService`, `ImportApprovedBooks`,
+`BookFileMovingService`, `UpgradeMediaFileService`,
+`MediaFileDeletionService`, and the extras/metadata services. Treat this list as
+the minimum audit set and search for additional direct `Author.Path` usage
+before each storage phase.
+
 ### 2. Audiobook matching and editions
 
 - Keep narrator-aware scoring reliable and expose concise match reasons in
@@ -93,13 +124,15 @@ repeatable.
 
 1. **Current increment:** use narrator tags as optional audiobook identity
    evidence. Missing narrator data remains neutral.
-2. **Next architectural milestone:** format-specific roots and profiles,
-   preserving old author-level defaults and Readarr API compatibility.
-3. **Audio processing milestone:** richer chapter preservation and single-file
+2. **Next architectural milestone:** the author-location abstraction and an
+   additive, Readarr-compatible model for per-format roots and profiles.
+3. **Storage workflow milestone:** scan and import both locations, then make
+   upgrades, moves, deletes, and sidecars format-aware with explicit previews.
+4. **Audio processing milestone:** richer chapter preservation and single-file
    conversion, with validation and rollback-safe imports.
-4. **Matching milestone:** publisher/dramatized/multipart handling plus
+5. **Matching milestone:** publisher/dramatized/multipart handling plus
    explainable Manual Import decisions.
-5. **Differentiation:** provider provenance, explicit conflict resolution,
+6. **Differentiation:** provider provenance, explicit conflict resolution,
    safe reconciliation, and library health reports.
 
 Each user-visible change should ship independently with a release-note
