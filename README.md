@@ -28,6 +28,10 @@ or **Move existing audiobooks** in the author edit window to preview and queue
 a move for files already in the library. The same workflow is available through
 the [API and CLI](docs/media-storage.md). Registered book sidecars follow their
 media files; author-wide metadata and extras stay in the default `Path`.
+The author editor also supports previewing and moving one format for multiple
+selected authors in a single batch. This relocates files tracked by the current
+instance; it does not merge another instance's database. See
+[Moving existing media](docs/media-storage.md) for the consolidation workflow.
 Quality and metadata profiles are still shared by both formats;
 separate instances remain an option for isolated databases or settings.
 Per-format profiles are on the

@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import BulkAuthorMediaMoveModal from 'Author/Editor/BulkAuthorMediaMoveModal';
 import MoveAuthorModal from 'Author/MoveAuthor/MoveAuthorModal';
 import MetadataProfileSelectInputConnector from 'Components/Form/MetadataProfileSelectInputConnector';
 import MonitorNewItemsSelectInput from 'Components/Form/MonitorNewItemsSelectInput';
@@ -41,6 +42,7 @@ class AuthorEditorFooter extends Component {
       isDeleteAuthorModalOpen: false,
       isTagsModalOpen: false,
       isConfirmMoveModalOpen: false,
+      isMediaMoveModalOpen: false,
       destinationRootFolder: null
     };
   }
@@ -123,6 +125,14 @@ class AuthorEditorFooter extends Component {
     this.setState({ isTagsModalOpen: false });
   };
 
+  onMediaMovePress = () => {
+    this.setState({ isMediaMoveModalOpen: true });
+  };
+
+  onMediaMoveModalClose = () => {
+    this.setState({ isMediaMoveModalOpen: false });
+  };
+
   onSaveRootFolderPress = () => {
     this.setState({
       isConfirmMoveModalOpen: false,
@@ -169,6 +179,7 @@ class AuthorEditorFooter extends Component {
       isTagsModalOpen,
       isDeleteAuthorModalOpen,
       isConfirmMoveModalOpen,
+      isMediaMoveModalOpen,
       destinationRootFolder
     } = this.state;
 
@@ -294,6 +305,15 @@ class AuthorEditorFooter extends Component {
                 </SpinnerButton>
 
                 <SpinnerButton
+                  className={styles.organizeSelectedButton}
+                  kind={kinds.WARNING}
+                  isDisabled={!selectedCount || isOrganizingAuthor || isRetaggingAuthor}
+                  onPress={this.onMediaMovePress}
+                >
+                  {translate('BulkMediaMove')}
+                </SpinnerButton>
+
+                <SpinnerButton
                   className={styles.tagsButton}
                   isSpinning={isSaving && savingTags}
                   isDisabled={!selectedCount || isOrganizingAuthor || isRetaggingAuthor}
@@ -335,6 +355,12 @@ class AuthorEditorFooter extends Component {
           isOpen={isConfirmMoveModalOpen}
           onSavePress={this.onSaveRootFolderPress}
           onMoveAuthorPress={this.onMoveAuthorPress}
+        />
+
+        <BulkAuthorMediaMoveModal
+          isOpen={isMediaMoveModalOpen}
+          authorIds={authorIds}
+          onModalClose={this.onMediaMoveModalClose}
         />
 
       </PageContentFooter>

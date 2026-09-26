@@ -21,9 +21,10 @@ namespace NzbDrone.Core.Books
     public interface IAuthorMediaMoveService
     {
         AuthorMediaMovePreview Preview(int authorId, string format, string destinationPath);
+        AuthorMediaMoveBatchPreview PreviewBatch(IEnumerable<int> authorIds, string format, string destinationRootPath);
     }
 
-    public class AuthorMediaMoveService : IAuthorMediaMoveService, IExecute<MoveAuthorMediaCommand>
+    public class AuthorMediaMoveService : IAuthorMediaMoveService, IExecute<MoveAuthorMediaCommand>, IExecute<MoveAuthorMediaBatchCommand>
     {
         private readonly IAuthorService _authorService;
         private readonly IMediaFileService _mediaFileService;
@@ -136,6 +137,59 @@ namespace NzbDrone.Core.Books
             preview.CanMove = preview.MediaFileCount > 0 && preview.Files.Any(file => file.SourceExists || file.Status == "alreadyAtDestination") &&
                 preview.Conflicts.Count == 0 &&
                 (!preview.AvailableSpace.HasValue || preview.RequiredCopyBytes <= preview.AvailableSpace.Value);
+
+            return preview;
+        }
+
+        public AuthorMediaMoveBatchPreview PreviewBatch(IEnumerable<int> authorIds, string format, string destinationRootPath)
+        {
+            var normalizedFormat = NormalizeFormat(format);
+            var authors = authorIds.Distinct().OrderBy(id => id)
+                .Select(id =>
+                {
+                    var author = _authorService.GetAuthor(id);
+                    var folderName = Path.GetFileName(author.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+                    if (string.IsNullOrWhiteSpace(folderName))
+                    {
+                        throw new ArgumentException($"Unable to determine the library folder for {author.Name}.", nameof(authorIds));
+                    }
+
+                    return Preview(author.Id, normalizedFormat, Path.Combine(destinationRootPath, folderName));
+                })
+                .ToList();
+
+            var preview = new AuthorMediaMoveBatchPreview
+            {
+                Format = normalizedFormat,
+                DestinationRootPath = destinationRootPath,
+                Authors = authors,
+                RequiredCopyBytes = authors.Sum(author => author.RequiredCopyBytes),
+                AvailableSpace = authors.Where(author => author.AvailableSpace.HasValue)
+                    .Select(author => author.AvailableSpace)
+                    .FirstOrDefault()
+            };
+
+            preview.Warnings = authors.SelectMany(author => author.Warnings).Distinct().ToList();
+            preview.Conflicts = authors.SelectMany(author => author.Conflicts).Distinct().ToList();
+
+            var duplicateTargets = authors.SelectMany(author => author.Files)
+                .Where(file => file.Status != "missing")
+                .GroupBy(file => file.DestinationPath, PathEqualityComparer.Instance)
+                .Where(group => group.Count() > 1);
+
+            foreach (var duplicate in duplicateTargets)
+            {
+                preview.Conflicts.Add($"More than one file maps to the same destination: {duplicate.Key}");
+            }
+
+            if (preview.AvailableSpace.HasValue && preview.RequiredCopyBytes > preview.AvailableSpace.Value)
+            {
+                preview.Conflicts.Add("The destination does not have enough free space for the files that need to be copied.");
+            }
+
+            preview.PreviewToken = CreateBatchPreviewToken(preview);
+            preview.CanMove = preview.Conflicts.Count == 0 && authors.Any(author => author.CanMove);
 
             return preview;
         }
@@ -309,6 +363,21 @@ namespace NzbDrone.Core.Books
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
+        private string CreateBatchPreviewToken(AuthorMediaMoveBatchPreview preview)
+        {
+            var manifest = new StringBuilder();
+            AppendTokenValue(manifest, preview.Format);
+            AppendTokenValue(manifest, preview.DestinationRootPath);
+
+            foreach (var author in preview.Authors.OrderBy(author => author.AuthorId))
+            {
+                AppendTokenValue(manifest, author.PreviewToken);
+            }
+
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(manifest.ToString()));
+            return Convert.ToHexString(hash).ToLowerInvariant();
+        }
+
         private void AppendTokenValue(StringBuilder manifest, string value)
         {
             var normalized = value ?? string.Empty;
@@ -389,6 +458,30 @@ namespace NzbDrone.Core.Books
             }
 
             _logger.ProgressInfo("Finished moving {0} {1} files to {2}", author.Name, message.Format, message.DestinationPath);
+        }
+
+        public void Execute(MoveAuthorMediaBatchCommand message)
+        {
+            var authors = message.Authors ?? new List<AuthorMediaMoveBatchItem>();
+            var totalFiles = authors.Sum(author => author.Files?.Count ?? 0);
+            var processedFiles = 0;
+
+            foreach (var authorMove in authors)
+            {
+                var author = _authorService.GetAuthor(authorMove.AuthorId);
+                var files = authorMove.Files ?? new List<AuthorMediaMoveFile>();
+
+                foreach (var file in files)
+                {
+                    processedFiles++;
+                    _logger.ProgressInfo("Moving {0} {1} files ({2}/{3})", author.Name, message.Format, processedFiles, totalFiles);
+                    MoveFile(author, file);
+                }
+
+                _logger.ProgressInfo("Finished moving {0} {1} files to {2}", author.Name, message.Format, authorMove.DestinationPath);
+            }
+
+            _logger.ProgressInfo("Finished bulk move of {0} {1} files to {2}", totalFiles, message.Format, message.DestinationRootPath);
         }
 
         private void MoveFile(Author author, AuthorMediaMoveFile file)

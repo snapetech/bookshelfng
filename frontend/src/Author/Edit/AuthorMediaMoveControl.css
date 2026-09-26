@@ -54,6 +54,18 @@
   max-height: 220px;
 }
 
+.authorGroup {
+  display: grid;
+  gap: 7px;
+
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borderColor);
+}
+
+.authorGroup > span {
+  color: var(--helpTextColor);
+}
+
 .fileRow {
   display: grid;
   grid-template-columns: 116px minmax(0, 1fr);
