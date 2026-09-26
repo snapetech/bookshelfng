@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -20,6 +21,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
     public class IdentificationService : IIdentificationService
     {
+        // Overlap book identification without bypassing configured provider throttles.
+        private const int MaxConcurrentIdentifications = 4;
+
         private readonly ITrackGroupingService _trackGroupingService;
         private readonly IMetadataTagService _metadataTagService;
         private readonly IAugmentingService _augmentingService;
@@ -86,11 +90,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
             var releases = GetLocalBookReleases(localTracks, config.SingleRelease);
 
-            var i = 0;
-            foreach (var localRelease in releases)
+            var completed = 0;
+            var progressLock = new object();
+            Parallel.ForEach(releases, new ParallelOptions
             {
-                i++;
-                _logger.ProgressInfo($"Identifying book {i}/{releases.Count}");
+                MaxDegreeOfParallelism = MaxConcurrentIdentifications
+            }, localRelease =>
+            {
                 _logger.Debug($"Identifying book files:\n{localRelease.LocalBooks.Select(x => x.Path).ConcatToString("\n")}");
 
                 try
@@ -101,7 +107,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     _logger.Error(e, "Error identifying release");
                 }
-            }
+                finally
+                {
+                    lock (progressLock)
+                    {
+                        completed++;
+                        _logger.ProgressInfo($"Identified {completed}/{releases.Count} books");
+                    }
+                }
+            });
 
             watch.Stop();
 
