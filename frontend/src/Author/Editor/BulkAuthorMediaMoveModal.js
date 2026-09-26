@@ -145,6 +145,7 @@ class BulkAuthorMediaMoveModal extends Component {
     } = this.state;
 
     const formatLabel = format === 'ebook' ? translate('Ebooks') : translate('Audiobooks');
+    const exceedsAuthorLimit = authorIds.length > 1000;
     const formatOptions = [
       { key: 'ebook', value: translate('Ebooks') },
       { key: 'audiobook', value: translate('Audiobooks') }
@@ -194,16 +195,26 @@ class BulkAuthorMediaMoveModal extends Component {
             </div>
 
             <p className={styles.spaceSummary}>{translate('BulkMediaMoveDatabaseHelp')}</p>
-
-            <div className={styles.warning}>
-              {translate('BulkMediaMoveAdminHelp')}
-            </div>
+            <p className={styles.spaceSummary}>{translate('BulkMediaMoveAdminHelp')}</p>
+            {
+              exceedsAuthorLimit &&
+                <div className={styles.conflict} role="alert">
+                  {translate('BulkMediaMoveLimitHelp')}
+                </div>
+            }
+            <details>
+              <summary>{translate('BulkMediaMoveDetailsTitle')}</summary>
+              <p className={styles.spaceSummary}>{translate('BulkMediaMoveDetailsHelp')}</p>
+              <p className={styles.spaceSummary}>{translate('BulkMediaMoveFailureHelp')}</p>
+            </details>
 
             {isLoading && <div>{translate('LoadingMovePreview')}</div>}
 
             {
               preview &&
                 <>
+                  <p className={styles.spaceSummary}>{translate('BulkMediaMovePreviewHelp')}</p>
+
                   <div className={styles.pathSummary}>
                     <div>
                       <span className={styles.pathLabel}>{translate('BulkMediaMoveDestinationRoot')}</span>
@@ -291,7 +302,7 @@ class BulkAuthorMediaMoveModal extends Component {
               !preview &&
                 <SpinnerButton
                   isSpinning={isLoading}
-                  isDisabled={isLoading || !destinationRootPath || authorIds.length === 0}
+                  isDisabled={isLoading || !destinationRootPath || authorIds.length === 0 || exceedsAuthorLimit}
                   onPress={this.onPreviewPress}
                 >
                   {translate('BulkMediaMovePreview')}

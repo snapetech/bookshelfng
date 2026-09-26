@@ -16,23 +16,37 @@ provider behavior and settings.
 ## One instance for ebooks and audiobooks
 
 A single BookshelfNG instance and database can track ebooks and audiobooks on
-the same book record. You do not need separate BookshelfNG instances just to
-support both formats. When SeerrNG routes ebook and audiobook requests
-separately, both service entries can point to this same BookshelfNG URL and
-API key.
+the same author and book records. You do not need separate BookshelfNG
+instances just to support both formats. When SeerrNG routes ebook and
+audiobook requests separately, both service entries can point to this same
+BookshelfNG URL and API key.
 
 Each author keeps the existing `Path` as the default, with optional ebook and
 audiobook folder overrides for future imports, upgrades, and renames. Changing
-an override alone does not move existing files. Use **Move existing ebooks**
-or **Move existing audiobooks** in the author edit window to preview and queue
-a move for files already in the library. The same workflow is available through
-the [API and CLI](docs/media-storage.md). Registered book sidecars follow their
-media files; author-wide metadata and extras stay in the default `Path`.
-The author editor also supports previewing and moving one format for multiple
-selected authors in a single batch. This relocates files tracked by the current
-instance; it does not merge another instance's database. See
-[Moving existing media](docs/media-storage.md) for the consolidation workflow.
-Quality and metadata profiles are still shared by both formats;
+an override alone does not move existing files. In the author editor, use
+**Move existing ebooks** or **Move existing audiobooks** to preview and queue a
+move for one author. To move one format for several authors, open the author
+library, choose **Author Editor**, select authors, then choose **Move selected
+media**. Both workflows are also available through the
+[API and CLI](docs/media-storage.md).
+
+A move includes only media files and book sidecars registered in the current
+instance. It does not sweep unknown files, move author-wide extras, or merge a
+second instance's catalog or database. Bulk previews show each destination,
+missing files, conflicts, and estimated copy space; any conflict prevents the
+batch from being queued. A queued move runs in the background and is not an
+all-or-nothing transaction, so review its progress in **Activity → Queue**.
+Move actions require the instance's administrator API key. BookshelfNG has no
+separate in-app administrator and regular-user roles.
+
+For a legacy ebook/audiobook setup with two BookshelfNG instances, move each
+instance's tracked format from that source instance, then import or rescan the
+files in the instance you are keeping. Keep both source databases until the
+files have been moved and verified: BookshelfNG does not merge their author,
+book, profile, monitoring, or history records. The full
+[legacy consolidation runbook](docs/media-storage.md#consolidating-a-legacy-two-instance-library)
+covers destination mounts, backups, the UI/API/CLI steps, and follow-up import.
+Quality and metadata profiles remain shared by both formats in each instance;
 separate instances remain an option for isolated databases or settings.
 Per-format profiles are on the
 [parity roadmap](docs/maintainers/bookshelfng-parity-roadmap.md).

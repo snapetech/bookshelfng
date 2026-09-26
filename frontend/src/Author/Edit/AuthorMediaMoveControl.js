@@ -7,6 +7,8 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
+import Tooltip from 'Components/Tooltip/Tooltip';
+import { kinds, tooltipPositions } from 'Helpers/Props';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
 import styles from './AuthorMediaMoveControl.css';
@@ -151,13 +153,21 @@ class AuthorMediaMoveControl extends Component {
 
     return (
       <>
-        <Button
-          className={styles.moveButton}
-          isDisabled={!destinationPath}
-          onPress={this.onPreviewPress}
-        >
-          {actionLabel}
-        </Button>
+        <Tooltip
+          anchor={
+            <Button
+              className={styles.moveButton}
+              title={translate('MediaMoveButtonTooltip')}
+              isDisabled={!destinationPath}
+              onPress={this.onPreviewPress}
+            >
+              {actionLabel}
+            </Button>
+          }
+          tooltip={translate('MediaMoveButtonTooltip')}
+          kind={kinds.INVERSE}
+          position={tooltipPositions.TOP}
+        />
 
         <Modal
           isOpen={isOpen}
@@ -173,6 +183,13 @@ class AuthorMediaMoveControl extends Component {
             </ModalHeader>
 
             <ModalBody>
+              <p className={styles.spaceSummary}>{translate('MediaMoveDialogHelp')}</p>
+              <p className={styles.spaceSummary}>{translate('MediaMoveAdminHelp')}</p>
+              <details>
+                <summary>{translate('MediaMoveFailureTitle')}</summary>
+                <p className={styles.spaceSummary}>{translate('MediaMoveFailureHelp')}</p>
+              </details>
+
               {isLoading && <div>{translate('LoadingMovePreview')}</div>}
 
               {

@@ -10,7 +10,8 @@ import RootFolderSelectInputConnector from 'Components/Form/RootFolderSelectInpu
 import SelectInput from 'Components/Form/SelectInput';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import PageContentFooter from 'Components/Page/PageContentFooter';
-import { kinds } from 'Helpers/Props';
+import Tooltip from 'Components/Tooltip/Tooltip';
+import { kinds, tooltipPositions } from 'Helpers/Props';
 import { fetchRootFolders } from 'Store/Actions/Settings/rootFolders';
 import translate from 'Utilities/String/translate';
 import AuthorEditorFooterLabel from './AuthorEditorFooterLabel';
@@ -304,14 +305,22 @@ class AuthorEditorFooter extends Component {
                   {translate('WriteMetadataTags')}
                 </SpinnerButton>
 
-                <SpinnerButton
-                  className={styles.organizeSelectedButton}
-                  kind={kinds.WARNING}
-                  isDisabled={!selectedCount || isOrganizingAuthor || isRetaggingAuthor}
-                  onPress={this.onMediaMovePress}
-                >
-                  {translate('BulkMediaMove')}
-                </SpinnerButton>
+                <Tooltip
+                  anchor={
+                    <SpinnerButton
+                      className={styles.organizeSelectedButton}
+                      kind={kinds.WARNING}
+                      title={translate('BulkMediaMoveButtonTooltip')}
+                      isDisabled={!selectedCount || isOrganizingAuthor || isRetaggingAuthor}
+                      onPress={this.onMediaMovePress}
+                    >
+                      {translate('BulkMediaMove')}
+                    </SpinnerButton>
+                  }
+                  tooltip={translate('BulkMediaMoveButtonTooltip')}
+                  kind={kinds.INVERSE}
+                  position={tooltipPositions.TOP}
+                />
 
                 <SpinnerButton
                   className={styles.tagsButton}
