@@ -13,6 +13,21 @@ search is independently selectable across those providers, Open Library, and
 the other public catalogs. See [Metadata sources](#metadata-sources) for
 provider behavior and settings.
 
+## One instance for ebooks and audiobooks
+
+A single BookshelfNG instance and database can track ebooks and audiobooks on
+the same book record. You do not need separate BookshelfNG instances just to
+support both formats. When SeerrNG routes ebook and audiobook requests
+separately, both service entries can point to this same BookshelfNG URL and
+API key.
+
+Each author keeps the existing `Path` as the default, with optional ebook and
+audiobook folder overrides for future imports, upgrades, and renames. Changing
+an override does not move existing files. Quality and metadata profiles are still
+shared by both formats; separate instances remain an option for isolated
+databases or settings. Per-format profiles are on the
+[parity roadmap](docs/maintainers/bookshelfng-parity-roadmap.md).
+
 ## Capabilities
 
 - **Choose how book metadata is served.** The `hardcover` image includes a

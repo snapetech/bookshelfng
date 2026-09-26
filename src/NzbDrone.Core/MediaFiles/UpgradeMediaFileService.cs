@@ -4,6 +4,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.Organizer;
@@ -55,8 +56,9 @@ namespace NzbDrone.Core.MediaFiles
             var moveFileResult = new BookFileMoveResult();
             var existingFiles = localBook.Book.BookFiles.Value;
 
-            var rootFolderPath = _diskProvider.GetParentFolder(localBook.Author.Path);
-            var rootFolder = _rootFolderService.GetBestRootFolder(rootFolderPath);
+            var destinationAuthorPath = AuthorLocationResolver.GetPathForFile(localBook.Author, localBook.Path);
+            var rootFolderPath = _diskProvider.GetParentFolder(destinationAuthorPath);
+            var rootFolder = _rootFolderService.GetBestRootFolder(destinationAuthorPath);
             var isCalibre = rootFolder.IsCalibreLibrary && rootFolder.CalibreSettings != null;
 
             var settings = rootFolder.CalibreSettings;
@@ -89,7 +91,8 @@ namespace NzbDrone.Core.MediaFiles
             foreach (var file in existingFiles)
             {
                 var bookFilePath = file.Path;
-                var subfolder = rootFolderPath.GetRelativePath(_diskProvider.GetParentFolder(bookFilePath));
+                var sourceRootFolder = _rootFolderService.GetBestRootFolder(bookFilePath);
+                var subfolder = (sourceRootFolder?.Path ?? rootFolderPath).GetRelativePath(_diskProvider.GetParentFolder(bookFilePath));
 
                 if (destinationFolder != null && !IsInFolder(bookFilePath, destinationFolder))
                 {

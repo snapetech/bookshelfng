@@ -353,10 +353,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     };
 
                     var importDecision = new ImportDecision<LocalBook>(localTrack);
-                    if (_rootFolderService.GetBestRootFolder(author.Path) == null)
+                    var destinationPath = AuthorLocationResolver.GetPathForFile(author, file.Path);
+                    if (_rootFolderService.GetBestRootFolder(destinationPath) == null)
                     {
-                        _logger.Warn($"Destination author folder {author.Path} not in a Root Folder, skipping import");
-                        importDecision.Reject(new Rejection($"Destination author folder {author.Path} is not in a Root Folder"));
+                        _logger.Warn($"Destination author folder {destinationPath} not in a Root Folder, skipping import");
+                        importDecision.Reject(new Rejection($"Destination author folder {destinationPath} is not in a Root Folder"));
                     }
 
                     bookImportDecisions.Add(importDecision);

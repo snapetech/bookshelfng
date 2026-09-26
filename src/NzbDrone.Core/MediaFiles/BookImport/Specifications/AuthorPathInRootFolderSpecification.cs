@@ -1,6 +1,7 @@
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Parser.Model;
@@ -26,7 +27,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
             var author = item.Edition.Book.Value.Author.Value;
 
             // a new author will have empty path, and will end up having path assinged based on file location
-            var pathToCheck = author.Path.IsNotNullOrWhiteSpace() ? author.Path : item.LocalBooks.First().Path.GetParentPath();
+            var localBookPath = item.LocalBooks.First().Path;
+            var pathToCheck = author.Path.IsNotNullOrWhiteSpace() ?
+                AuthorLocationResolver.GetPathForFile(author, localBookPath) :
+                localBookPath.GetParentPath();
 
             if (_rootFolderService.GetBestRootFolder(pathToCheck) == null)
             {

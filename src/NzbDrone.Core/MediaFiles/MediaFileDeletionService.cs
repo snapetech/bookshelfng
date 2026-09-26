@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -61,23 +62,24 @@ namespace NzbDrone.Core.MediaFiles
         public void DeleteTrackFile(Author author, BookFile bookFile)
         {
             var fullPath = bookFile.Path;
-            var rootFolder = _diskProvider.GetParentFolder(author.Path);
-
-            if (!_diskProvider.FolderExists(rootFolder))
+            if (_diskProvider.FileExists(fullPath))
             {
-                _logger.Warn("Author's root folder ({0}) doesn't exist.", rootFolder);
-                throw new NzbDroneClientException(HttpStatusCode.Conflict, "Author's root folder ({0}) doesn't exist.", rootFolder);
-            }
+                var rootFolder = _rootFolderService.GetBestRootFolder(fullPath);
 
-            if (_diskProvider.GetDirectories(rootFolder).Empty())
-            {
-                _logger.Warn("Author's root folder ({0}) is empty.", rootFolder);
-                throw new NzbDroneClientException(HttpStatusCode.Conflict, "Author's root folder ({0}) is empty.", rootFolder);
-            }
+                if (rootFolder == null || !_diskProvider.FolderExists(rootFolder.Path))
+                {
+                    var missingRoot = rootFolder?.Path ?? fullPath.GetParentPath();
+                    _logger.Warn("Author's root folder ({0}) doesn't exist or isn't configured.", missingRoot);
+                    throw new NzbDroneClientException(HttpStatusCode.Conflict, "Author's root folder ({0}) doesn't exist or isn't configured.", missingRoot);
+                }
 
-            if (_diskProvider.FolderExists(author.Path))
-            {
-                var subfolder = _diskProvider.GetParentFolder(author.Path).GetRelativePath(_diskProvider.GetParentFolder(fullPath));
+                if (_diskProvider.GetDirectories(rootFolder.Path).Empty())
+                {
+                    _logger.Warn("Author's root folder ({0}) is empty.", rootFolder.Path);
+                    throw new NzbDroneClientException(HttpStatusCode.Conflict, "Author's root folder ({0}) is empty.", rootFolder.Path);
+                }
+
+                var subfolder = rootFolder.Path.GetRelativePath(_diskProvider.GetParentFolder(fullPath));
                 DeleteTrackFile(bookFile, subfolder);
             }
             else
@@ -156,31 +158,42 @@ namespace NzbDrone.Core.MediaFiles
 
                 if (!isCalibre)
                 {
-                    var allAuthors = _authorService.AllAuthorPaths();
+                    var authorPaths = AuthorLocationResolver.GetPaths(author);
+                    var allAuthorPaths = _authorService.AllAuthorLocationPaths();
 
-                    foreach (var s in allAuthors)
+                    foreach (var authorPath in authorPaths)
                     {
-                        if (s.Key == author.Id)
+                        foreach (var other in allAuthorPaths)
                         {
-                            continue;
-                        }
+                            if (other.Key == author.Id)
+                            {
+                                continue;
+                            }
 
-                        if (author.Path.IsParentPath(s.Value))
-                        {
-                            _logger.Error("Author path: '{0}' is a parent of another author, not deleting files.", author.Path);
-                            return;
-                        }
+                            if (authorPath.IsParentPath(other.Value) || other.Value.IsParentPath(authorPath))
+                            {
+                                _logger.Error("Author path: '{0}' overlaps another author's library path, not deleting files.", authorPath);
+                                return;
+                            }
 
-                        if (author.Path.PathEquals(s.Value))
-                        {
-                            _logger.Error("Author path: '{0}' is the same as another author, not deleting files.", author.Path);
-                            return;
+                            if (authorPath.PathEquals(other.Value))
+                            {
+                                _logger.Error("Author path: '{0}' is the same as another author, not deleting files.", authorPath);
+                                return;
+                            }
                         }
                     }
 
-                    if (_diskProvider.FolderExists(message.Author.Path))
+                    var topLevelPaths = authorPaths
+                        .Where(path => !authorPaths.Any(other => !other.PathEquals(path) && other.IsParentPath(path)))
+                        .ToList();
+
+                    foreach (var authorPath in topLevelPaths)
                     {
-                        _recycleBinProvider.DeleteFolder(message.Author.Path);
+                        if (_diskProvider.FolderExists(authorPath))
+                        {
+                            _recycleBinProvider.DeleteFolder(authorPath);
+                        }
                     }
 
                     _eventAggregator.PublishEvent(new DeleteCompletedEvent());
@@ -212,10 +225,11 @@ namespace NzbDrone.Core.MediaFiles
             {
                 var author = message.BookFile.Author.Value;
                 var bookFolder = message.BookFile.Path.GetParentPath();
+                var authorPath = AuthorLocationResolver.GetPathForFile(author, message.BookFile.Path);
 
-                if (_diskProvider.GetFiles(author.Path, true).Empty())
+                if (_diskProvider.GetFiles(authorPath, true).Empty())
                 {
-                    _diskProvider.DeleteFolder(author.Path, true);
+                    _diskProvider.DeleteFolder(authorPath, true);
                 }
                 else if (_diskProvider.GetFiles(bookFolder, true).Empty())
                 {

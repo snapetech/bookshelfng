@@ -125,7 +125,7 @@ namespace NzbDrone.Core.MediaFiles
 
             try
             {
-                _mediaFileAttributeService.SetFolderLastWriteTime(author.Path, bookFile.DateAdded);
+                _mediaFileAttributeService.SetFolderLastWriteTime(AuthorLocationResolver.GetPathForFile(author, destinationFilePath), bookFile.DateAdded);
             }
             catch (Exception ex)
             {
@@ -145,8 +145,9 @@ namespace NzbDrone.Core.MediaFiles
         private void EnsureBookFolder(BookFile bookFile, Author author, Book book, string filePath)
         {
             var trackFolder = Path.GetDirectoryName(filePath);
-            var bookFolder = _buildFileNames.BuildBookPath(author);
-            var authorFolder = author.Path;
+            var fileExtension = Path.GetExtension(filePath);
+            var bookFolder = _buildFileNames.BuildBookPath(author, fileExtension);
+            var authorFolder = bookFolder;
             var rootFolder = new OsPath(authorFolder).Directory.FullPath;
 
             if (!_diskProvider.FolderExists(rootFolder))

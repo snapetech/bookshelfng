@@ -1,9 +1,18 @@
 # Import matching and multiple formats
 
 BookshelfNG matches downloaded or scanned files to catalog editions, then
-tracks the imported files under a book. A book can have multiple ebook formats
-and audiobook files in the same instance. Import and upgrade decisions keep
-incompatible formats separate.
+tracks the imported files under a book. One BookshelfNG instance and database
+can track multiple ebook formats and audiobook files on the same book record.
+Separate instances are not required to support both media types. Import and
+upgrade decisions keep incompatible formats separate.
+
+When SeerrNG routes ebooks and audiobooks through separate service entries,
+both entries can use the same BookshelfNG URL and API key. Each author can keep
+the default path or set optional ebook and audiobook folder overrides in the
+author editor. Overrides affect future imports, upgrades, and renames; setting
+one does not move existing files. Quality and metadata profiles are still shared by
+both formats. Separate format profiles are tracked in the
+[parity roadmap](maintainers/bookshelfng-parity-roadmap.md).
 
 ## Formats on one book
 

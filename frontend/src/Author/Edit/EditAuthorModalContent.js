@@ -78,6 +78,8 @@ class EditAuthorModalContent extends Component {
       qualityProfileId,
       metadataProfileId,
       path,
+      ebookPath,
+      audiobookPath,
       tags
     } = item;
 
@@ -181,6 +183,34 @@ class EditAuthorModalContent extends Component {
                 type={inputTypes.PATH}
                 name="path"
                 {...path}
+                onChange={onInputChange}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <FormLabel>
+                {translate('EbookPath')}
+              </FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.PATH}
+                name="ebookPath"
+                helpText={translate('AuthorFormatPathHelpText')}
+                {...ebookPath}
+                onChange={onInputChange}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <FormLabel>
+                {translate('AudiobookPath')}
+              </FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.PATH}
+                name="audiobookPath"
+                helpText={translate('AuthorFormatPathHelpText')}
+                {...audiobookPath}
                 onChange={onInputChange}
               />
             </FormGroup>

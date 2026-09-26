@@ -13,6 +13,7 @@ namespace NzbDrone.Core.Books
         Author FindByName(string cleanName);
         Author FindById(string foreignAuthorId);
         Dictionary<int, string> AllAuthorPaths();
+        List<KeyValuePair<int, string>> AllAuthorLocationPaths();
         Dictionary<int, List<int>> AllAuthorTags();
         Author GetAuthorByMetadataId(int authorMetadataId);
         List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataId);
@@ -42,7 +43,7 @@ namespace NzbDrone.Core.Books
 
         public bool AuthorPathExists(string path)
         {
-            return Query(c => c.Path == path).Any();
+            return Query(c => c.Path == path || c.EbookPath == path || c.AudiobookPath == path).Any();
         }
 
         public Author FindById(string foreignAuthorId)
@@ -63,6 +64,20 @@ namespace NzbDrone.Core.Books
             {
                 var strSql = "SELECT \"Id\" AS \"Key\", \"Path\" AS \"Value\" FROM \"Authors\"";
                 return conn.Query<KeyValuePair<int, string>>(strSql).ToDictionary(x => x.Key, x => x.Value);
+            }
+        }
+
+        public List<KeyValuePair<int, string>> AllAuthorLocationPaths()
+        {
+            using (var conn = _database.OpenConnection())
+            {
+                const string strSql = "SELECT \"Id\" AS \"Key\", \"Path\" AS \"Value\" FROM \"Authors\" " +
+                                      "UNION ALL SELECT \"Id\" AS \"Key\", \"EbookPath\" AS \"Value\" FROM \"Authors\" WHERE \"EbookPath\" IS NOT NULL " +
+                                      "UNION ALL SELECT \"Id\" AS \"Key\", \"AudiobookPath\" AS \"Value\" FROM \"Authors\" WHERE \"AudiobookPath\" IS NOT NULL";
+
+                return conn.Query<KeyValuePair<int, string>>(strSql)
+                    .Where(x => x.Value.IsNotNullOrWhiteSpace())
+                    .ToList();
             }
         }
 

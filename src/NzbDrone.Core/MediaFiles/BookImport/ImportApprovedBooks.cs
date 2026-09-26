@@ -553,13 +553,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
         private void RemoveExistingTrackFiles(Author author, Book book)
         {
-            var rootFolder = _diskProvider.GetParentFolder(author.Path);
             var previousFiles = _mediaFileService.GetFilesByBook(book.Id);
 
             _logger.Debug("Deleting {0} existing files for {1}", previousFiles.Count, book);
 
             foreach (var previousFile in previousFiles)
             {
+                var rootFolder = _rootFolderService.GetBestRootFolder(previousFile.Path)?.Path ??
+                    _diskProvider.GetParentFolder(AuthorLocationResolver.GetPathForFile(author, previousFile.Path));
                 var subfolder = rootFolder.GetRelativePath(_diskProvider.GetParentFolder(previousFile.Path));
                 if (_diskProvider.FileExists(previousFile.Path))
                 {

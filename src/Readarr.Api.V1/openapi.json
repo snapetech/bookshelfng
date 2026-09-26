@@ -8743,6 +8743,14 @@
             "type": "string",
             "nullable": true
           },
+          "ebookPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "audiobookPath": {
+            "type": "string",
+            "nullable": true
+          },
           "qualityProfileId": {
             "type": "integer",
             "format": "int32"

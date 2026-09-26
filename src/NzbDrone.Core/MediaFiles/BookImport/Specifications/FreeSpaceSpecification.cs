@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using NLog;
 using NzbDrone.Common.Disk;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
@@ -38,7 +39,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
                     return Decision.Accept();
                 }
 
-                var path = Directory.GetParent(item.Author.Path);
+                var destinationPath = AuthorLocationResolver.GetPathForFile(item.Author, item.Path);
+                var path = Directory.GetParent(destinationPath);
                 var freeSpace = _diskProvider.GetAvailableSpace(path.FullName);
 
                 if (!freeSpace.HasValue)

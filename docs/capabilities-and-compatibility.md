@@ -24,8 +24,11 @@ Readarr-compatible API.
 One book can keep multiple ebook formats and audiobook files in a single
 instance. Import and upgrade checks compare compatible formats so an ebook
 does not replace an audiobook, and one ebook format does not replace another.
-Separate instances are still useful when you want different settings or
-separate libraries. Persist `/config`; that volume contains
+Each author can optionally override the default path for ebooks and
+audiobooks. These settings affect future imports, upgrades, and renames;
+existing files are not moved automatically. Quality and metadata profiles are shared by both
+formats. Separate instances are optional when you need isolated databases or
+settings for the same author. Persist `/config`; that volume contains
 the database, application settings, and provider identities needed to keep an
 existing library usable across container replacement.
 

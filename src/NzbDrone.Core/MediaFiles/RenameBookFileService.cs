@@ -158,8 +158,11 @@ namespace NzbDrone.Core.MediaFiles
             {
                 _eventAggregator.PublishEvent(new AuthorRenamedEvent(author, renamed));
 
-                _logger.Debug("Removing Empty Subfolders from: {0}", author.Path);
-                _diskProvider.RemoveEmptySubfolders(author.Path);
+                foreach (var authorPath in AuthorLocationResolver.GetPaths(author))
+                {
+                    _logger.Debug("Removing Empty Subfolders from: {0}", authorPath);
+                    _diskProvider.RemoveEmptySubfolders(authorPath);
+                }
             }
         }
 

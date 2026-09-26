@@ -37,6 +37,8 @@ namespace Readarr.Api.V1.Author
 
         //View & Edit
         public string Path { get; set; }
+        public string EbookPath { get; set; }
+        public string AudiobookPath { get; set; }
         public int QualityProfileId { get; set; }
         public int MetadataProfileId { get; set; }
 
@@ -87,6 +89,8 @@ namespace Readarr.Api.V1.Author
                 Images = model.Metadata.Value.Images.JsonClone(),
 
                 Path = model.Path,
+                EbookPath = model.EbookPath,
+                AudiobookPath = model.AudiobookPath,
                 QualityProfileId = model.QualityProfileId,
                 MetadataProfileId = model.MetadataProfileId,
                 Links = model.Metadata.Value.Links,
@@ -139,6 +143,8 @@ namespace Readarr.Api.V1.Author
 
                 //AlternateTitles
                 Path = resource.Path,
+                EbookPath = resource.EbookPath,
+                AudiobookPath = resource.AudiobookPath,
                 QualityProfileId = resource.QualityProfileId,
                 MetadataProfileId = resource.MetadataProfileId,
 
@@ -157,6 +163,26 @@ namespace Readarr.Api.V1.Author
         public static NzbDrone.Core.Books.Author ToModel(this AuthorResource resource, NzbDrone.Core.Books.Author author)
         {
             var updatedAuthor = resource.ToModel();
+
+            // Older clients omit these optional fields. Preserve configured format paths
+            // for those clients, while an empty string explicitly restores path fallback.
+            if (resource.EbookPath == null)
+            {
+                updatedAuthor.EbookPath = author.EbookPath;
+            }
+            else if (resource.EbookPath.IsNullOrWhiteSpace())
+            {
+                updatedAuthor.EbookPath = null;
+            }
+
+            if (resource.AudiobookPath == null)
+            {
+                updatedAuthor.AudiobookPath = author.AudiobookPath;
+            }
+            else if (resource.AudiobookPath.IsNullOrWhiteSpace())
+            {
+                updatedAuthor.AudiobookPath = null;
+            }
 
             author.ApplyChanges(updatedAuthor);
 

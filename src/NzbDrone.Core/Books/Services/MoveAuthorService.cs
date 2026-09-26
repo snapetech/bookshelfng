@@ -68,6 +68,8 @@ namespace NzbDrone.Core.Books
 
                 _diskTransferService.TransferFolder(sourcePath, destinationPath, TransferMode.Move);
 
+                UpdateFormatPaths(author.Id, sourcePath, destinationPath);
+
                 _logger.ProgressInfo("{0} moved successfully to {1}", author.Name, destinationPath);
 
                 _eventAggregator.PublishEvent(new AuthorMovedEvent(author, sourcePath, destinationPath));
@@ -78,6 +80,42 @@ namespace NzbDrone.Core.Books
 
                 RevertPath(author.Id, sourcePath);
             }
+        }
+
+        private void UpdateFormatPaths(int authorId, string sourcePath, string destinationPath)
+        {
+            var author = _authorService.GetAuthor(authorId);
+            var ebookPath = MovePath(sourcePath, destinationPath, author.EbookPath);
+            var audiobookPath = MovePath(sourcePath, destinationPath, author.AudiobookPath);
+
+            if (ebookPath == author.EbookPath && audiobookPath == author.AudiobookPath)
+            {
+                return;
+            }
+
+            author.EbookPath = ebookPath;
+            author.AudiobookPath = audiobookPath;
+            _authorService.UpdateAuthor(author);
+        }
+
+        private string MovePath(string sourcePath, string destinationPath, string formatPath)
+        {
+            if (formatPath.IsNullOrWhiteSpace())
+            {
+                return formatPath;
+            }
+
+            if (sourcePath.PathEquals(formatPath))
+            {
+                return destinationPath;
+            }
+
+            if (sourcePath.IsParentPath(formatPath))
+            {
+                return Path.Combine(destinationPath, sourcePath.GetRelativePath(formatPath));
+            }
+
+            return formatPath;
         }
 
         private void RevertPath(int authorId, string path)

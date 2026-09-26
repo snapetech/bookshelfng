@@ -14,7 +14,7 @@ namespace NzbDrone.Core.Validation.Paths
             _authorService = authorService;
         }
 
-        protected override string GetDefaultMessageTemplate() => "Path '{path}' is an ancestor of an existing author";
+        protected override string GetDefaultMessageTemplate() => "Path '{path}' overlaps with another author's library path";
 
         protected override bool IsValid(PropertyValidatorContext context)
         {
@@ -25,7 +25,12 @@ namespace NzbDrone.Core.Validation.Paths
 
             context.MessageFormatter.AppendArgument("path", context.PropertyValue.ToString());
 
-            return !_authorService.AllAuthorPaths().Any(s => context.PropertyValue.ToString().IsParentPath(s.Value));
+            var instanceId = (int)((dynamic)context.ParentContext.InstanceToValidate).Id;
+            var path = context.PropertyValue.ToString();
+            var authorPaths = _authorService.AllAuthorLocationPaths();
+
+            return authorPaths == null || !authorPaths.Any(s => s.Key != instanceId &&
+                (path.IsParentPath(s.Value) || s.Value.IsParentPath(path)));
         }
     }
 }

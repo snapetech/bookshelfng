@@ -21,6 +21,7 @@ namespace NzbDrone.Core.Organizer
         string BuildBookFileName(Author author, Edition edition, BookFile bookFile, NamingConfig namingConfig = null, List<CustomFormat> customFormats = null);
         string BuildBookFilePath(Author author, Edition edition, string fileName, string extension);
         string BuildBookPath(Author author);
+        string BuildBookPath(Author author, string extension);
         BasicNamingConfig GetBasicNamingConfig(NamingConfig nameSpec);
         string GetAuthorFolder(Author author, NamingConfig namingConfig = null);
     }
@@ -123,7 +124,7 @@ namespace NzbDrone.Core.Organizer
         {
             Ensure.That(extension, () => extension).IsNotNullOrWhiteSpace();
 
-            var path = BuildBookPath(author);
+            var path = BuildBookPath(author, extension);
 
             return Path.Combine(path, fileName + extension);
         }
@@ -131,6 +132,11 @@ namespace NzbDrone.Core.Organizer
         public string BuildBookPath(Author author)
         {
             return author.Path;
+        }
+
+        public string BuildBookPath(Author author, string extension)
+        {
+            return AuthorLocationResolver.GetPath(author, extension);
         }
 
         public BasicNamingConfig GetBasicNamingConfig(NamingConfig nameSpec)

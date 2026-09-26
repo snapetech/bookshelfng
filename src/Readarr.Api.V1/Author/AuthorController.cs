@@ -86,6 +86,28 @@ namespace Readarr.Api.V1.Author
                            .SetValidator(systemFolderValidator)
                            .When(s => !s.Path.IsNullOrWhiteSpace());
 
+            SharedValidator.RuleFor(s => s.EbookPath)
+                           .Cascade(CascadeMode.Stop)
+                           .IsValidPath()
+                           .SetValidator(rootFolderValidator)
+                           .SetValidator(mappedNetworkDriveValidator)
+                           .SetValidator(authorPathValidator)
+                           .SetValidator(authorAncestorValidator)
+                           .SetValidator(recycleBinValidator)
+                           .SetValidator(systemFolderValidator)
+                           .When(s => !s.EbookPath.IsNullOrWhiteSpace());
+
+            SharedValidator.RuleFor(s => s.AudiobookPath)
+                           .Cascade(CascadeMode.Stop)
+                           .IsValidPath()
+                           .SetValidator(rootFolderValidator)
+                           .SetValidator(mappedNetworkDriveValidator)
+                           .SetValidator(authorPathValidator)
+                           .SetValidator(authorAncestorValidator)
+                           .SetValidator(recycleBinValidator)
+                           .SetValidator(systemFolderValidator)
+                           .When(s => !s.AudiobookPath.IsNullOrWhiteSpace());
+
             SharedValidator.RuleFor(s => s.QualityProfileId).SetValidator(qualityProfileExistsValidator);
             SharedValidator.RuleFor(s => s.MetadataProfileId).SetValidator(metadataProfileExistsValidator);
 

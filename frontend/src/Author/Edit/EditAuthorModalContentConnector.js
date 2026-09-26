@@ -43,6 +43,8 @@ function createMapStateToProps() {
         'qualityProfileId',
         'metadataProfileId',
         'path',
+        'ebookPath',
+        'audiobookPath',
         'tags'
       ]);
 
