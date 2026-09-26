@@ -17,6 +17,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import AuthorMediaMoveControl from './AuthorMediaMoveControl';
 import styles from './EditAuthorModalContent.css';
 
 class EditAuthorModalContent extends Component {
@@ -61,6 +62,7 @@ class EditAuthorModalContent extends Component {
 
   render() {
     const {
+      authorId,
       authorName,
       item,
       isSaving,
@@ -199,6 +201,12 @@ class EditAuthorModalContent extends Component {
                 {...ebookPath}
                 onChange={onInputChange}
               />
+
+              <AuthorMediaMoveControl
+                authorId={authorId}
+                format="ebook"
+                destinationPath={ebookPath.value || path.value}
+              />
             </FormGroup>
 
             <FormGroup>
@@ -212,6 +220,12 @@ class EditAuthorModalContent extends Component {
                 helpText={translate('AuthorFormatPathHelpText')}
                 {...audiobookPath}
                 onChange={onInputChange}
+              />
+
+              <AuthorMediaMoveControl
+                authorId={authorId}
+                format="audiobook"
+                destinationPath={audiobookPath.value || path.value}
               />
             </FormGroup>
 

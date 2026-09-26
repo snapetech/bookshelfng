@@ -23,9 +23,12 @@ API key.
 
 Each author keeps the existing `Path` as the default, with optional ebook and
 audiobook folder overrides for future imports, upgrades, and renames. Changing
-an override does not move existing files. Generated book metadata sidecars
-follow their media files; author-wide metadata and extras stay in the default
-`Path`. Quality and metadata profiles are still shared by both formats;
+an override alone does not move existing files. Use **Move existing ebooks**
+or **Move existing audiobooks** in the author edit window to preview and queue
+a move for files already in the library. The same workflow is available through
+the [API and CLI](docs/media-storage.md). Registered book sidecars follow their
+media files; author-wide metadata and extras stay in the default `Path`.
+Quality and metadata profiles are still shared by both formats;
 separate instances remain an option for isolated databases or settings.
 Per-format profiles are on the
 [parity roadmap](docs/maintainers/bookshelfng-parity-roadmap.md).

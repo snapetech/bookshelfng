@@ -9,6 +9,7 @@ metadata provider configuration.
 | --- | --- |
 | [Capabilities and compatibility](capabilities-and-compatibility.md) | Supported formats, metadata providers, compatibility limits, and BookshelfNG-specific changes |
 | [Import matching and formats](import-matching-and-formats.md) | Coexisting ebook and audiobook files, import thresholds, weighted edition terms, and preferred series |
+| [Moving existing media](media-storage.md) | Preview and move existing ebook or audiobook files using the web UI, API, or CLI |
 | [Search and downloads](search-and-downloads.md) | Add-page search, indexer release search, existing-torrent adoption, and ignoring queue items |
 | [Series pack search](series-pack-search.md) | Searching a series and reviewing multi-book packs in Manual Import |
 | [Author metadata refresh](author-metadata-refresh.md) | Stored author metadata, refresh schedule, request limits, and troubleshooting |
