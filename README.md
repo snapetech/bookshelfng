@@ -69,7 +69,8 @@ provider behavior and settings.
   have separate re-search settings. You can adopt a matching torrent already
   in a download client, and ignore an unmatched queue item without deleting
   the download. See [search and download workflows](docs/search-and-downloads.md).
-- **Find books by narrator and write audiobook tags.** Narrator credits stay
+- **Use narrator credits to identify audiobooks.** Import matching compares
+  narrator tags with edition metadata when both are present. Narrators stay
   separate from authors, appear in book search and filtering, and can be
   written to audio files when audio tag writing is enabled. See
   [audiobook metadata](docs/audiobookshelf-metadata.md).

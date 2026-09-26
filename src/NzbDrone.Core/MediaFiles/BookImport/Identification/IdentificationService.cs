@@ -92,30 +92,33 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
             var completed = 0;
             var progressLock = new object();
-            Parallel.ForEach(releases, new ParallelOptions
-            {
-                MaxDegreeOfParallelism = MaxConcurrentIdentifications
-            }, localRelease =>
-            {
-                _logger.Debug($"Identifying book files:\n{localRelease.LocalBooks.Select(x => x.Path).ConcatToString("\n")}");
+            Parallel.ForEach(
+                releases,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = MaxConcurrentIdentifications
+                },
+                localRelease =>
+                {
+                    _logger.Debug($"Identifying book files:\n{localRelease.LocalBooks.Select(x => x.Path).ConcatToString("\n")}");
 
-                try
-                {
-                    IdentifyRelease(localRelease, idOverrides, config);
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e, "Error identifying release");
-                }
-                finally
-                {
-                    lock (progressLock)
+                    try
                     {
-                        completed++;
-                        _logger.ProgressInfo($"Identified {completed}/{releases.Count} books");
+                        IdentifyRelease(localRelease, idOverrides, config);
                     }
-                }
-            });
+                    catch (Exception e)
+                    {
+                        _logger.Error(e, "Error identifying release");
+                    }
+                    finally
+                    {
+                        lock (progressLock)
+                        {
+                            completed++;
+                            _logger.ProgressInfo($"Identified {completed}/{releases.Count} books");
+                        }
+                    }
+                });
 
             watch.Stop();
 

@@ -26,6 +26,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
         private static readonly List<string> AudiobookFormats = new List<string> { "Audiobook", "Audio CD", "Audio Cassette", "Audible Audio", "CD-ROM", "MP3 CD" };
 
+        private static readonly char[] NarratorSeparators = { ';', '\r', '\n' };
+
         // An ASIN is 10 characters: either B followed by 9 alphanumerics, or an ISBN-10.
         private static readonly Regex ValidAsinRegex = new Regex(@"^(B[\dA-Z]{9}|\d{9}[\dX])$", RegexOptions.Compiled);
 
@@ -170,9 +172,22 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 Logger.Trace($"publisher: {localPublisher} vs {editionPublisher}; {dist.NormalizedDistance()}");
             }
 
-            // try to tilt it towards the correct "type" of release
+            // Narrator credits help distinguish audiobook editions, but only when
+            // both the file and metadata provider have supplied them.
             var isAudio = MediaFileExtensions.AudioExtensions.Contains(localTracks.First().Path.GetPathExtension());
+            if (isAudio)
+            {
+                var fileNarrators = GetNarratorCredits(localTracks.Select(x => x.FileTrackInfo?.Narrator));
+                var editionNarrators = GetNarratorCredits(new[] { edition.Narrator });
 
+                if (fileNarrators.Any() && editionNarrators.Any())
+                {
+                    dist.AddString("narrator", fileNarrators, editionNarrators);
+                    Logger.Trace($"narrator: {fileNarrators.ConcatToString("; ")} vs {editionNarrators.ConcatToString("; ")}; {dist.NormalizedDistance()}");
+                }
+            }
+
+            // try to tilt it towards the correct "type" of release
             if (edition.Format.IsNotNullOrWhiteSpace())
             {
                 if (!isAudio)
@@ -193,6 +208,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             AddPreferredEditionDistance(dist, edition, preferredEditionTerms);
 
             return dist;
+        }
+
+        private static List<string> GetNarratorCredits(IEnumerable<string> values)
+        {
+            return values
+                .Where(value => value.IsNotNullOrWhiteSpace())
+                .SelectMany(value => value.Split(NarratorSeparators, StringSplitOptions.RemoveEmptyEntries))
+                .Select(value => value.Trim())
+                .Where(value => value.IsNotNullOrWhiteSpace())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static void AddPreferredEditionDistance(Distance distance, Edition edition, string preferredEditionTerms)

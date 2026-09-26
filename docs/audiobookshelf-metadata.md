@@ -20,6 +20,11 @@ be used to filter the library. Provider coverage varies; Hardcover maps
 narrator, reader, reading, and author/narrator contribution roles into the
 narrator field.
 
+During audiobook import identification, BookshelfNG compares narrator credits
+read from the audio file with the candidate edition's narrator when both are
+available. A matching narrator helps rank similar audiobook editions; missing
+narrator data on either side does not count against a candidate.
+
 Audio tag reading recognizes narrator fields in common audiobook tags,
 including ID3, Vorbis comments, APE, ASF/WMA, MP4, and Audible metadata. Tag
 writing is controlled by **Settings > Metadata > Write Audio Tags**. When

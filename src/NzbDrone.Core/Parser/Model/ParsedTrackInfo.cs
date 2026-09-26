@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Parser.Model
         public int DiscCount { get; set; }
         public IsoCountry Country { get; set; }
         public uint Year { get; set; }
+        public string Narrator { get; set; }
         public string Publisher { get; set; }
         public string Label { get; set; }
         public string Source { get; set; }

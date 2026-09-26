@@ -574,6 +574,7 @@ namespace NzbDrone.Core.MediaFiles
                 DiscNumber = (int)tag.Disc,
                 DiscCount = (int)tag.DiscCount,
                 Year = tag.Year,
+                Narrator = tag.Narrator,
                 Label = tag.Publisher,
                 TrackNumbers = new[] { (int)tag.Track },
                 Title = tag.Title,
