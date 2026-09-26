@@ -34,8 +34,9 @@ public BookshelfNG snapshots.
 
 BookshelfNG can store an ebook and audiobook under one book. `Author.Path`
 remains the backwards-compatible default, and authors can now set optional
-ebook and audiobook folder overrides for future imports and renames. The
-existing author-level quality and metadata profiles remain shared. Add
+ebook and audiobook folder overrides for future imports and renames. Generated
+book sidecars follow their media files; author-wide metadata and extras remain
+under `Author.Path`. The existing author-level quality and metadata profiles remain shared. Add
 optional format-specific profiles next, keeping the author-level settings as
 defaults for compatibility. Existing files need a previewable move workflow
 before a path change can relocate them.
@@ -44,15 +45,16 @@ This is a cross-cutting storage change. The first increment adds optional
 `EbookPath` and `AudiobookPath` overrides and routes file destinations, root
 checks, rename/upgrade, and deletion through the selected location. `Author.Path`
 remains the fallback and legacy API field. Disk scanning still enumerates
-configured Root Folders, while author-level extras and some sidecar operations
-still use the legacy path. Implement the remaining work in these stages:
+configured Root Folders. Extra-file discovery now scans every configured
+author location, media sidecars follow their book files, and author-wide extras
+remain in `Author.Path`. Implement the remaining work in these stages:
 
 1. Keep the current location resolver and optional API/UI path overrides as
    the backwards-compatible base. Existing files remain where they are when an
    override changes.
-2. Route author-level extras and all metadata sidecars consistently when
-   media files use separate locations; define one shared location for author
-   extras.
+2. Completed: scan configured author locations for extra files and keep
+   generated book sidecars beside their media; retain `Author.Path` as the
+   shared location for author-wide metadata and extras.
 3. Add format-specific quality and metadata profile fields. Existing author
    settings remain effective whenever a format-specific value is unset.
 4. Audit full-library scans, root-folder removal, bulk edit, and moves across
@@ -126,8 +128,8 @@ repeatable.
 2. **Current storage increment:** optional format-specific author folders
    route future imports, upgrades, and renames while `Author.Path` remains the
    fallback. Existing files stay in place when an override changes.
-3. **Next storage increment:** finish extras and sidecar paths, then add
-   format-specific quality and metadata profiles.
+3. **Next storage increment:** add format-specific quality and metadata
+   profiles, keeping author-level choices as fallbacks.
 4. **Storage move workflow:** scan, move, and delete safely across roots with
    explicit previews and reversible operations.
 5. **Audio processing milestone:** richer chapter preservation and single-file

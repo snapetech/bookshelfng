@@ -23,9 +23,11 @@ API key.
 
 Each author keeps the existing `Path` as the default, with optional ebook and
 audiobook folder overrides for future imports, upgrades, and renames. Changing
-an override does not move existing files. Quality and metadata profiles are still
-shared by both formats; separate instances remain an option for isolated
-databases or settings. Per-format profiles are on the
+an override does not move existing files. Generated book metadata sidecars
+follow their media files; author-wide metadata and extras stay in the default
+`Path`. Quality and metadata profiles are still shared by both formats;
+separate instances remain an option for isolated databases or settings.
+Per-format profiles are on the
 [parity roadmap](docs/maintainers/bookshelfng-parity-roadmap.md).
 
 ## Capabilities

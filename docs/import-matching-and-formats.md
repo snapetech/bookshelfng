@@ -11,7 +11,8 @@ both entries can use the same BookshelfNG URL and API key. Each author can keep
 the default path or set optional ebook and audiobook folder overrides in the
 author editor. Overrides affect future imports, upgrades, and renames; setting
 one does not move existing files. Quality and metadata profiles are still shared by
-both formats. Separate format profiles are tracked in the
+both formats. Generated book sidecars follow their media files; author-wide
+metadata and extras remain under the default `Path`. Separate format profiles are tracked in the
 [parity roadmap](maintainers/bookshelfng-parity-roadmap.md).
 
 ## Formats on one book

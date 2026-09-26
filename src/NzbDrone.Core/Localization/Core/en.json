@@ -726,7 +726,7 @@
   "PastDaysHelpText": "Days for iCal feed to look into the past",
   "Path": "Path",
   "PathHelpText": "Root Folder containing your book library",
-  "AuthorFormatPathHelpText": "Optional author folder inside a configured Root Folder. Leave empty to use Path. This applies to future imports, upgrades, and renames; existing files are not moved automatically.",
+  "AuthorFormatPathHelpText": "Optional author folder inside a configured Root Folder. Leave empty to use Path. Future imports, upgrades, and renames use this folder; existing files are not moved. Book sidecars follow their media files. Author-wide metadata and extras stay in Path.",
   "EbookPath": "Ebook Path",
   "AudiobookPath": "Audiobook Path",
   "PathHelpTextWarning": "This must be different to the directory where your download client puts files",

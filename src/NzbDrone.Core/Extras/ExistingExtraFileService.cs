@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Extras.Files;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
@@ -33,15 +35,22 @@ namespace NzbDrone.Core.Extras
             var author = message.Author;
             var extraFiles = new List<ExtraFile>();
 
-            if (!_diskProvider.FolderExists(author.Path))
+            var authorPaths = AuthorLocationResolver.GetPaths(author)
+                .Where(_diskProvider.FolderExists)
+                .Distinct(PathEqualityComparer.Instance)
+                .ToList();
+
+            if (authorPaths.Count == 0)
             {
                 return;
             }
 
-            _logger.Debug("Looking for existing extra files in {0}", author.Path);
+            _logger.Debug("Looking for existing extra files in {0}", string.Join(", ", authorPaths));
 
-            var filesOnDisk = _diskScanService.GetNonBookFiles(author.Path);
-            var possibleExtraFiles = _diskScanService.FilterPaths(author.Path, filesOnDisk);
+            var possibleExtraFiles = authorPaths
+                .SelectMany(path => _diskScanService.FilterPaths(path, _diskScanService.GetNonBookFiles(path)))
+                .Distinct(PathEqualityComparer.Instance)
+                .ToList();
 
             var filteredFiles = possibleExtraFiles;
             var importedFiles = new List<string>();

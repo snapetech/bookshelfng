@@ -64,9 +64,12 @@ namespace NzbDrone.Core.Extras.Metadata
             var metadataFiles = _metadataFileService.GetFilesByAuthor(author.Id);
             _cleanMetadataService.Clean(author);
 
-            if (!_diskProvider.FolderExists(author.Path))
+            var hasAuthorPath = _diskProvider.FolderExists(author.Path);
+            var hasBookPath = bookFiles.Any(bookFile => _diskProvider.FolderExists(Path.GetDirectoryName(bookFile.Path)));
+
+            if (!hasAuthorPath && !hasBookPath)
             {
-                _logger.Info("Author folder does not exist, skipping metadata creation");
+                _logger.Info("No configured author or book folder exists, skipping metadata creation");
                 return Enumerable.Empty<MetadataFile>();
             }
 
@@ -76,8 +79,11 @@ namespace NzbDrone.Core.Extras.Metadata
             {
                 var consumerFiles = GetMetadataFilesForConsumer(consumer, metadataFiles);
 
-                files.AddIfNotNull(ProcessAuthorMetadata(consumer, author, consumerFiles));
-                files.AddRange(ProcessAuthorImages(consumer, author, consumerFiles));
+                if (hasAuthorPath)
+                {
+                    files.AddIfNotNull(ProcessAuthorMetadata(consumer, author, consumerFiles));
+                    files.AddRange(ProcessAuthorImages(consumer, author, consumerFiles));
+                }
 
                 foreach (var bookFile in bookFiles)
                 {
