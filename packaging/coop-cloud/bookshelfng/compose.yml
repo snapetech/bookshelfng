@@ -1,0 +1,29 @@
+services:
+  app:
+    image: docker.io/snapetech/bookshelfng:hardcover-v0.4.21.37
+    volumes:
+      - bookshelfng_config:/config
+      - bookshelfng_books:/books
+      - bookshelfng_downloads:/downloads
+    networks:
+      - proxy
+    deploy:
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy"
+        - "traefik.http.services.${STACK_NAME}.loadbalancer.server.port=8787"
+        - "traefik.http.routers.${STACK_NAME}.rule=Host(`${DOMAIN}`${EXTRA_DOMAINS})"
+        - "traefik.http.routers.${STACK_NAME}.entrypoints=web-secure"
+        - "traefik.http.routers.${STACK_NAME}.tls.certresolver=${LETS_ENCRYPT_ENV}"
+        - "coop-cloud.${STACK_NAME}.version=hardcover-v0.4.21.37"
+
+volumes:
+  bookshelfng_config:
+  bookshelfng_books:
+  bookshelfng_downloads:
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,30 @@
+{
+  "stable": true,
+  "versions": {
+    "0.4.21": {
+      "creationDate": "Fri, 25 Sep 2026 18:33:57 GMT",
+      "manifest": {
+        "id": "tech.snapetech.bookshelfng",
+        "title": "BookshelfNG",
+        "author": "Snapetech",
+        "description": "Self-hosted ebook and audiobook library manager with Readarr-compatible automation and Hardcover metadata.",
+        "tagline": "Ebook and audiobook collection manager",
+        "version": "0.4.21",
+        "upstreamVersion": "hardcover-v0.4.21.37",
+        "healthCheckPath": "/ping",
+        "httpPort": 8787,
+        "addons": {"localstorage": {}},
+        "persistentDirs": ["/config", "/books", "/downloads"],
+        "manifestVersion": 2,
+        "website": "https://github.com/snapetech/bookshelfng",
+        "documentationUrl": "https://github.com/snapetech/bookshelfng#readme",
+        "packageUrl": "https://github.com/snapetech/bookshelfng",
+        "iconUrl": "https://raw.githubusercontent.com/snapetech/bookshelfng/main/Logo/512.png",
+        "tags": ["books", "ebooks", "audiobooks", "automation"],
+        "dockerImage": "docker.io/snapetech/bookshelfng:hardcover-v0.4.21.37"
+      },
+      "publishState": "published",
+      "ts": "Fri, 25 Sep 2026 18:33:57 GMT"
+    }
+  }
+}
