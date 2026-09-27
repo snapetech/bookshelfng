@@ -10,7 +10,7 @@
   <WebUI>http://[IP]:[PORT:8787]/</WebUI>
   <Overview>Standalone NG fork of Bookshelf for ebook and audiobook management, with optional SeerrNG integration. One instance can handle both formats.</Overview>
   <Description>BookshelfNG is a complete standalone library and acquisition app; SeerrNG is optional. This Snapetech NG fork supplies the book contract used by SeerrNG. The Hardcover image needs a personal Hardcover API token for native metadata. Add it in HARDCOVER_AUTH or in BookshelfNG settings. One instance can manage both ebooks and audiobooks; point both SeerrNG service entries at this instance when using both formats. Do not attach an existing softcover or Readarr database to the Hardcover image without migration.</Description>
-  <Support>https://github.com/snapetech/bookshelfng/issues</Support>
+  <Support>https://github.com/snapetech/seerrng/issues</Support>
   <Project>https://github.com/snapetech/bookshelfng</Project>
   <TemplateURL>https://raw.githubusercontent.com/snapetech/bookshelfng/main/packaging/unraid/bookshelfng.xml</TemplateURL>
   <ReadMe>https://github.com/snapetech/bookshelfng/blob/main/README.md</ReadMe>
