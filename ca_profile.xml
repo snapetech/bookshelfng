@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<CommunityApplications>
-  <Profile>BookshelfNG is a standalone ebook and audiobook library and acquisition app maintained by Snapetech. It is an NG fork of Bookshelf with optional SeerrNG integration. One BookshelfNG instance can manage both ebooks and audiobooks. For support with this Unraid package or SeerrNG integration, use the SeerrNG issue tracker.</Profile>
-  <Icon>https://raw.githubusercontent.com/snapetech/bookshelfng/main/Logo/512.png</Icon>
-  <WebPage>https://github.com/snapetech/bookshelfng</WebPage>
-  <Forum>https://github.com/snapetech/seerrng/issues</Forum>
-</CommunityApplications>
