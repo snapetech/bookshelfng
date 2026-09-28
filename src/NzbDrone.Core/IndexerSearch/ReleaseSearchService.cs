@@ -142,15 +142,33 @@ namespace NzbDrone.Core.IndexerSearch
 
             var searchSpec = Get<BookSearchCriteria>(author, new List<Book> { book }, userInvokedSearch, interactiveSearch);
 
-            searchSpec.BookTitle = book.Editions.Value.SingleOrDefault(x => x.Monitored).Title;
+            var selectedEdition = book.Editions?.Value?
+                .Where(edition => edition != null && edition.Monitored)
+                .OrderBy(edition => edition.Id)
+                .FirstOrDefault();
 
-            // searchSpec.BookIsbn = book.Isbn13;
+            searchSpec.BookTitle = selectedEdition?.Title ?? book.Title ?? string.Empty;
+            searchSpec.BookIsbn = GetSearchBookIsbn(book, selectedEdition);
             if (book.ReleaseDate.HasValue)
             {
                 searchSpec.BookYear = book.ReleaseDate.Value.Year;
             }
 
             return await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec);
+        }
+
+        private static string GetSearchBookIsbn(Book book, Edition selectedEdition)
+        {
+            if (!string.IsNullOrWhiteSpace(selectedEdition?.Isbn13))
+            {
+                return selectedEdition.Isbn13;
+            }
+
+            return book?.Editions?.Value?
+                .Where(edition => edition != null && !string.IsNullOrWhiteSpace(edition.Isbn13))
+                .OrderBy(edition => edition.Id)
+                .Select(edition => edition.Isbn13)
+                .FirstOrDefault();
         }
 
         private TSpec Get<TSpec>(Author author, List<Book> books, bool userInvokedSearch, bool interactiveSearch)

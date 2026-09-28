@@ -48,7 +48,7 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
         {
             // Set post-import label
             if (Settings.MusicImportedCategory.IsNotNullOrWhiteSpace() &&
-                Settings.MusicImportedCategory != Settings.MusicCategory)
+                Settings.MusicImportedCategory != downloadClientItem.Category)
             {
                 try
                 {
@@ -81,7 +81,8 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
         {
             var priority = (RTorrentPriority)(remoteBook.IsRecentBook() ? Settings.RecentTvPriority : Settings.OlderTvPriority);
 
-            _proxy.AddTorrentFromUrl(magnetLink, Settings.MusicCategory, priority, Settings.MusicDirectory, Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            _proxy.AddTorrentFromUrl(magnetLink, category, priority, Settings.MusicDirectory, Settings);
 
             var tries = 10;
             var retryDelay = 500;
@@ -101,7 +102,8 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
         {
             var priority = (RTorrentPriority)(remoteBook.IsRecentBook() ? Settings.RecentTvPriority : Settings.OlderTvPriority);
 
-            _proxy.AddTorrentFromFile(filename, fileContent, Settings.MusicCategory, priority, Settings.MusicDirectory, Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            _proxy.AddTorrentFromFile(filename, fileContent, category, priority, Settings.MusicDirectory, Settings);
 
             var tries = 10;
             var retryDelay = 500;
@@ -129,7 +131,8 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
             foreach (var torrent in torrents)
             {
                 // Don't concern ourselves with categories other than specified
-                if (Settings.MusicCategory.IsNotNullOrWhiteSpace() && torrent.Category != Settings.MusicCategory)
+                if (BookDownloadCategorySettings.GetConfiguredCategories(Settings).Count > 0 &&
+                    !BookDownloadCategorySettings.MatchesConfiguredCategory(Settings, torrent.Category))
                 {
                     continue;
                 }

@@ -18,12 +18,13 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
                                   .WithMessage("API Key is required");
 
             RuleFor(c => c.MusicCategory).NotEmpty()
+                                      .When(c => string.IsNullOrWhiteSpace(c.EbookCategory) && string.IsNullOrWhiteSpace(c.AudiobookCategory))
                                       .WithMessage("A category is recommended")
                                       .AsWarning();
         }
     }
 
-    public class NzbVortexSettings : IProviderConfig
+    public class NzbVortexSettings : IProviderConfig, IBookDownloadCategorySettings
     {
         private static readonly NzbVortexSettingsValidator Validator = new NzbVortexSettingsValidator();
 
@@ -48,13 +49,19 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         [FieldDefinition(3, Label = "API Key", Type = FieldType.Textbox, Privacy = PrivacyLevel.ApiKey)]
         public string ApiKey { get; set; }
 
-        [FieldDefinition(4, Label = "Group", Type = FieldType.Textbox, HelpText = "Adding a category specific to Readarr avoids conflicts with unrelated non-Readarr downloads. Using a category is optional, but strongly recommended.")]
+        [FieldDefinition(4, Label = "Legacy Group", Type = FieldType.Textbox, Advanced = true, HelpText = "Fallback group used when an ebook or audiobook group is blank.")]
         public string MusicCategory { get; set; }
 
-        [FieldDefinition(5, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing books released within the last 14 days")]
+        [FieldDefinition(5, Label = "Ebook Group", Type = FieldType.Textbox, HelpText = "Group used for ebook downloads. Leave blank to use the legacy group.")]
+        public string EbookCategory { get; set; }
+
+        [FieldDefinition(6, Label = "Audiobook Group", Type = FieldType.Textbox, HelpText = "Group used for audiobook downloads. Leave blank to use the legacy group.")]
+        public string AudiobookCategory { get; set; }
+
+        [FieldDefinition(7, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing books released within the last 14 days")]
         public int RecentTvPriority { get; set; }
 
-        [FieldDefinition(6, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing books released over 14 days ago")]
+        [FieldDefinition(8, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing books released over 14 days ago")]
         public int OlderTvPriority { get; set; }
 
         public NzbDroneValidationResult Validate()

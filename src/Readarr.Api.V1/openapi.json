@@ -10119,7 +10119,8 @@
         "enum": [
           "unknown",
           "usenet",
-          "torrent"
+          "torrent",
+          "direct"
         ],
         "type": "string"
       },

@@ -37,7 +37,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         {
             // set post-import category
             if (Settings.MusicImportedCategory.IsNotNullOrWhiteSpace() &&
-                Settings.MusicImportedCategory != Settings.MusicCategory)
+                Settings.MusicImportedCategory != downloadClientItem.Category)
             {
                 try
                 {
@@ -63,9 +63,10 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
             _proxy.SetTorrentSeedingConfiguration(actualHash, remoteBook.SeedConfiguration, Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category.IsNotNullOrWhiteSpace())
             {
-                _proxy.SetTorrentLabel(actualHash, Settings.MusicCategory, Settings);
+                _proxy.SetTorrentLabel(actualHash, category, Settings);
             }
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -90,9 +91,10 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
             _proxy.SetTorrentSeedingConfiguration(actualHash, remoteBook.SeedConfiguration, Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category.IsNotNullOrWhiteSpace())
             {
-                _proxy.SetTorrentLabel(actualHash, Settings.MusicCategory, Settings);
+                _proxy.SetTorrentLabel(actualHash, category, Settings);
             }
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -111,10 +113,30 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         public override IEnumerable<DownloadClientItem> GetItems()
         {
             IEnumerable<DelugeTorrent> torrents;
+            var categoriesByHash = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var categories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (categories.Count > 0)
             {
-                torrents = _proxy.GetTorrentsByLabel(Settings.MusicCategory, Settings);
+                var categorizedTorrents = new Dictionary<string, DelugeTorrent>(StringComparer.OrdinalIgnoreCase);
+                foreach (var category in categories)
+                {
+                    foreach (var torrent in _proxy.GetTorrentsByLabel(category, Settings))
+                    {
+                        if (torrent.Hash.IsNullOrWhiteSpace())
+                        {
+                            continue;
+                        }
+
+                        if (!categorizedTorrents.ContainsKey(torrent.Hash))
+                        {
+                            categorizedTorrents.Add(torrent.Hash, torrent);
+                            categoriesByHash[torrent.Hash] = category;
+                        }
+                    }
+                }
+
+                torrents = categorizedTorrents.Values;
             }
             else
             {
@@ -142,7 +164,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
                 var item = new DownloadClientItem();
                 item.DownloadId = torrent.Hash.ToUpper();
                 item.Title = torrent.Name;
-                item.Category = Settings.MusicCategory;
+                item.Category = categoriesByHash.TryGetValue(torrent.Hash, out var category) ? category : Settings.MusicCategory;
 
                 item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, Settings.MusicImportedCategory.IsNotNullOrWhiteSpace());
 
@@ -313,7 +335,8 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
         private ValidationFailure TestCategory()
         {
-            if (Settings.MusicCategory.IsNullOrWhiteSpace() && Settings.MusicImportedCategory.IsNullOrWhiteSpace())
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            if (configuredCategories.Count == 0 && Settings.MusicImportedCategory.IsNullOrWhiteSpace())
             {
                 return null;
             }
@@ -330,17 +353,20 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
             var labels = _proxy.GetAvailableLabels(Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace() && !labels.Contains(Settings.MusicCategory))
+            foreach (var category in configuredCategories)
             {
-                _proxy.AddLabel(Settings.MusicCategory, Settings);
-                labels = _proxy.GetAvailableLabels(Settings);
-
-                if (!labels.Contains(Settings.MusicCategory))
+                if (!labels.Contains(category))
                 {
-                    return new NzbDroneValidationFailure("MusicCategory", "Configuration of label failed")
+                    _proxy.AddLabel(category, Settings);
+                    labels = _proxy.GetAvailableLabels(Settings);
+
+                    if (!labels.Contains(category))
                     {
-                        DetailedDescription = "Readarr was unable to add the label to Deluge."
-                    };
+                        return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, category), "Configuration of label failed")
+                        {
+                            DetailedDescription = $"Readarr was unable to add the label '{category}' to Deluge."
+                        };
+                    }
                 }
             }
 

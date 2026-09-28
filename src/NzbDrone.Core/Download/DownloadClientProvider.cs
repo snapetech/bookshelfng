@@ -4,6 +4,7 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.Clients;
+using NzbDrone.Core.Download.Clients.Direct;
 using NzbDrone.Core.Indexers;
 
 namespace NzbDrone.Core.Download
@@ -21,11 +22,13 @@ namespace NzbDrone.Core.Download
         private readonly IDownloadClientFactory _downloadClientFactory;
         private readonly IDownloadClientStatusService _downloadClientStatusService;
         private readonly IIndexerFactory _indexerFactory;
+        private readonly IInternalDirectClientProvider _internalDirectClientProvider;
         private readonly ICached<int> _lastUsedDownloadClient;
 
         public DownloadClientProvider(IDownloadClientStatusService downloadClientStatusService,
                                       IDownloadClientFactory downloadClientFactory,
                                       IIndexerFactory indexerFactory,
+                                      IInternalDirectClientProvider internalDirectClientProvider,
                                       ICacheManager cacheManager,
                                       Logger logger)
         {
@@ -33,6 +36,7 @@ namespace NzbDrone.Core.Download
             _downloadClientFactory = downloadClientFactory;
             _downloadClientStatusService = downloadClientStatusService;
             _indexerFactory = indexerFactory;
+            _internalDirectClientProvider = internalDirectClientProvider;
             _lastUsedDownloadClient = cacheManager.GetCache<int>(GetType(), "lastDownloadClientId");
         }
 
@@ -43,6 +47,12 @@ namespace NzbDrone.Core.Download
 
             if (!availableProviders.Any())
             {
+                if (downloadProtocol == DownloadProtocol.Direct)
+                {
+                    _logger.Debug("No user-configured Direct download client found; using internal Direct client.");
+                    return _internalDirectClientProvider.GetClient();
+                }
+
                 return null;
             }
 
@@ -116,7 +126,16 @@ namespace NzbDrone.Core.Download
 
         public IEnumerable<IDownloadClient> GetDownloadClients(bool filterBlockedClients = false)
         {
-            var enabledClients = _downloadClientFactory.GetAvailableProviders();
+            var enabledClients = _downloadClientFactory.GetAvailableProviders().ToList();
+
+            if (!enabledClients.Any(client => client.Protocol == DownloadProtocol.Direct))
+            {
+                var internalClient = _internalDirectClientProvider.GetClient();
+                if (internalClient != null)
+                {
+                    enabledClients.Add(internalClient);
+                }
+            }
 
             if (filterBlockedClients)
             {
@@ -128,6 +147,12 @@ namespace NzbDrone.Core.Download
 
         public IDownloadClient Get(int id)
         {
+            if (id == -1)
+            {
+                return _internalDirectClientProvider.GetClient()
+                       ?? throw new DownloadClientUnavailableException("Internal Direct download client is not available.");
+            }
+
             return _downloadClientFactory.GetAvailableProviders().Single(d => d.Definition.Id == id);
         }
 

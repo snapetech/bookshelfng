@@ -12,8 +12,11 @@ ENV DOTNET_ROOT=/usr/share/dotnet \
     COMPlus_EnableDiagnostics=0 \
     TMPDIR=/run/readarr-temp
 
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-headless-shell
+
 RUN apk add -U --upgrade --no-cache \
     ffmpeg \
+    chromium-headless-shell \
     icu-libs \
     sqlite-libs \
     xmlstarlet

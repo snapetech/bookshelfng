@@ -34,7 +34,10 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         {
             var priority = remoteBook.IsRecentBook() ? Settings.RecentTvPriority : Settings.OlderTvPriority;
 
-            var response = _proxy.DownloadNzb(fileContent, filename, priority, Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            var response = category == Settings.MusicCategory
+                ? _proxy.DownloadNzb(fileContent, filename, priority, Settings)
+                : _proxy.DownloadNzb(fileContent, filename, category, priority, Settings);
 
             if (response == null)
             {
@@ -48,12 +51,24 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
-            var vortexQueue = _proxy.GetQueue(30, Settings);
-
             var queueItems = new List<DownloadClientItem>();
+            var categories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            var queue = categories.Count == 0
+                ? _proxy.GetQueue(30, null, Settings)
+                : categories.SelectMany(category => category == Settings.MusicCategory
+                        ? _proxy.GetQueue(30, Settings)
+                        : _proxy.GetQueue(30, category, Settings))
+                    .GroupBy(item => item.AddUUID ?? item.Id.ToString(), StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .ToList();
 
-            foreach (var vortexQueueItem in vortexQueue)
+            foreach (var vortexQueueItem in queue)
             {
+                if (categories.Count > 0 && !BookDownloadCategorySettings.MatchesConfiguredCategory(Settings, vortexQueueItem.GroupName))
+                {
+                    continue;
+                }
+
                 var queueItem = new DownloadClientItem();
 
                 queueItem.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false);
@@ -119,7 +134,7 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
             }
             else
             {
-                var queue = _proxy.GetQueue(30, Settings);
+                var queue = _proxy.GetQueue(30, null, Settings);
                 var queueItem = queue.FirstOrDefault(c => c.AddUUID == item.DownloadId);
 
                 if (queueItem != null)
@@ -196,7 +211,7 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         {
             try
             {
-                _proxy.GetQueue(1, Settings);
+                _proxy.GetQueue(1, null, Settings);
             }
             catch (NzbVortexAuthenticationException)
             {
@@ -208,15 +223,14 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
 
         private ValidationFailure TestCategory()
         {
-            var group = GetGroups().FirstOrDefault(c => c.GroupName == Settings.MusicCategory);
-
-            if (group == null)
+            var groups = GetGroups();
+            foreach (var category in BookDownloadCategorySettings.GetConfiguredCategories(Settings))
             {
-                if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+                if (!groups.Any(group => string.Equals(group.GroupName, category, StringComparison.OrdinalIgnoreCase)))
                 {
-                    return new NzbDroneValidationFailure("MusicCategory", "Group does not exist")
+                    return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, category), "Group does not exist")
                     {
-                        DetailedDescription = "The Group you entered doesn't exist in NzbVortex. Go to NzbVortex to create it."
+                        DetailedDescription = $"The group '{category}' does not exist in NZBVortex. Create it there or clear the category field to use the legacy fallback."
                     };
                 }
             }

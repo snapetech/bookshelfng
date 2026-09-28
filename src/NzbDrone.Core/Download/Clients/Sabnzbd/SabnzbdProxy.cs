@@ -21,6 +21,8 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
         SabnzbdFullStatus GetFullStatus(SabnzbdSettings settings);
         SabnzbdQueue GetQueue(int start, int limit, SabnzbdSettings settings);
         SabnzbdHistory GetHistory(int start, int limit, SabnzbdSettings settings);
+        SabnzbdQueue GetQueue(int start, int limit, string category, SabnzbdSettings settings);
+        SabnzbdHistory GetHistory(int start, int limit, string category, SabnzbdSettings settings);
         string RetryDownload(string id, SabnzbdSettings settings);
     }
 
@@ -47,7 +49,7 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
         {
             var request = BuildRequest("addfile", settings).Post();
 
-            request.AddQueryParam("cat", settings.MusicCategory);
+            request.AddQueryParam("cat", category);
             request.AddQueryParam("priority", priority);
 
             request.AddFormUpload("name", filename, nzbData, "application/x-nzb");
@@ -113,15 +115,15 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
             return response.Status;
         }
 
-        public SabnzbdQueue GetQueue(int start, int limit, SabnzbdSettings settings)
+        public SabnzbdQueue GetQueue(int start, int limit, string category, SabnzbdSettings settings)
         {
             var request = BuildRequest("queue", settings);
             request.AddQueryParam("start", start);
             request.AddQueryParam("limit", limit);
 
-            if (settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (category.IsNotNullOrWhiteSpace())
             {
-                request.AddQueryParam("category", settings.MusicCategory);
+                request.AddQueryParam("category", category);
             }
 
             var response = ProcessRequest(request, settings);
@@ -129,20 +131,30 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
             return Json.Deserialize<SabnzbdQueue>(JObject.Parse(response).SelectToken("queue").ToString());
         }
 
-        public SabnzbdHistory GetHistory(int start, int limit, SabnzbdSettings settings)
+        public SabnzbdQueue GetQueue(int start, int limit, SabnzbdSettings settings)
+        {
+            return GetQueue(start, limit, settings.MusicCategory, settings);
+        }
+
+        public SabnzbdHistory GetHistory(int start, int limit, string category, SabnzbdSettings settings)
         {
             var request = BuildRequest("history", settings);
             request.AddQueryParam("start", start);
             request.AddQueryParam("limit", limit);
 
-            if (settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (category.IsNotNullOrWhiteSpace())
             {
-                request.AddQueryParam("category", settings.MusicCategory);
+                request.AddQueryParam("category", category);
             }
 
             var response = ProcessRequest(request, settings);
 
             return Json.Deserialize<SabnzbdHistory>(JObject.Parse(response).SelectToken("history").ToString());
+        }
+
+        public SabnzbdHistory GetHistory(int start, int limit, SabnzbdSettings settings)
+        {
+            return GetHistory(start, limit, settings.MusicCategory, settings);
         }
 
         public string RetryDownload(string id, SabnzbdSettings settings)

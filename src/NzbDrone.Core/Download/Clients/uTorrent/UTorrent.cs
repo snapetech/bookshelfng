@@ -42,14 +42,14 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
         {
             // set post-import category
             if (Settings.MusicImportedCategory.IsNotNullOrWhiteSpace() &&
-                Settings.MusicImportedCategory != Settings.MusicCategory)
+                Settings.MusicImportedCategory != downloadClientItem.Category)
             {
                 _proxy.SetTorrentLabel(downloadClientItem.DownloadId.ToLower(), Settings.MusicImportedCategory, Settings);
 
                 // old label must be explicitly removed
-                if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+                if (downloadClientItem.Category.IsNotNullOrWhiteSpace())
                 {
-                    _proxy.RemoveTorrentLabel(downloadClientItem.DownloadId.ToLower(), Settings.MusicCategory, Settings);
+                    _proxy.RemoveTorrentLabel(downloadClientItem.DownloadId.ToLower(), downloadClientItem.Category, Settings);
                 }
             }
         }
@@ -59,9 +59,10 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
             _proxy.AddTorrentFromUrl(magnetLink, Settings);
             _proxy.SetTorrentSeedingConfiguration(hash, remoteBook.SeedConfiguration, Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category.IsNotNullOrWhiteSpace())
             {
-                _proxy.SetTorrentLabel(hash, Settings.MusicCategory, Settings);
+                _proxy.SetTorrentLabel(hash, category, Settings);
             }
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -82,9 +83,10 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
             _proxy.AddTorrentFromFile(filename, fileContent, Settings);
             _proxy.SetTorrentSeedingConfiguration(hash, remoteBook.SeedConfiguration, Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category.IsNotNullOrWhiteSpace())
             {
-                _proxy.SetTorrentLabel(hash, Settings.MusicCategory, Settings);
+                _proxy.SetTorrentLabel(hash, category, Settings);
             }
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -110,7 +112,8 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
 
             foreach (var torrent in torrents)
             {
-                if (torrent.Label != Settings.MusicCategory)
+                if (BookDownloadCategorySettings.GetConfiguredCategories(Settings).Count > 0 &&
+                    !BookDownloadCategorySettings.MatchesConfiguredCategory(Settings, torrent.Label))
                 {
                     continue;
                 }
@@ -178,7 +181,8 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
         {
             List<UTorrentTorrent> torrents;
 
-            var cacheKey = string.Format("{0}:{1}:{2}", Settings.Host, Settings.Port, Settings.MusicCategory);
+            var categoriesKey = string.Join(",", BookDownloadCategorySettings.GetConfiguredCategories(Settings));
+            var cacheKey = string.Format("{0}:{1}:{2}", Settings.Host, Settings.Port, categoriesKey);
             var cache = _torrentCache.Find(cacheKey);
 
             var response = _proxy.GetTorrents(cache == null ? null : cache.CacheID, Settings);
@@ -227,11 +231,6 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
             if (config.GetValueOrDefault("dir_completed_download_flag") == "true")
             {
                 destDir = new OsPath(config.GetValueOrDefault("dir_completed_download"));
-
-                if (config.GetValueOrDefault("dir_add_label") == "true")
-                {
-                    destDir = destDir + Settings.MusicCategory;
-                }
             }
 
             var status = new DownloadClientInfo
@@ -241,7 +240,13 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
 
             if (!destDir.IsEmpty)
             {
-                status.OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, destDir) };
+                var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+                var outputPaths = (configuredCategories.Count == 0 ? new[] { string.Empty } : configuredCategories)
+                    .Select(category => config.GetValueOrDefault("dir_add_label") == "true" ? destDir + category : destDir)
+                    .Select(path => _remotePathMappingService.RemapRemoteToLocal(Settings.Host, path))
+                    .Distinct()
+                    .ToList();
+                status.OutputRootFolders = outputPaths;
             }
 
             return status;

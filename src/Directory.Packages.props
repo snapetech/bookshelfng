@@ -28,6 +28,7 @@
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="2.1.7" />
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="6.34.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.34.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.63.0" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />

@@ -38,10 +38,12 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             var torrents = _proxy.GetTorrents(Settings);
 
             var items = new List<DownloadClientItem>();
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
 
             foreach (var torrent in torrents)
             {
                 var outputPath = new OsPath(torrent.DownloadDir);
+                var category = BookDownloadCategorySettings.FindCategoryInPath(Settings, outputPath.FullPath);
 
                 if (Settings.TvDirectory.IsNotNullOrWhiteSpace())
                 {
@@ -50,20 +52,16 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                         continue;
                     }
                 }
-                else if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+                else if (configuredCategories.Count > 0 && category == null)
                 {
-                    var directories = outputPath.FullPath.Split('\\', '/');
-                    if (!directories.Contains(Settings.MusicCategory))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 outputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, outputPath);
 
                 var item = new DownloadClientItem();
                 item.DownloadId = torrent.HashString.ToUpper();
-                item.Category = Settings.MusicCategory;
+                item.Category = category ?? Settings.MusicCategory;
                 item.Title = torrent.Name;
 
                 item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false);
@@ -176,23 +174,28 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         public override DownloadClientInfo GetStatus()
         {
             var config = _proxy.GetConfig(Settings);
-            var destDir = config.DownloadDir;
-
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
-            {
-                destDir = string.Format("{0}/{1}", destDir, Settings.MusicCategory);
-            }
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            var outputPaths = Settings.TvDirectory.IsNotNullOrWhiteSpace()
+                ? new[] { Settings.TvDirectory }
+                : configuredCategories.Count > 0
+                    ? configuredCategories.Select(category => GetDownloadDirectory(config.DownloadDir, category))
+                    : new[] { config.DownloadDir };
 
             return new DownloadClientInfo
             {
                 IsLocalhost = Settings.Host == "127.0.0.1" || Settings.Host == "localhost",
-                OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(destDir)) }
+                OutputRootFolders = outputPaths
+                    .Where(path => path.IsNotNullOrWhiteSpace())
+                    .Select(path => _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(path)))
+                    .Distinct()
+                    .ToList()
             };
         }
 
         protected override string AddFromMagnetLink(RemoteBook remoteBook, string hash, string magnetLink)
         {
-            _proxy.AddTorrentFromUrl(magnetLink, GetDownloadDirectory(), Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            _proxy.AddTorrentFromUrl(magnetLink, GetDownloadDirectory(category), Settings);
             _proxy.SetTorrentSeedingConfiguration(hash, remoteBook.SeedConfiguration, Settings);
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -208,7 +211,8 @@ namespace NzbDrone.Core.Download.Clients.Transmission
 
         protected override string AddFromTorrentFile(RemoteBook remoteBook, string hash, string filename, byte[] fileContent)
         {
-            _proxy.AddTorrentFromData(fileContent, GetDownloadDirectory(), Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            _proxy.AddTorrentFromData(fileContent, GetDownloadDirectory(category), Settings);
             _proxy.SetTorrentSeedingConfiguration(hash, remoteBook.SeedConfiguration, Settings);
 
             var isRecentBook = remoteBook.IsRecentBook();
@@ -238,22 +242,27 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             return outputPath + torrent.Name.Replace(":", "_");
         }
 
-        protected string GetDownloadDirectory()
+        protected string GetDownloadDirectory(string category)
         {
             if (Settings.TvDirectory.IsNotNullOrWhiteSpace())
             {
                 return Settings.TvDirectory;
             }
 
-            if (!Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (category.IsNullOrWhiteSpace())
             {
                 return null;
             }
 
             var config = _proxy.GetConfig(Settings);
-            var destDir = config.DownloadDir;
+            return GetDownloadDirectory(config.DownloadDir, category);
+        }
 
-            return $"{destDir.TrimEnd('/')}/{Settings.MusicCategory}";
+        private static string GetDownloadDirectory(string baseDirectory, string category)
+        {
+            return category.IsNullOrWhiteSpace()
+                ? baseDirectory
+                : $"{baseDirectory.TrimEnd('/')}/{category}";
         }
 
         protected ValidationFailure TestConnection()

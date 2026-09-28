@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         {
             // set post-import category
             if (Settings.MusicImportedCategory.IsNotNullOrWhiteSpace() &&
-                Settings.MusicImportedCategory != Settings.MusicCategory)
+                Settings.MusicImportedCategory != downloadClientItem.Category)
             {
                 try
                 {
@@ -79,7 +79,15 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var moveToTop = (isRecentBook && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentBook && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
             var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
-            Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category == Settings.MusicCategory)
+            {
+                Proxy.AddTorrentFromUrl(magnetLink, addHasSetShareLimits && setShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            }
+            else
+            {
+                Proxy.AddTorrentFromUrl(magnetLink, category, addHasSetShareLimits && setShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            }
 
             if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart)
             {
@@ -138,7 +146,15 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var moveToTop = (isRecentBook && Settings.RecentTvPriority == (int)QBittorrentPriority.First) || (!isRecentBook && Settings.OlderTvPriority == (int)QBittorrentPriority.First);
             var forceStart = (QBittorrentState)Settings.InitialState == QBittorrentState.ForceStart;
 
-            Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            if (category == Settings.MusicCategory)
+            {
+                Proxy.AddTorrentFromFile(filename, fileContent, addHasSetShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            }
+            else
+            {
+                Proxy.AddTorrentFromFile(filename, fileContent, category, addHasSetShareLimits ? remoteBook.SeedConfiguration : null, Settings);
+            }
 
             if ((!addHasSetShareLimits && setShareLimits) || moveToTop || forceStart)
             {
@@ -220,15 +236,23 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             var version = Proxy.GetApiVersion(Settings);
             var config = Proxy.GetConfig(Settings);
             var torrents = Proxy.GetTorrents(Settings);
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
 
             var queueItems = new List<DownloadClientItem>();
 
             foreach (var torrent in torrents)
             {
+                var category = torrent.Category.IsNotNullOrWhiteSpace() ? torrent.Category : torrent.Label;
+                if (configuredCategories.Count > 0 &&
+                    !BookDownloadCategorySettings.MatchesConfiguredCategory(Settings, category))
+                {
+                    continue;
+                }
+
                 var item = new DownloadClientItem
                 {
                     DownloadId = torrent.Hash.ToUpper(),
-                    Category = torrent.Category.IsNotNullOrWhiteSpace() ? torrent.Category : torrent.Label,
+                    Category = category,
                     Title = torrent.Name,
                     TotalSize = torrent.Size,
                     DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, Settings.MusicImportedCategory.IsNotNullOrWhiteSpace()),
@@ -429,6 +453,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
         {
             try
             {
+                var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
                 var version = _proxySelector.GetProxy(Settings, true).GetApiVersion(Settings);
                 if (version < Version.Parse("1.5"))
                 {
@@ -441,7 +466,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 else if (version < Version.Parse("1.6"))
                 {
                     // API version 6 introduced support for labels
-                    if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+                    if (configuredCategories.Count > 0)
                     {
                         return new NzbDroneValidationFailure("Category", "Category is not supported")
                         {
@@ -449,7 +474,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                         };
                     }
                 }
-                else if (Settings.MusicCategory.IsNullOrWhiteSpace())
+                else if (configuredCategories.Count == 0)
                 {
                     // warn if labels are supported, but category is not provided
                     return new NzbDroneValidationFailure("MusicCategory", "Category is recommended")
@@ -505,7 +530,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
         private ValidationFailure TestCategory()
         {
-            if (Settings.MusicCategory.IsNullOrWhiteSpace() && Settings.MusicImportedCategory.IsNullOrWhiteSpace())
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            if (configuredCategories.Count == 0 && Settings.MusicImportedCategory.IsNullOrWhiteSpace())
             {
                 return null;
             }
@@ -519,17 +545,20 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             var labels = Proxy.GetLabels(Settings);
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace() && !labels.ContainsKey(Settings.MusicCategory))
+            foreach (var category in configuredCategories)
             {
-                Proxy.AddLabel(Settings.MusicCategory, Settings);
-                labels = Proxy.GetLabels(Settings);
-
-                if (!labels.ContainsKey(Settings.MusicCategory))
+                if (!labels.ContainsKey(category))
                 {
-                    return new NzbDroneValidationFailure("MusicCategory", "Configuration of label failed")
+                    Proxy.AddLabel(category, Settings);
+                    labels = Proxy.GetLabels(Settings);
+
+                    if (!labels.ContainsKey(category))
                     {
-                        DetailedDescription = "Readarr was unable to add the label to qBittorrent."
-                    };
+                        return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, category), "Configuration of label failed")
+                        {
+                            DetailedDescription = $"Readarr was unable to add the label '{category}' to qBittorrent."
+                        };
+                    }
                 }
             }
 

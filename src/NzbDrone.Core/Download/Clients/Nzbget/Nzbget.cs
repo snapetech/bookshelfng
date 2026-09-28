@@ -36,7 +36,7 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
 
         protected override string AddFromNzbFile(RemoteBook remoteBook, string filename, byte[] fileContent)
         {
-            var category = Settings.MusicCategory;
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
             var priority = remoteBook.IsRecentBook() ? Settings.RecentTvPriority : Settings.OlderTvPriority;
 
             var addpaused = Settings.AddPaused;
@@ -189,7 +189,8 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
-            return GetQueue().Concat(GetHistory()).Where(downloadClientItem => downloadClientItem.Category == Settings.MusicCategory);
+            return GetQueue().Concat(GetHistory())
+                .Where(downloadClientItem => BookDownloadCategorySettings.MatchesConfiguredCategory(Settings, downloadClientItem.Category));
         }
 
         public override void RemoveItem(DownloadClientItem item, bool deleteData)
@@ -206,16 +207,20 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
         {
             var config = _proxy.GetConfig(Settings);
 
-            var category = GetCategories(config).FirstOrDefault(v => v.Name == Settings.MusicCategory);
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            var categories = GetCategories(config).Where(v => configuredCategories.Contains(v.Name, StringComparer.OrdinalIgnoreCase)).ToList();
 
             var status = new DownloadClientInfo
             {
                 IsLocalhost = Settings.Host == "127.0.0.1" || Settings.Host == "localhost"
             };
 
-            if (category != null)
+            if (categories.Count > 0)
             {
-                status.OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(category.DestDir)) };
+                status.OutputRootFolders = categories
+                    .Select(category => _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(category.DestDir)))
+                    .Distinct()
+                    .ToList();
             }
 
             return status;
@@ -293,12 +298,17 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
             var config = _proxy.GetConfig(Settings);
             var categories = GetCategories(config);
 
-            if (!Settings.MusicCategory.IsNullOrWhiteSpace() && !categories.Any(v => v.Name == Settings.MusicCategory))
+            foreach (var category in BookDownloadCategorySettings.GetConfiguredCategories(Settings))
             {
-                return new NzbDroneValidationFailure("MusicCategory", "Category does not exist")
+                if (categories.Any(v => string.Equals(v.Name, category, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, category), "Category does not exist")
                 {
                     InfoLink = _proxy.GetBaseUrl(Settings),
-                    DetailedDescription = "The Category your entered doesn't exist in NzbGet. Go to NzbGet to create it."
+                    DetailedDescription = $"The category '{category}' does not exist in NZBGet. Create it in NZBGet or clear the category field to use the legacy fallback."
                 };
             }
 

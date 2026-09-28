@@ -17,11 +17,14 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
             RuleFor(c => c.Username).NotEmpty().When(c => !string.IsNullOrWhiteSpace(c.Password));
             RuleFor(c => c.Password).NotEmpty().When(c => !string.IsNullOrWhiteSpace(c.Username));
 
-            RuleFor(c => c.MusicCategory).NotEmpty().WithMessage("A category is recommended").AsWarning();
+            RuleFor(c => c.MusicCategory).NotEmpty()
+                .When(c => string.IsNullOrWhiteSpace(c.EbookCategory) && string.IsNullOrWhiteSpace(c.AudiobookCategory))
+                .WithMessage("A category is recommended")
+                .AsWarning();
         }
     }
 
-    public class NzbgetSettings : IProviderConfig
+    public class NzbgetSettings : IProviderConfig, IBookDownloadCategorySettings
     {
         private static readonly NzbgetSettingsValidator Validator = new NzbgetSettingsValidator();
 
@@ -54,16 +57,22 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
         [FieldDefinition(5, Label = "Password", Type = FieldType.Password, Privacy = PrivacyLevel.Password)]
         public string Password { get; set; }
 
-        [FieldDefinition(6, Label = "Category", Type = FieldType.Textbox, HelpText = "Adding a category specific to Readarr avoids conflicts with unrelated non-Readarr downloads. Using a category is optional, but strongly recommended.")]
+        [FieldDefinition(6, Label = "Legacy Category", Type = FieldType.Textbox, Advanced = true, HelpText = "Fallback category used when an ebook or audiobook category is blank.")]
         public string MusicCategory { get; set; }
 
-        [FieldDefinition(7, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbgetPriority), HelpText = "Priority to use when grabbing books released within the last 14 days")]
+        [FieldDefinition(7, Label = "Ebook Category", Type = FieldType.Textbox, HelpText = "Category used for ebook downloads. Leave blank to use the legacy category.")]
+        public string EbookCategory { get; set; }
+
+        [FieldDefinition(8, Label = "Audiobook Category", Type = FieldType.Textbox, HelpText = "Category used for audiobook downloads. Leave blank to use the legacy category.")]
+        public string AudiobookCategory { get; set; }
+
+        [FieldDefinition(9, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbgetPriority), HelpText = "Priority to use when grabbing books released within the last 14 days")]
         public int RecentTvPriority { get; set; }
 
-        [FieldDefinition(8, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbgetPriority), HelpText = "Priority to use when grabbing books released over 14 days ago")]
+        [FieldDefinition(10, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbgetPriority), HelpText = "Priority to use when grabbing books released over 14 days ago")]
         public int OlderTvPriority { get; set; }
 
-        [FieldDefinition(9, Label = "Add Paused", Type = FieldType.Checkbox, HelpText = "This option requires at least NzbGet version 16.0")]
+        [FieldDefinition(11, Label = "Add Paused", Type = FieldType.Checkbox, HelpText = "This option requires at least NzbGet version 16.0")]
         public bool AddPaused { get; set; }
 
         public NzbDroneValidationResult Validate()

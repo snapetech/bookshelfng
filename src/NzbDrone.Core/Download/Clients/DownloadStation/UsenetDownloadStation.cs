@@ -61,6 +61,7 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
             var serialNumber = _serialNumberProvider.GetSerialNumber(Settings);
 
             var items = new List<DownloadClientItem>();
+            var configuredCategories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
 
             long totalRemainingSize = 0;
             var globalSpeed = nzbTasks.Where(t => t.Status == DownloadStationTaskStatus.Downloading)
@@ -70,6 +71,7 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
             foreach (var nzb in nzbTasks)
             {
                 var outputPath = new OsPath($"/{nzb.Additional.Detail["destination"]}");
+                var category = BookDownloadCategorySettings.FindCategoryInPath(Settings, outputPath.FullPath);
 
                 var taskRemainingSize = GetRemainingSize(nzb);
 
@@ -85,18 +87,14 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
                         continue;
                     }
                 }
-                else if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+                else if (configuredCategories.Count > 0 && category == null)
                 {
-                    var directories = outputPath.FullPath.Split('\\', '/');
-                    if (!directories.Contains(Settings.MusicCategory))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 var item = new DownloadClientItem()
                 {
-                    Category = Settings.MusicCategory,
+                    Category = category ?? Settings.MusicCategory,
                     DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false),
                     DownloadId = CreateDownloadId(nzb.Id, serialNumber),
                     Title = nzb.Title,
@@ -140,14 +138,21 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
             try
             {
                 var serialNumber = _serialNumberProvider.GetSerialNumber(Settings);
-                var sharedFolder = GetDownloadDirectory() ?? GetDefaultDir();
-                var outputPath = new OsPath($"/{sharedFolder.TrimStart('/')}");
-                var path = _sharedFolderResolver.RemapToFullPath(outputPath, Settings, serialNumber);
+                var categories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+                var downloadDirectories = categories.Count > 0
+                    ? categories.Select(GetDownloadDirectory)
+                    : new[] { GetDownloadDirectory() ?? GetDefaultDir() };
+                var outputPaths = downloadDirectories
+                    .Where(directory => directory.IsNotNullOrWhiteSpace())
+                    .Select(directory => _sharedFolderResolver.RemapToFullPath(new OsPath($"/{directory.TrimStart('/')}"), Settings, serialNumber))
+                    .Select(path => _remotePathMappingService.RemapRemoteToLocal(Settings.Host, path))
+                    .Distinct()
+                    .ToList();
 
                 return new DownloadClientInfo
                 {
                     IsLocalhost = Settings.Host == "127.0.0.1" || Settings.Host == "localhost",
-                    OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, path) }
+                    OutputRootFolders = outputPaths
                 };
             }
             catch (DownloadClientException e)
@@ -173,7 +178,8 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
         {
             var hashedSerialNumber = _serialNumberProvider.GetSerialNumber(Settings);
 
-            DsTaskProxy.AddTaskFromData(fileContent, filename, GetDownloadDirectory(), Settings);
+            var category = BookDownloadCategorySettings.GetCategory(Settings, remoteBook.Release);
+            DsTaskProxy.AddTaskFromData(fileContent, filename, GetDownloadDirectory(category), Settings);
 
             var items = GetTasks().Where(t => t.Additional.Detail["uri"] == filename);
 
@@ -221,7 +227,9 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
                 if (downloadDir != null)
                 {
                     var sharedFolder = downloadDir.Split('\\', '/')[0];
-                    var fieldName = Settings.TvDirectory.IsNotNullOrWhiteSpace() ? nameof(Settings.TvDirectory) : nameof(Settings.MusicCategory);
+                    var fieldName = Settings.TvDirectory.IsNotNullOrWhiteSpace()
+                        ? nameof(Settings.TvDirectory)
+                        : BookDownloadCategorySettings.GetCategoryFieldName(Settings, BookDownloadCategorySettings.GetConfiguredCategories(Settings).FirstOrDefault() ?? Settings.MusicCategory);
 
                     var folderInfo = _fileStationProxy.GetInfoFileOrDirectory($"/{downloadDir}", Settings);
 
@@ -420,6 +428,12 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
 
         protected string GetDownloadDirectory()
         {
+            var categories = BookDownloadCategorySettings.GetConfiguredCategories(Settings);
+            return GetDownloadDirectory(categories.FirstOrDefault() ?? Settings.MusicCategory);
+        }
+
+        protected string GetDownloadDirectory(string category)
+        {
             if (Settings.TvDirectory.IsNotNullOrWhiteSpace())
             {
                 return Settings.TvDirectory.TrimStart('/');
@@ -427,9 +441,9 @@ namespace NzbDrone.Core.Download.Clients.DownloadStation
 
             var destDir = GetDefaultDir();
 
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (category.IsNotNullOrWhiteSpace())
             {
-                return $"{destDir.TrimEnd('/')}/{Settings.MusicCategory}";
+                return $"{destDir.TrimEnd('/')}/{category}";
             }
 
             return destDir.TrimEnd('/');
