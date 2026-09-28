@@ -35,21 +35,21 @@ When updating .NET servicing versions, update both source tags, the FreeBSD
 release URL and checksum, expected NuGet package names, and the runtime SDK
 assembly performed by the pack builder together.
 
-## Azure Pipelines
+## GitHub Actions release builds
 
-`Build_Platform_RuntimePacks` builds Linux x86 packs from source, verifies and
-collects the FreeBSD packs, and publishes the `platform-runtime-packs`
-artifact. The Linux, macOS, and Windows backend jobs add those packages as a
-local NuGet source before restoring and publishing all runtime identifiers.
-The package job then creates the existing Linux x86 and FreeBSD archives from
-those backend outputs.
+The [`Release Distributions`](../.github/workflows/release-distribution.yml)
+workflow builds these packs from the verified release tag and uploads the
+`bookshelfng-platform-runtime-packs` artifact. A retry may reuse an artifact
+from a successful compatible runtime-pack job; the workflow checks its source
+commit and build inputs before accepting it. The release-assets job adds the
+Linux x86 and FreeBSD packages as a local NuGet source before publishing the
+platform archives.
 
-Linux x86 and FreeBSD test jobs install their platform runtime from that same
-artifact. The artifact also carries the architecture-independent .NET 10.0.401
-SDK files used by `dotnet test`; the platform runtime host, Core runtime, and
-ASP.NET Core shared framework come from the target platform's runtime build.
+The same artifact carries the architecture-independent .NET 10.0.401 SDK files
+used by `dotnet test`; the target platform's runtime host, Core runtime, and
+ASP.NET Core shared framework come from the platform packs. The workflow uses
 [`scripts/install-dotnet10-platform-runtime.sh`](../scripts/install-dotnet10-platform-runtime.sh)
-assembles that test environment under the path supplied by the pipeline.
+to assemble that test environment.
 
 ## Building locally
 
