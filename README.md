@@ -6,11 +6,11 @@ automatically grab downloads, and organize, rename, and upgrade files in your
 library. BookshelfNG is a complete app on its own. It does not require SeerrNG
 or a metadata proxy.
 
-For Unraid, use the [BookshelfNG template repository](https://github.com/snapetech/bookshelfng-unraid).
-Submit that repository to Community Apps. This application repository contains
-XML test fixtures that the Community Apps scanner mistakes for app templates.
-The package runs the standalone `ghcr.io/snapetech/bookshelfng:hardcover` image;
-the upstream Bookshelf listing is a different image. SeerrNG is optional.
+On Unraid, install [BookshelfNG from Community Apps](https://ca.unraid.net/apps/bookshelfng-1fdcqrv18pja7r).
+See the [Unraid installation guide](https://github.com/snapetech/bookshelfng-unraid#installation-and-setup)
+for persistent storage, download paths, and Hardcover setup. The package uses
+`ghcr.io/snapetech/bookshelfng:hardcover`; the upstream Bookshelf listing uses
+a different image. SeerrNG integration is optional.
 
 BookshelfNG is for people who want Readarr-style book automation with a choice
 of metadata providers. Goodreads-compatible metadata services and native
