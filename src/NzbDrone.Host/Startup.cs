@@ -110,12 +110,12 @@ namespace NzbDrone.Host
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Version = "1.0.0",
-                    Title = "Readarr",
-                    Description = "Readarr API docs",
+                    Title = "BookshelfNG",
+                    Description = "BookshelfNG API docs",
                     License = new OpenApiLicense
                     {
                         Name = "GPL-3.0",
-                        Url = new Uri("https://github.com/Readarr/Readarr/blob/develop/LICENSE.md")
+                        Url = new Uri("https://github.com/snapetech/bookshelfng/blob/main/LICENSE.md")
                     }
                 });
 

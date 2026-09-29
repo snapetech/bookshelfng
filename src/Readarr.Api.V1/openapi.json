@@ -1,11 +1,11 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "Readarr",
-    "description": "Readarr API docs",
+    "title": "BookshelfNG",
+    "description": "BookshelfNG API docs",
     "license": {
       "name": "GPL-3.0",
-      "url": "https://github.com/Readarr/Readarr/blob/develop/LICENSE.md"
+      "url": "https://github.com/snapetech/bookshelfng/blob/main/LICENSE.md"
     },
     "version": "1.0.0"
   },
