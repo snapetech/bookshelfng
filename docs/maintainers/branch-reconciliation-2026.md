@@ -21,6 +21,15 @@ back to `master`. The `main-*` tag workflow is the sole stable image publisher;
 it checks tags against `origin/main` and assembles the release before
 distribution.
 
+## Release-path validation
+
+A manual `build.yml` run on 2026-09-29 built the application, then failed its
+test-report gate: 3,246 tests passed, 77 failed, and 100 were skipped. Image
+publication and release distribution did not run. This audit changed only
+workflow and maintainer-documentation files; the failing tests are in the
+existing application test tree. See
+[the CI run](https://github.com/snapetech/BookshelfNG/actions/runs/36503014342).
+
 ## Upstream tracking refs
 
 The `upstream` remote pointed to `pennydreadful/bookshelf`; its `develop`,
