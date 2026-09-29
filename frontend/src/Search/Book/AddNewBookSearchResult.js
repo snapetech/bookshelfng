@@ -92,6 +92,8 @@ class AddNewBookSearchResult extends Component {
       isNewAddBookModalOpen
     } = this.state;
 
+    const editionLink = editions && editions[0] && editions[0].links && editions[0].links[0];
+
     const linkProps = isExistingBook ? { to: `/book/${titleSlug}` } : { onPress: this.onPress };
 
     const height = calculateHeight(230, isSmallScreen);
@@ -140,11 +142,11 @@ class AddNewBookSearchResult extends Component {
                 }
 
                 {
-                  editions ?
+                  editionLink && editionLink.url ?
                     <Link
                       className={styles.mbLink}
-                      to={`${editions[0].links[0].url}`}
-                      onPress={this.onTVDBLinkPress}
+                      to={editionLink.url}
+                      onPress={this.onMBLinkPress}
                     >
                       <Icon
                         className={styles.mbLinkIcon}
