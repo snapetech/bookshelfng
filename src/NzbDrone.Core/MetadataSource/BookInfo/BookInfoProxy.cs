@@ -1289,9 +1289,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             // Author resources come from an author-scoped endpoint. Do not
             // discard a catalog work because its nested contributor IDs are
-            // absent or use a different canonical-work identity.
+            // absent or use a different canonical-work identity. Incomplete
+            // work records with no usable title are different: retaining one
+            // must not make the entire author impossible to add.
             var books = resource.Works
-                .Where(x => x.ForeignId > 0)
+                .Where(x => x != null &&
+                    x.ForeignId > 0 &&
+                    (x.Title.IsNotNullOrWhiteSpace() ||
+                     x.Books?.Any(book => book != null &&
+                         book.ForeignId > 0 &&
+                         book.Title.IsNotNullOrWhiteSpace()) == true))
                 .Select(MapBook)
                 .ToList();
 
@@ -1358,22 +1365,35 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static Book MapBook(WorkResource resource)
         {
+            var editionResources = resource.Books?
+                .Where(x => x != null &&
+                    x.ForeignId > 0 &&
+                    x.Title.IsNotNullOrWhiteSpace())
+                .ToList() ?? new List<BookResource>();
+            var title = resource.Title.IsNotNullOrWhiteSpace()
+                ? resource.Title.CleanSpaces()
+                : editionResources.FirstOrDefault()?.Title.CleanSpaces();
+
             var book = new Book
             {
                 ForeignBookId = resource.ForeignId.ToString(),
-                Title = resource.Title,
+                Title = title,
                 TitleSlug = resource.ForeignId.ToString(),
-                CleanTitle = Parser.Parser.CleanAuthorName(resource.Title),
+                CleanTitle = Parser.Parser.CleanAuthorName(title),
                 ReleaseDate = resource.ReleaseDate,
-                Genres = resource.Genres,
-                RelatedBooks = resource.RelatedWorks
+                Genres = resource.Genres ?? new List<string>(),
+                RelatedBooks = resource.RelatedWorks ?? new List<int>()
             };
 
             book.Links.Add(new Links { Url = resource.Url, Name = "Book Editions" });
 
             if (resource.Books != null)
             {
-                book.Editions = resource.Books.Select(x => MapEdition(x)).ToList();
+                // Catalogs can include partial editions with no title. They
+                // are not useful for matching, but should not abort author
+                // lookup and prevent the otherwise valid author from being
+                // added.
+                book.Editions = editionResources.Select(MapEdition).ToList();
 
                 // monitor the most popular release
                 var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);

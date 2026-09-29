@@ -90,6 +90,49 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             result.Books.Value[0].ForeignBookId.Should().Be("123");
         }
 
+        [Test]
+        public void should_skip_incomplete_author_works_without_failing_author_add()
+        {
+            var author = BookInfoTestData.Author(1, "Catalog Author", 123);
+            author.Works[0].Title = null;
+            author.Works[0].Books[0].Title = null;
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(
+                    It.Is<HttpRequest>(request => request.Url.Path.Trim('/') == "author/1"),
+                    It.IsAny<bool>(),
+                    It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    BookInfoTestData.JsonResponse(request, author));
+
+            var result = Subject.GetAuthorInfo("1");
+
+            result.Name.Should().Be("Catalog Author");
+            result.Books.Value.Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_ignore_incomplete_editions_and_keep_the_valid_author_work()
+        {
+            var author = BookInfoTestData.Author(1, "Catalog Author", 123);
+            author.Works[0].Books[0].Title = null;
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(
+                    It.Is<HttpRequest>(request => request.Url.Path.Trim('/') == "author/1"),
+                    It.IsAny<bool>(),
+                    It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    BookInfoTestData.JsonResponse(request, author));
+
+            var result = Subject.GetAuthorInfo("1");
+
+            result.Name.Should().Be("Catalog Author");
+            result.Books.Value.Should().ContainSingle();
+            result.Books.Value[0].Title.Should().Be("Catalog Author test work");
+            result.Books.Value[0].Editions.Value.Should().BeEmpty();
+        }
+
         [TestCase("1128601", "Guards! Guards!")]
         [TestCase("3293141", "The Iliad")]
         public void should_be_able_to_get_book_detail(string mbId, string name)
