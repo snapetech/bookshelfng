@@ -1,7 +1,7 @@
 {
-  "name": "readarr",
+  "name": "bookshelfng",
   "version": "1.0.0",
-  "description": "Readarr",
+  "description": "BookshelfNG, a maintained ebook and audiobook manager derived from Readarr and Bookshelf.",
   "scripts": {
     "build": "webpack --config ./frontend/build/webpack.config.js",
     "release-notes:preview": "node scripts/preview-release-notes.mjs",
@@ -16,11 +16,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Readarr/Readarr.git"
+    "url": "https://github.com/snapetech/bookshelfng.git"
   },
-  "author": "Team Readarr",
+  "author": "Snapetech contributors (derived from Readarr)",
   "license": "GPL-3.0",
-  "readmeFilename": "readme.md",
+  "readmeFilename": "README.md",
   "main": "index.ts",
   "browserslist": [
     "defaults"
