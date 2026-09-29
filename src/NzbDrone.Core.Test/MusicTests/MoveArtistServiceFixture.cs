@@ -25,6 +25,9 @@ namespace NzbDrone.Core.Test.MusicTests
         {
             _author = Builder<Author>
                 .CreateNew()
+                .With(s => s.Path = @"C:\Test\Music\Author".AsOsAgnostic())
+                .With(s => s.EbookPath = null)
+                .With(s => s.AudiobookPath = null)
                 .Build();
 
             _command = new MoveAuthorCommand

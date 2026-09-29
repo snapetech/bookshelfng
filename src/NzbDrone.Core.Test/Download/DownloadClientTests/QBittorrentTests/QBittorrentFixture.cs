@@ -137,6 +137,11 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
 
             foreach (var torrent in torrents)
             {
+                if (string.IsNullOrWhiteSpace(torrent.Category) && string.IsNullOrWhiteSpace(torrent.Label))
+                {
+                    torrent.Category = Subject.Definition.Settings.As<QBittorrentSettings>().MusicCategory;
+                }
+
                 Mocker.GetMock<IQBittorrentProxy>()
                     .Setup(s => s.GetTorrentProperties(torrent.Hash.ToLower(), It.IsAny<QBittorrentSettings>()))
                     .Returns(new QBittorrentTorrentProperties { SavePath = torrent.SavePath });
@@ -923,6 +928,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         public void should_get_category_from_the_category_if_set(string state)
         {
             const string category = "music-readarr";
+            Subject.Definition.Settings.As<QBittorrentSettings>().MusicCategory = category;
             GivenGlobalSeedLimits(1.0f);
 
             var torrent = new QBittorrentTorrent
@@ -949,6 +955,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         public void should_get_category_from_the_label_if_the_category_is_not_available(string state)
         {
             const string category = "music-readarr";
+            Subject.Definition.Settings.As<QBittorrentSettings>().MusicCategory = category;
             GivenGlobalSeedLimits(1.0f);
 
             var torrent = new QBittorrentTorrent

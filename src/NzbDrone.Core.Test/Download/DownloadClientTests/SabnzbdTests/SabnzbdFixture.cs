@@ -166,6 +166,10 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.SabnzbdTests
             Mocker.GetMock<ISabnzbdProxy>()
                 .Setup(s => s.GetQueue(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<SabnzbdSettings>()))
                 .Returns(queue);
+
+            Mocker.GetMock<ISabnzbdProxy>()
+                .Setup(s => s.GetQueue(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<SabnzbdSettings>()))
+                .Returns(queue);
         }
 
         protected virtual void GivenHistory(SabnzbdHistory history)
@@ -635,6 +639,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.SabnzbdTests
         public void should_test_failed_if_tv_sorting_default_category()
         {
             Subject.Definition.Settings.As<SabnzbdSettings>().MusicCategory = null;
+            _config.Categories.Add(new SabnzbdCategory { Name = "Default", Dir = "default" });
 
             _config.Misc.enable_tv_sorting = true;
             _config.Misc.tv_categories = new[] { "Default" };
@@ -642,6 +647,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.SabnzbdTests
             var result = new NzbDroneValidationResult(Subject.Test());
 
             result.IsValid.Should().BeFalse();
+            result.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Disable TV Sorting");
         }
 
         [Test]

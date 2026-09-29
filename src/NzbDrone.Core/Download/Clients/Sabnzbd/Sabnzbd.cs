@@ -478,7 +478,8 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
             }
 
             var tvSortedCategory = configuredCategories.FirstOrDefault(category => ContainsCategory(config.Misc.tv_categories, category));
-            if (config.Misc.enable_tv_sorting && tvSortedCategory != null)
+            var defaultCategoryIsTvSorted = configuredCategories.Count == 0 && ContainsCategory(config.Misc.tv_categories, null);
+            if (config.Misc.enable_tv_sorting && (tvSortedCategory != null || defaultCategoryIsTvSorted))
             {
                 return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, tvSortedCategory), "Disable TV Sorting")
                 {
@@ -488,7 +489,8 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
             }
 
             var movieSortedCategory = configuredCategories.FirstOrDefault(category => ContainsCategory(config.Misc.movie_categories, category));
-            if (config.Misc.enable_movie_sorting && movieSortedCategory != null)
+            var defaultCategoryIsMovieSorted = configuredCategories.Count == 0 && ContainsCategory(config.Misc.movie_categories, null);
+            if (config.Misc.enable_movie_sorting && (movieSortedCategory != null || defaultCategoryIsMovieSorted))
             {
                 return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, movieSortedCategory), "Disable Movie Sorting")
                 {
@@ -498,7 +500,8 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
             }
 
             var dateSortedCategory = configuredCategories.FirstOrDefault(category => ContainsCategory(config.Misc.date_categories, category));
-            if (config.Misc.enable_date_sorting && dateSortedCategory != null)
+            var defaultCategoryIsDateSorted = configuredCategories.Count == 0 && ContainsCategory(config.Misc.date_categories, null);
+            if (config.Misc.enable_date_sorting && (dateSortedCategory != null || defaultCategoryIsDateSorted))
             {
                 return new NzbDroneValidationFailure(BookDownloadCategorySettings.GetCategoryFieldName(Settings, dateSortedCategory), "Disable Date Sorting")
                 {

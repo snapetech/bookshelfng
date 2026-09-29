@@ -28,6 +28,8 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackFileMovingServiceTests
         {
             _author = Builder<Author>.CreateNew()
                                      .With(s => s.Path = @"C:\Test\Music\Author".AsOsAgnostic())
+                                     .With(s => s.EbookPath = null)
+                                     .With(s => s.AudiobookPath = null)
                                      .Build();
 
             _trackFile = Builder<BookFile>.CreateNew()
@@ -49,8 +51,8 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackFileMovingServiceTests
                   .Returns(@"C:\Test\Music\Author\Book\File Name.mp3".AsOsAgnostic());
 
             Mocker.GetMock<IBuildFileNames>()
-                  .Setup(s => s.BuildBookPath(It.IsAny<Author>()))
-                  .Returns(@"C:\Test\Music\Author\Book".AsOsAgnostic());
+                  .Setup(s => s.BuildBookPath(It.IsAny<Author>(), It.IsAny<string>()))
+                  .Returns(_author.Path);
 
             var rootFolder = @"C:\Test\Music\".AsOsAgnostic();
             Mocker.GetMock<IDiskProvider>()
@@ -103,7 +105,7 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackFileMovingServiceTests
 
             Mocker.GetMock<IEventAggregator>()
                   .Verify(s => s.PublishEvent<TrackFolderCreatedEvent>(It.Is<TrackFolderCreatedEvent>(p =>
-                      p.BookFolder.IsNotNullOrWhiteSpace())), Times.Once());
+                      p.TrackFolder.IsNotNullOrWhiteSpace())), Times.Once());
         }
 
         [Test]

@@ -64,12 +64,17 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
         {
             Mocker.GetMock<IRootFolderService>()
                 .Setup(x => x.GetBestRootFolder(It.IsAny<string>()))
-                .Returns(new RootFolder());
+                .Returns(new RootFolder { Path = RootFolder });
         }
 
         [Test]
         public void should_throw_if_root_folder_does_not_exist()
         {
+            GivenNonCalibreRootFolder();
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(_trackFile.Path))
+                  .Returns(true);
+
             Assert.Throws<NzbDroneClientException>(() => Subject.DeleteTrackFile(_author, _trackFile));
             ExceptionVerification.ExpectedWarns(1);
         }
@@ -77,7 +82,12 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
         [Test]
         public void should_throw_if_root_folder_is_empty()
         {
+            GivenNonCalibreRootFolder();
             GivenRootFolderExists();
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.FileExists(_trackFile.Path))
+                  .Returns(true);
+
             Assert.Throws<NzbDroneClientException>(() => Subject.DeleteTrackFile(_author, _trackFile));
             ExceptionVerification.ExpectedWarns(1);
         }

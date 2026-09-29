@@ -27,6 +27,8 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Specifications
 
             _author = Builder<Author>.CreateNew()
                                      .With(s => s.Path = Path.Combine(_rootFolder, "Alice in Chains"))
+                                     .With(s => s.EbookPath = null)
+                                     .With(s => s.AudiobookPath = null)
                                      .Build();
 
             _localTrack = new LocalBook

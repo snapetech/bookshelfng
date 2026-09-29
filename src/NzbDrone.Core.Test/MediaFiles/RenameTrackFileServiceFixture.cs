@@ -21,6 +21,9 @@ namespace NzbDrone.Core.Test.MediaFiles
         public void Setup()
         {
             _author = Builder<Author>.CreateNew()
+                                     .With(s => s.Path = "/authors/Author Name")
+                                     .With(s => s.EbookPath = null)
+                                     .With(s => s.AudiobookPath = null)
                                      .Build();
 
             _trackFiles = Builder<BookFile>.CreateListOfSize(2)
