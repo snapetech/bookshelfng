@@ -44,7 +44,11 @@ namespace NzbDrone.Core.Download.Clients
                 return Array.Empty<string>();
             }
 
-            return new[] { settings.MusicCategory, settings.EbookCategory, settings.AudiobookCategory }
+            var fallbackCategory = string.IsNullOrWhiteSpace(settings.EbookCategory) || string.IsNullOrWhiteSpace(settings.AudiobookCategory)
+                ? new[] { settings.MusicCategory }
+                : Array.Empty<string>();
+
+            return fallbackCategory.Concat(new[] { settings.EbookCategory, settings.AudiobookCategory })
                 .Where(category => !string.IsNullOrWhiteSpace(category))
                 .Select(category => category.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)

@@ -16,9 +16,15 @@ export function createCancelTestProviderHandler(section) {
   };
 }
 
-function createTestProviderHandler(section, url) {
+function createTestProviderHandler(section, url, errorKey = 'saveError') {
   return function(getState, payload, dispatch) {
-    dispatch(set({ section, isTesting: true }));
+    const testingState = { section, isTesting: true };
+
+    if (errorKey !== 'saveError') {
+      testingState[errorKey] = null;
+    }
+
+    dispatch(set(testingState));
 
     const {
       queryParams = {},
@@ -55,7 +61,7 @@ function createTestProviderHandler(section, url) {
       dispatch(set({
         section,
         isTesting: false,
-        saveError: null
+        [errorKey]: null
       }));
     });
 
@@ -63,7 +69,7 @@ function createTestProviderHandler(section, url) {
       dispatch(set({
         section,
         isTesting: false,
-        saveError: xhr.aborted ? null : xhr
+        [errorKey]: xhr.aborted ? null : xhr
       }));
     });
   };

@@ -581,6 +581,37 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.SabnzbdTests
         }
 
         [Test]
+        public void should_not_require_legacy_category_when_format_categories_are_configured()
+        {
+            var settings = Subject.Definition.Settings.As<SabnzbdSettings>();
+            settings.MusicCategory = "legacy";
+            settings.EbookCategory = "ebooks";
+            settings.AudiobookCategory = "audiobooks";
+            _config.Categories.Add(new SabnzbdCategory { Name = "ebooks", Dir = "ebooks" });
+            _config.Categories.Add(new SabnzbdCategory { Name = "audiobooks", Dir = "audiobooks" });
+
+            var result = new NzbDroneValidationResult(Subject.Test());
+
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_require_legacy_category_when_a_format_category_uses_it_as_fallback()
+        {
+            var settings = Subject.Definition.Settings.As<SabnzbdSettings>();
+            settings.MusicCategory = "legacy";
+            settings.EbookCategory = "ebooks";
+            settings.AudiobookCategory = string.Empty;
+            _config.Categories.Add(new SabnzbdCategory { Name = "ebooks", Dir = "ebooks" });
+
+            var result = new NzbDroneValidationResult(Subject.Test());
+
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("MusicCategory");
+            result.Errors.Single().ErrorMessage.Should().Be("Category does not exist");
+        }
+
+        [Test]
         public void should_test_success_if_tv_sorting_disabled()
         {
             _config.Misc.enable_tv_sorting = false;

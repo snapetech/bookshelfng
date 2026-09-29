@@ -89,6 +89,7 @@ EditDownloadClientModalContentConnector.propTypes = {
   isFetching: PropTypes.bool.isRequired,
   isSaving: PropTypes.bool.isRequired,
   saveError: PropTypes.object,
+  testError: PropTypes.object,
   item: PropTypes.object.isRequired,
   setDownloadClientValue: PropTypes.func.isRequired,
   setDownloadClientFieldValue: PropTypes.func.isRequired,

@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { clearPendingChanges } from 'Store/Actions/baseActions';
+import { clearPendingChanges, set } from 'Store/Actions/baseActions';
 import { cancelSaveDownloadClient, cancelTestDownloadClient } from 'Store/Actions/settingsActions';
 import EditDownloadClientModal from './EditDownloadClientModal';
 
@@ -11,6 +11,10 @@ function createMapDispatchToProps(dispatch, props) {
   return {
     dispatchClearPendingChanges() {
       dispatch(clearPendingChanges({ section }));
+    },
+
+    dispatchClearTestError() {
+      dispatch(set({ section, testError: null }));
     },
 
     dispatchCancelTestDownloadClient() {
@@ -31,6 +35,7 @@ class EditDownloadClientModalConnector extends Component {
   onModalClose = () => {
     this.props.dispatchClearPendingChanges();
     this.props.dispatchCancelTestDownloadClient();
+    this.props.dispatchClearTestError();
     this.props.dispatchCancelSaveDownloadClient();
     this.props.onModalClose();
   };
@@ -41,6 +46,7 @@ class EditDownloadClientModalConnector extends Component {
   render() {
     const {
       dispatchClearPendingChanges,
+      dispatchClearTestError,
       dispatchCancelTestDownloadClient,
       dispatchCancelSaveDownloadClient,
       ...otherProps
@@ -58,6 +64,7 @@ class EditDownloadClientModalConnector extends Component {
 EditDownloadClientModalConnector.propTypes = {
   onModalClose: PropTypes.func.isRequired,
   dispatchClearPendingChanges: PropTypes.func.isRequired,
+  dispatchClearTestError: PropTypes.func.isRequired,
   dispatchCancelTestDownloadClient: PropTypes.func.isRequired,
   dispatchCancelSaveDownloadClient: PropTypes.func.isRequired
 };

@@ -32,6 +32,7 @@ class EditDownloadClientModalContent extends Component {
       isSaving,
       isTesting,
       saveError,
+      testError,
       item,
       onInputChange,
       onFieldChange,
@@ -74,6 +75,41 @@ class EditDownloadClientModalContent extends Component {
               <div>
                 {translate('UnableToAddANewDownloadClientPleaseTryAgain')}
               </div>
+          }
+
+          {
+            testError && Array.isArray(testError.responseJSON) &&
+              testError.responseJSON.map((failure, index) => {
+                return (
+                  <Alert
+                    key={index}
+                    kind={failure.isWarning ? kinds.WARNING : kinds.DANGER}
+                    role="alert"
+                  >
+                    <div>{failure.errorMessage}</div>
+                    {
+                      !!failure.detailedDescription &&
+                        <div>{failure.detailedDescription}</div>
+                    }
+                    {
+                      !!failure.infoLink &&
+                        <div>
+                          <a href={failure.infoLink} target="_blank" rel="noreferrer">
+                            {translate('MoreInfo')}
+                          </a>
+                        </div>
+                    }
+                  </Alert>
+                );
+              })
+          }
+
+          {
+            testError && !Array.isArray(testError.responseJSON) &&
+            (testError.responseJSON?.message || testError.statusText) &&
+              <Alert kind={kinds.DANGER} role="alert">
+                {testError.responseJSON?.message || testError.statusText}
+              </Alert>
           }
 
           {
@@ -215,7 +251,7 @@ class EditDownloadClientModalContent extends Component {
 
           <SpinnerErrorButton
             isSpinning={isTesting}
-            error={saveError}
+            error={testError}
             onPress={onTestPress}
           >
             Test
@@ -247,6 +283,7 @@ EditDownloadClientModalContent.propTypes = {
   isSaving: PropTypes.bool.isRequired,
   saveError: PropTypes.object,
   isTesting: PropTypes.bool.isRequired,
+  testError: PropTypes.object,
   item: PropTypes.object.isRequired,
   onInputChange: PropTypes.func.isRequired,
   onFieldChange: PropTypes.func.isRequired,

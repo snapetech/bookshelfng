@@ -18,6 +18,7 @@ function createProviderSettingsSelector(sectionName) {
           isSaving,
           saveError,
           isTesting,
+          testError,
           pendingChanges
         } = section;
 
@@ -28,6 +29,7 @@ function createProviderSettingsSelector(sectionName) {
           isSaving,
           saveError,
           isTesting,
+          testError,
           pendingChanges,
           ...settings,
           item: settings.settings
@@ -41,6 +43,7 @@ function createProviderSettingsSelector(sectionName) {
         isSaving,
         saveError,
         isTesting,
+        testError,
         pendingChanges
       } = section;
 
@@ -53,6 +56,7 @@ function createProviderSettingsSelector(sectionName) {
         isSaving,
         saveError,
         isTesting,
+        testError,
         ...settings,
         item: settings.settings
       };
