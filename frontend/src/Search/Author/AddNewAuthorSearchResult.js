@@ -85,6 +85,8 @@ class AddNewAuthorSearchResult extends Component {
       isSmallScreen
     } = this.props;
 
+    const authorLink = Array.isArray(links) ? links.find((link) => !!link?.url) : null;
+
     const {
       isNewAddAuthorModalOpen
     } = this.state;
@@ -147,17 +149,20 @@ class AddNewAuthorSearchResult extends Component {
                     null
                 }
 
-                <Link
-                  className={styles.mbLink}
-                  to={`${links[0].url}`}
-                  onPress={this.onMBLinkPress}
-                >
-                  <Icon
-                    className={styles.mbLinkIcon}
-                    name={icons.EXTERNAL_LINK}
-                    size={28}
-                  />
-                </Link>
+                {
+                  !!authorLink &&
+                    <Link
+                      className={styles.mbLink}
+                      to={authorLink.url}
+                      onPress={this.onMBLinkPress}
+                    >
+                      <Icon
+                        className={styles.mbLinkIcon}
+                        name={icons.EXTERNAL_LINK}
+                        size={28}
+                      />
+                    </Link>
+                }
               </div>
             </div>
 
