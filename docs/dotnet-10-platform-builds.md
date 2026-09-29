@@ -51,27 +51,44 @@ ASP.NET Core shared framework come from the platform packs. The workflow uses
 [`scripts/install-dotnet10-platform-runtime.sh`](../scripts/install-dotnet10-platform-runtime.sh)
 to assemble that test environment.
 
-## Building locally
+## Building and packaging locally
 
-Install .NET SDKs 10.0.110, 10.0.111, and 10.0.401 side by side under one
-`DOTNET_ROOT`. Docker, Git, Python 3, `curl`, `tar`, and `unzip` are also
-required; use Python 3.9 or later. Then run:
+A runnable BookshelfNG build needs both the .NET backend and the browser UI.
+Install Node.js 20 and Yarn Classic 1.22.19 as well as the .NET SDK. The
+`--frontend` option installs the locked Yarn dependencies and compiles the UI;
+`--packages` copies the UI beside the backend executable. A backend-only build
+does not produce a runnable app with a web interface.
+
+For a standard Linux x64 build, use the SDK runtime packs:
+
+```bash
+./build.sh --backend --frontend --packages --framework net10.0 --runtime linux-x64
+```
+
+The packaged app is under
+`_artifacts/linux-x64/net10.0/Readarr/`; it contains the `Readarr` executable
+and its `UI/` directory.
+
+To also build the Linux x86 and FreeBSD packages, install .NET SDKs 10.0.110,
+10.0.111, and 10.0.401 side by side under one `DOTNET_ROOT`. Docker, Git,
+Python 3, `curl`, `tar`, and `unzip` are also required; use Python 3.9 or later.
+Then run:
 
 ```bash
 export DOTNET_ROOT="$HOME/.dotnet"
 export DOTNETVERSION=10.0.401
 ./scripts/build-dotnet10-platform-runtime-packs.sh
 export CUSTOM_RUNTIME_PACKS_DIR="$(pwd)/_temp/platform-runtime-packs/packages"
-./build.sh --backend --enable-extra-platforms
+./build.sh --backend --frontend --packages --enable-extra-platforms
 ```
 
 The pack builder writes the six platform NuGet packages under
 `_temp/platform-runtime-packs/packages`. `build.sh` adds Linux x86 and FreeBSD
 to the runtime identifier list, enables those identifiers in the .NET 10 SDK,
-and uses the local packages during restore. The backend build fails with a
-specific missing-package message if the custom pack directory is absent or
-incomplete.
+and uses the local packages during restore. The packaged apps, including the
+UI, are written under `_artifacts/<runtime>/net10.0/Readarr/`. The backend
+build fails with a specific missing-package message if the custom pack
+directory is absent or incomplete.
 
-The ordinary `dotnet build` works with the standard SDK for the standard
-targets. To include Linux x86 and FreeBSD, run the platform pack builder first
-and pass `--enable-extra-platforms` to `build.sh`.
+For backend tests only, `./build.sh --backend --enable-extra-platforms` builds
+the .NET projects and test assemblies, but does not compile or package the UI.

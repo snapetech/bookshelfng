@@ -29,6 +29,6 @@ metadata provider configuration.
 | --- | --- |
 | [Standalone installation](standalone-install.md) | Native archives, Windows installer, packages, and platform setup |
 | [Distribution channels](distribution.md) | Published artifacts, release destinations, and publisher configuration |
-| [.NET 10 platform builds](dotnet-10-platform-builds.md) | Linux x86 and FreeBSD runtime build details |
+| [.NET 10 source builds](dotnet-10-platform-builds.md) | Complete backend and UI builds, plus Linux x86 and FreeBSD runtime packs |
 | [Release-note fragments](../release-notes/README.md) | User-facing release-note format and preview command |
 | [Optional diagnostics module](../src/Bookshelf.Diagnostics/README.md) | Installation, configuration, and exported data |
