@@ -50,12 +50,8 @@ jobs:
             echo "Image publishing requires a main-* tag, got ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
-          git fetch --force origin master main --tags || true
-          if git rev-parse --verify origin/main >/dev/null 2>&1; then
-            main_ref=origin/main
-          else
-            main_ref=origin/master
-          fi
+          git fetch --force origin main --tags
+          main_ref=origin/main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "$main_ref"; then
             echo "Tag ${GITHUB_REF_NAME} must point at a commit on ${main_ref}." >&2
             exit 1

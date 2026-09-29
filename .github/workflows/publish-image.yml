@@ -6,12 +6,6 @@ permissions:
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - develop
-    paths-ignore:
-      - "README.md"
-      - "docs/**"
 
 env:
   DOTNET_VERSION: "10.0.401"
@@ -30,13 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Stable softcover/hardcover tags are reserved for main releases.
-          # Develop pushes use explicit -develop tags so downstream SeerrNG
-          # cannot accidentally consume unreleased changes.
-          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "develop" ]]; then
-            echo "Publishing development images with explicit -develop tags."
-            exit 0
-          fi
+          # Stable softcover/hardcover tags are reserved for releases from main.
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "Publishing stable images from main."
             exit 0
@@ -45,12 +33,8 @@ jobs:
             echo "Release image publishing requires a main-* tag, got ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
-          git fetch --force origin master main --tags || true
-          if git rev-parse --verify origin/main >/dev/null 2>&1; then
-            main_ref=origin/main
-          else
-            main_ref=origin/master
-          fi
+          git fetch --force origin main --tags
+          main_ref=origin/main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "$main_ref"; then
             echo "Tag ${GITHUB_REF_NAME} must point at a commit on ${main_ref}." >&2
             exit 1
@@ -126,9 +110,6 @@ jobs:
             type=raw,value=softcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
             type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=softcover-v${{ steps.variables.outputs.build_version }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=softcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
-            type=raw,value=softcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
-            type=raw,value=softcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
 
       - uses: docker/metadata-action@v5
         id: hardcover_meta
@@ -140,9 +121,6 @@ jobs:
             type=raw,value=hardcover,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
             type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=hardcover-v${{ steps.variables.outputs.build_version }},enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'main-')) || github.ref == 'refs/heads/main' }}
-            type=raw,value=hardcover-develop,enable=${{ github.ref == 'refs/heads/develop' }}
-            type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }},enable=${{ github.ref == 'refs/heads/develop' }}
-            type=raw,value=hardcover-develop-v${{ env.READARR_VERSION }}.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
 
       - uses: docker/login-action@v3
         with:

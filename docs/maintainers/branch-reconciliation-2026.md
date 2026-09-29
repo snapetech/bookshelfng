@@ -14,6 +14,11 @@ removed after the completed push.
 The old `azure-pipelines.yml` release pipeline was removed from `main` in
 `102a87e0f`. The maintained GitHub workflows own BookshelfNG publication.
 
+The release workflows were also narrowed to the maintained `main` line:
+development image triggers and `-develop` tags were removed, and release-tag
+validation no longer falls back to `master`. Stable `main-*` tags are checked
+against `origin/main` before images are built.
+
 ## Upstream tracking refs
 
 The `upstream` remote pointed to `pennydreadful/bookshelf`; its `develop`,
