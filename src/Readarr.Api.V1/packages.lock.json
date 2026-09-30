@@ -10,11 +10,11 @@
       },
       "Ical.Net": {
         "type": "Direct",
-        "requested": "[4.3.1, )",
-        "resolved": "4.3.1",
-        "contentHash": "ZQHNJAy26XeW0OnVRxyHW1xNWkLdueIInPCo76sdNCC0Sr8dAfBzN3DApWWk2r0nwCU0oJIGsrFHdCcQu5RWag==",
+        "requested": "[5.2.3, )",
+        "resolved": "5.2.3",
+        "contentHash": "zROvmrRPKqND0e0Bt/wSY+d8iYtL4+sP9mORyjT/ySBiIDfik4iovTjS+L9PFg+zoXfkJ5eBTHK2lX9c7lganw==",
         "dependencies": {
-          "NodaTime": "3.2.0"
+          "NodaTime": "3.2.2"
         }
       },
       "NLog": {
@@ -62,6 +62,11 @@
         "dependencies": {
           "NETStandard.Library": "1.6.1"
         }
+      },
+      "Microsoft.Bcl.AsyncInterfaces": {
+        "type": "Transitive",
+        "resolved": "6.0.0",
+        "contentHash": "UcSjPsst+DfAdJGVDsu346FX0ci0ah+lw3WRtn18NUwEqRt70HaOQ7lI72vy3+1LxtqI3T5GWwV39rQSrCzAeg=="
       },
       "Microsoft.Data.SqlClient.SNI.runtime": {
         "type": "Transitive",
@@ -397,8 +402,8 @@
       },
       "NodaTime": {
         "type": "Transitive",
-        "resolved": "3.2.0",
-        "contentHash": "yoRA3jEJn8NM0/rQm78zuDNPA3DonNSZdsorMUj+dltc1D+/Lc5h9YXGqbEEZozMGr37lAoYkcSM/KjTVqD0ow=="
+        "resolved": "3.2.2",
+        "contentHash": "dmju5W0UYC3QP/UJM0juKAZkH0HSDMp0gH91A0+mT9M0kgyM2Jm67hUZPl/WRQLq8Lijjqmdk8kyAViWFWM7dA=="
       },
       "Polly.Contrib.WaitAndRetry": {
         "type": "Transitive",
@@ -570,8 +575,8 @@
       },
       "System.ComponentModel.Annotations": {
         "type": "Transitive",
-        "resolved": "4.4.1",
-        "contentHash": "ToiYqSCioqhtspq2O/jYKtyTC/T0uwWHBTYlzCi6PRbSSHArN1IaRWeHffDamvms5sye5FDUWCfNZgubQpNRsA=="
+        "resolved": "5.0.0",
+        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
       },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
@@ -635,6 +640,7 @@
           "Microsoft.Extensions.Logging": "[10.0.12, )",
           "Microsoft.IdentityModel.JsonWebTokens": "[6.34.0, )",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[6.34.0, )",
+          "Microsoft.Playwright": "[1.63.0, )",
           "MonoTorrent": "[2.0.7, )",
           "NLog": "[5.1.4, )",
           "NLog.Targets.Syslog": "[7.0.0, )",
@@ -649,7 +655,8 @@
           "Servarr.FluentMigrator.Runner.SQLite": "[3.3.2.9, )",
           "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IO.Abstractions": "[17.0.24, )",
-          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )"
+          "System.IdentityModel.Tokens.Jwt": "[6.34.0, )",
+          "TagLibSharp-Lidarr": "[2.4.0, )"
         }
       },
       "readarr.http": {
@@ -667,6 +674,9 @@
         "dependencies": {
           "Readarr.Core": "[1.0.0, )"
         }
+      },
+      "TagLibSharp-Lidarr": {
+        "type": "Project"
       },
       "Dapper": {
         "type": "CentralTransitive",
@@ -811,6 +821,16 @@
         "dependencies": {
           "Microsoft.IdentityModel.Protocols": "6.34.0",
           "System.IdentityModel.Tokens.Jwt": "6.34.0"
+        }
+      },
+      "Microsoft.Playwright": {
+        "type": "CentralTransitive",
+        "requested": "[1.63.0, )",
+        "resolved": "1.63.0",
+        "contentHash": "O9F45Tt5vjauIo7mTTgQtahigL7cfRLvBMpErLJfdvgCnQ14yue5BmRASNnfNBWRBni4Mqp2YiD1eFGIO4nUUw==",
+        "dependencies": {
+          "Microsoft.Bcl.AsyncInterfaces": "6.0.0",
+          "System.ComponentModel.Annotations": "5.0.0"
         }
       },
       "MonoTorrent": {
@@ -999,65 +1019,6 @@
         "contentHash": "+RJT4qaekpZ7DDLhf+LTjq+E48jieKiY9ulJ+BoxKmZblIJfIJT8Ufcaa/clQqnYvWs8jugfGSMu8ylS0caG0w=="
       }
     },
-    "net10.0/freebsd-x64": {
-      "Microsoft.Data.SqlClient.SNI.runtime": {
-        "type": "Transitive",
-        "resolved": "2.1.1",
-        "contentHash": "JwGDWkyZgm7SATJmFLfT2G4teimvNbNtq3lsS9a5DzvhEZnQrZjZhevCU0vdx8MjheLHoG5vocuO03QtioFQxQ=="
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "sOZM+VyRj1pg/ItlHsvrSbjws6oGqZveTzTNBGZ9ziwRDyKsOF3ub6vhvOdxotCIqtlnyHAIwP5sLNvgiZC+pQ=="
-      },
-      "System.Runtime.Caching": {
-        "type": "Transitive",
-        "resolved": "4.7.0",
-        "contentHash": "NdvNRjTPxYvIEhXQszT9L9vJhdQoX6AQ0AlhjTU+5NqFQVuacJTfhPVAvtGWNA2OJCqRiR/okBcZgMwI6MqcZg==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "4.7.0"
-        }
-      },
-      "System.Security.Cryptography.Pkcs": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
-      },
-      "System.Windows.Extensions": {
-        "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "J+FZruVjELSk2NMe3MQNyCXszIlx1b7qOjUBCSbhabomYIVWpFS5QCnPdxE8K6SVt7Gja7ohpXX1oLLXRAIuzw=="
-      },
-      "Microsoft.Data.SqlClient": {
-        "type": "CentralTransitive",
-        "requested": "[2.1.7, )",
-        "resolved": "2.1.7",
-        "contentHash": "dSdlcXPszeOjjDX9a0buMFgYqKrI5bTxdSgX3JyCa+OL80NUstJSxOJr0j9oOn8mpP5PgWeRC2bVf/Zf2Cjv+g==",
-        "dependencies": {
-          "Microsoft.Data.SqlClient.SNI.runtime": "2.1.1",
-          "Microsoft.Identity.Client": "4.21.1",
-          "Microsoft.IdentityModel.JsonWebTokens": "6.8.0",
-          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.8.0",
-          "System.Configuration.ConfigurationManager": "4.7.0",
-          "System.Runtime.Caching": "4.7.0"
-        }
-      },
-      "System.Data.SQLite.Core.Servarr": {
-        "type": "CentralTransitive",
-        "requested": "[1.0.115.5-18, )",
-        "resolved": "1.0.115.5-18",
-        "contentHash": "bqSg3X04ugH2gqau7NGh3JHQ3zfchtwUdyBDs4AIEAi00iKZeINz6VQb85VkMMqzqQCN+i59pF/cPkoTLafiuA=="
-      },
-      "System.ServiceProcess.ServiceController": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.12, )",
-        "resolved": "10.0.12",
-        "contentHash": "sFV+RM/yPtshiCAEIuTm8Dt4F7VuKRbL50PnGC9nXHolk/jw+z3T8zx7axKTBC8mqtQU2ZmjsoPC9b1iwOilNQ==",
-        "dependencies": {
-          "System.Diagnostics.EventLog": "10.0.12"
-        }
-      }
-    },
     "net10.0/linux-musl-arm64": {
       "Microsoft.Data.SqlClient.SNI.runtime": {
         "type": "Transitive",
@@ -1177,65 +1138,6 @@
       }
     },
     "net10.0/linux-x64": {
-      "Microsoft.Data.SqlClient.SNI.runtime": {
-        "type": "Transitive",
-        "resolved": "2.1.1",
-        "contentHash": "JwGDWkyZgm7SATJmFLfT2G4teimvNbNtq3lsS9a5DzvhEZnQrZjZhevCU0vdx8MjheLHoG5vocuO03QtioFQxQ=="
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "sOZM+VyRj1pg/ItlHsvrSbjws6oGqZveTzTNBGZ9ziwRDyKsOF3ub6vhvOdxotCIqtlnyHAIwP5sLNvgiZC+pQ=="
-      },
-      "System.Runtime.Caching": {
-        "type": "Transitive",
-        "resolved": "4.7.0",
-        "contentHash": "NdvNRjTPxYvIEhXQszT9L9vJhdQoX6AQ0AlhjTU+5NqFQVuacJTfhPVAvtGWNA2OJCqRiR/okBcZgMwI6MqcZg==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "4.7.0"
-        }
-      },
-      "System.Security.Cryptography.Pkcs": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
-      },
-      "System.Windows.Extensions": {
-        "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "J+FZruVjELSk2NMe3MQNyCXszIlx1b7qOjUBCSbhabomYIVWpFS5QCnPdxE8K6SVt7Gja7ohpXX1oLLXRAIuzw=="
-      },
-      "Microsoft.Data.SqlClient": {
-        "type": "CentralTransitive",
-        "requested": "[2.1.7, )",
-        "resolved": "2.1.7",
-        "contentHash": "dSdlcXPszeOjjDX9a0buMFgYqKrI5bTxdSgX3JyCa+OL80NUstJSxOJr0j9oOn8mpP5PgWeRC2bVf/Zf2Cjv+g==",
-        "dependencies": {
-          "Microsoft.Data.SqlClient.SNI.runtime": "2.1.1",
-          "Microsoft.Identity.Client": "4.21.1",
-          "Microsoft.IdentityModel.JsonWebTokens": "6.8.0",
-          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.8.0",
-          "System.Configuration.ConfigurationManager": "4.7.0",
-          "System.Runtime.Caching": "4.7.0"
-        }
-      },
-      "System.Data.SQLite.Core.Servarr": {
-        "type": "CentralTransitive",
-        "requested": "[1.0.115.5-18, )",
-        "resolved": "1.0.115.5-18",
-        "contentHash": "bqSg3X04ugH2gqau7NGh3JHQ3zfchtwUdyBDs4AIEAi00iKZeINz6VQb85VkMMqzqQCN+i59pF/cPkoTLafiuA=="
-      },
-      "System.ServiceProcess.ServiceController": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.12, )",
-        "resolved": "10.0.12",
-        "contentHash": "sFV+RM/yPtshiCAEIuTm8Dt4F7VuKRbL50PnGC9nXHolk/jw+z3T8zx7axKTBC8mqtQU2ZmjsoPC9b1iwOilNQ==",
-        "dependencies": {
-          "System.Diagnostics.EventLog": "10.0.12"
-        }
-      }
-    },
-    "net10.0/linux-x86": {
       "Microsoft.Data.SqlClient.SNI.runtime": {
         "type": "Transitive",
         "resolved": "2.1.1",
