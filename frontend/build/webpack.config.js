@@ -70,7 +70,7 @@ module.exports = (env) => {
       extensions: ['.ts', '.tsx', '.js'],
       modules: [srcFolder, path.join(srcFolder, 'Shims'), 'node_modules'],
       alias: {
-        jquery: 'jquery/dist/jquery.min',
+        jquery: 'jquery',
         'react-middle-truncate':
           'react-middle-truncate/lib/react-middle-truncate',
       },
