@@ -11,6 +11,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
@@ -165,6 +166,65 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
 
             Mocker.GetMock<IMakeImportDecision>()
                 .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Never());
+        }
+
+        [Test]
+        public void should_create_missing_author_folder_during_scan_when_configured()
+        {
+            GivenRootFolder();
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(s => s.CreateEmptyAuthorFolders)
+                .Returns(true);
+            Mocker.GetMock<IAuthorService>()
+                .Setup(s => s.GetAuthors(It.IsAny<List<int>>()))
+                .Returns(new List<Author> { _author });
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.GetFileInfos(_rootFolder, true))
+                .Returns(new List<IFileInfo>());
+
+            Subject.Scan(new List<string> { _rootFolder }, authorIds: new List<int> { _author.Id });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(s => s.EnsureFolder(_author.Path), Times.Once());
+            Mocker.GetMock<IMediaFileAttributeService>()
+                .Verify(s => s.SetFolderPermissions(_author.Path), Times.Once());
+        }
+
+        [Test]
+        public void should_create_missing_author_folders_during_full_scan_when_configured()
+        {
+            GivenRootFolder();
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(s => s.CreateEmptyAuthorFolders)
+                .Returns(true);
+            Mocker.GetMock<IAuthorService>()
+                .Setup(s => s.GetAllAuthors())
+                .Returns(new List<Author> { _author });
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.GetFileInfos(_rootFolder, true))
+                .Returns(new List<IFileInfo>());
+
+            Subject.Scan(new List<string> { _rootFolder });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(s => s.EnsureFolder(_author.Path), Times.Once());
+        }
+
+        [Test]
+        public void should_not_create_author_folders_when_root_folder_is_missing()
+        {
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(s => s.CreateEmptyAuthorFolders)
+                .Returns(true);
+            Mocker.GetMock<IAuthorService>()
+                .Setup(s => s.GetAuthors(It.IsAny<List<int>>()))
+                .Returns(new List<Author> { _author });
+
+            Subject.Scan(new List<string> { _rootFolder }, authorIds: new List<int> { _author.Id });
+
+            DiskProvider.FolderExists(_rootFolder).Should().BeFalse();
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(s => s.EnsureFolder(It.IsAny<string>()), Times.Never());
         }
 
         [Test]

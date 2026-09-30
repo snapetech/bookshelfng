@@ -41,6 +41,7 @@ namespace NzbDrone.Core.MediaFiles
 
         private readonly IConfigService _configService;
         private readonly IDiskProvider _diskProvider;
+        private readonly IMediaFileAttributeService _mediaFileAttributeService;
         private readonly ICalibreProxy _calibre;
         private readonly IMediaFileService _mediaFileService;
         private readonly IMakeImportDecision _importDecisionMaker;
@@ -53,6 +54,7 @@ namespace NzbDrone.Core.MediaFiles
 
         public DiskScanService(IConfigService configService,
                                IDiskProvider diskProvider,
+                               IMediaFileAttributeService mediaFileAttributeService,
                                ICalibreProxy calibre,
                                IMediaFileService mediaFileService,
                                IMakeImportDecision importDecisionMaker,
@@ -65,6 +67,7 @@ namespace NzbDrone.Core.MediaFiles
         {
             _configService = configService;
             _diskProvider = diskProvider;
+            _mediaFileAttributeService = mediaFileAttributeService;
             _calibre = calibre;
 
             _mediaFileService = mediaFileService;
@@ -83,6 +86,12 @@ namespace NzbDrone.Core.MediaFiles
             {
                 folders = _rootFolderService.All().Select(x => x.Path).ToList();
             }
+
+            var authorsToCreateFoldersFor = _configService.CreateEmptyAuthorFolders
+                ? authorIds != null && authorIds.Any()
+                    ? _authorService.GetAuthors(authorIds)
+                    : _authorService.GetAllAuthors()
+                : new List<Author>();
 
             if (authorIds == null)
             {
@@ -106,24 +115,30 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 var folderExists = _diskProvider.FolderExists(folder);
+                var rootFolderExists = PathEqualityComparer.Instance.Equals(folder, rootFolder.Path)
+                    ? folderExists
+                    : _diskProvider.FolderExists(rootFolder.Path);
 
-                if (!folderExists)
+                if (!folderExists && !rootFolderExists)
                 {
-                    if (!_diskProvider.FolderExists(rootFolder.Path))
-                    {
-                        _logger.Warn("Authors' root folder ({0}) doesn't exist.", rootFolder.Path);
-                        var skippedAuthors = _authorService.GetAuthors(authorIds);
-                        skippedAuthors.ForEach(x => _eventAggregator.PublishEvent(new AuthorScanSkippedEvent(x, AuthorScanSkippedReason.RootFolderDoesNotExist)));
-                        return;
-                    }
+                    _logger.Warn("Authors' root folder ({0}) doesn't exist.", rootFolder.Path);
+                    var skippedAuthors = _authorService.GetAuthors(authorIds);
+                    skippedAuthors.ForEach(x => _eventAggregator.PublishEvent(new AuthorScanSkippedEvent(x, AuthorScanSkippedReason.RootFolderDoesNotExist)));
+                    return;
+                }
 
-                    if (_diskProvider.FolderEmpty(rootFolder.Path))
-                    {
-                        _logger.Warn("Authors' root folder ({0}) is empty.", rootFolder.Path);
-                        var skippedAuthors = _authorService.GetAuthors(authorIds);
-                        skippedAuthors.ForEach(x => _eventAggregator.PublishEvent(new AuthorScanSkippedEvent(x, AuthorScanSkippedReason.RootFolderIsEmpty)));
-                        return;
-                    }
+                if (rootFolderExists && authorsToCreateFoldersFor.Any())
+                {
+                    CreateEmptyAuthorFolders(folder, rootFolder, authorsToCreateFoldersFor);
+                    folderExists = _diskProvider.FolderExists(folder);
+                }
+
+                if (!folderExists && _diskProvider.FolderEmpty(rootFolder.Path))
+                {
+                    _logger.Warn("Authors' root folder ({0}) is empty.", rootFolder.Path);
+                    var skippedAuthors = _authorService.GetAuthors(authorIds);
+                    skippedAuthors.ForEach(x => _eventAggregator.PublishEvent(new AuthorScanSkippedEvent(x, AuthorScanSkippedReason.RootFolderIsEmpty)));
+                    return;
                 }
 
                 if (!folderExists)
@@ -238,6 +253,26 @@ namespace NzbDrone.Core.MediaFiles
         {
             _logger.Debug($"Cleaning up media files in DB [{folder}]");
             _mediaFileTableCleanupService.Clean(folder, mediaFileList);
+        }
+
+        private void CreateEmptyAuthorFolders(string folder, RootFolder rootFolder, List<Author> authors)
+        {
+            foreach (var author in authors.Where(x => x.Path.IsNotNullOrWhiteSpace()))
+            {
+                var authorIsInRoot = PathEqualityComparer.Instance.Equals(author.Path, rootFolder.Path) ||
+                    rootFolder.Path.IsParentPath(author.Path);
+                var authorIsInScannedFolder = PathEqualityComparer.Instance.Equals(author.Path, folder) ||
+                    folder.IsParentPath(author.Path);
+
+                if (!authorIsInRoot || !authorIsInScannedFolder || _diskProvider.FolderExists(author.Path))
+                {
+                    continue;
+                }
+
+                _logger.Debug("Creating missing author folder {0}", author.Path);
+                _diskProvider.EnsureFolder(author.Path);
+                _mediaFileAttributeService.SetFolderPermissions(author.Path);
+            }
         }
 
         private void CompletedScanning(Author author)
