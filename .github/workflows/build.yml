@@ -164,6 +164,7 @@ jobs:
             docker.io/snapetech/bookshelfng
           tags: |
             type=raw,value=hardcover
+            type=raw,value=latest
             type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
             type=raw,value=hardcover-v${{ steps.variables.outputs.build_version }}
 

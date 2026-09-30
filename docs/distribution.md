@@ -19,8 +19,8 @@ release and sends the existing Discord announcement.
 | AppImage | Linux x64 `.AppImage` | Portable launcher; data stays in the user's XDG data directory. |
 | Chocolatey | `bookshelfng` Windows package | Downloads the checksummed x64 release asset and registers a Windows service. |
 | Helm | OCI chart in GHCR | Chart is versioned with each stable BookshelfNG release. |
-| Containers | GHCR and Docker Hub | Multi-architecture `amd64` and `arm64`, with Softcover and Hardcover tags. |
-| Unraid | Community application template | Uses the moving `ghcr.io/snapetech/bookshelfng:hardcover` tag by default; use `:softcover` to keep Readarr-compatible database lineage. |
+| Containers | GHCR and Docker Hub | Multi-architecture `amd64` and `arm64`. `:latest` and `:hardcover` are moving aliases of the Hardcover image; `:softcover` tracks the Readarr-compatible image. |
+| Unraid | Community application template | Uses the moving `ghcr.io/snapetech/bookshelfng:latest` tag by default. `:hardcover` remains an equivalent alias; use `:softcover` to keep Readarr-compatible database lineage. |
 
 The distribution workflow reports publisher channels that lack credentials as
 skipped. It does not claim an upload succeeded unless the publisher command

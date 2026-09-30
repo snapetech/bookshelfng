@@ -9,8 +9,8 @@ or a metadata proxy.
 On Unraid, install [BookshelfNG from Community Apps](https://ca.unraid.net/apps/bookshelfng-1fdcqrv18pja7r).
 See the [Unraid installation guide](https://github.com/snapetech/bookshelfng-unraid#installation-and-setup)
 for persistent storage, download paths, and Hardcover setup. The package uses
-`ghcr.io/snapetech/bookshelfng:hardcover`; the upstream Bookshelf listing uses
-a different image. SeerrNG integration is optional.
+`ghcr.io/snapetech/bookshelfng:latest`, which tracks the Hardcover image; the
+upstream Bookshelf listing uses a different image. SeerrNG integration is optional.
 
 BookshelfNG is for people who want Readarr-style book automation with a choice
 of metadata providers. Goodreads-compatible metadata services and native
