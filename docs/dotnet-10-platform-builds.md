@@ -6,6 +6,39 @@ The standard .NET SDK supplies the packs for the mainstream targets. Linux x86
 and FreeBSD use additional runtime packs because matching .NET 10 packs are not
 available from the standard NuGet feeds used by this repository.
 
+## Run the complete published Docker image (no build)
+
+If you want to run BookshelfNG or inspect the UI shipped with it, use the
+[README Quick Start](../README.md#quick-start). Its published Docker image
+already contains the backend and web UI. You do not need to clone the source
+repository or run `build.sh`.
+
+After saving the Quick Start's `compose.yaml` in a directory, pull and start
+the complete image:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+The Quick Start names its Compose service `bookshelf`. The UI files are inside
+the running container at `/app/readarr/bin/UI`; list them with:
+
+```bash
+docker compose exec bookshelf ls /app/readarr/bin/UI
+```
+
+To copy that bundled UI folder from the container to your current host
+directory:
+
+```bash
+docker cp "$(docker compose ps -q bookshelf)":/app/readarr/bin/UI ./UI
+```
+
+You do not need to copy the folder to run the app. The published image already
+has it. This copies the release UI out to `./UI` on the host; it does not copy
+local source changes into the container.
+
 ## Pack sources
 
 Linux x86 runtime, apphost, and ASP.NET Core packs are cross-compiled from the
@@ -51,27 +84,13 @@ ASP.NET Core shared framework come from the platform packs. The workflow uses
 [`scripts/install-dotnet10-platform-runtime.sh`](../scripts/install-dotnet10-platform-runtime.sh)
 to assemble that test environment.
 
-## Use a published Docker image
+## Build a Docker image from source (local code; requires a build)
 
-To run BookshelfNG in Docker, use the published image described in the
-[README quick start](../README.md#quick-start). Docker Compose pulls the full
-image, including the backend and web UI; no source checkout, .NET SDK, Node.js,
-or `build.sh` is needed.
-
-The path `/app/readarr/bin/UI` is inside the running container. It is not a
-folder on the host. Inspect it with:
-
-```bash
-docker exec <container-name> ls /app/readarr/bin/UI
-```
-
-Replace `<container-name>` with the name shown by `docker ps`.
-
-## Build a Docker image from source
-
-Use this path when testing changes from a source checkout. The Dockerfile
-consumes the backend and UI produced in `_output`, then copies them into the
-image. Build both parts before building the image:
+Use this path only when testing your own source changes in Docker. The
+published image above runs a release; it does not include edits from your
+checkout. The Dockerfile consumes the backend and UI produced in `_output`,
+then copies them into a custom image. Build both parts before building the
+image:
 
 ```bash
 ./build.sh --backend --frontend
@@ -95,11 +114,16 @@ this path; the standalone `linux-x64` build command below creates a different
 runtime output. `--packages` is for standalone app directories and is not
 needed for this Docker build.
 
-For a one-off UI check against an existing container, you can copy the compiled
-assets with `docker cp _output/UI/. <container-name>:/app/readarr/bin/UI/`.
-Replace `<container-name>` with the name shown by `docker ps`. That changes only
-the current container; rebuilding or replacing it discards the copy. Build a
-custom image when you need a repeatable result.
+For a one-off UI check against the Compose service from the Quick Start, first
+run the frontend build above, then copy its compiled assets into the running
+container:
+
+```bash
+docker cp _output/UI/. "$(docker compose ps -q bookshelf)":/app/readarr/bin/UI/
+```
+
+This overwrites files in that one running container. Recreating the container
+discards the copy; build a custom image when you need a repeatable result.
 
 ## Build and package a standalone app locally
 
