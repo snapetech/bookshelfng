@@ -10,7 +10,7 @@ bookshelfng_prepare_service() {
 
 bookshelfng_start_service() {
 	ynh_systemctl --service="$app" --action="start" \
-		--line_match="HTTP server: bindAddress=127.0.0.1" \
+		--wait_until="HTTP server: bindAddress=127.0.0.1" \
 		--log_path="$data_dir/logs/readarr.txt"
 }
 

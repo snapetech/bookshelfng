@@ -5,7 +5,7 @@ packaging_format = 2
 id = "bookshelfng"
 name = "BookshelfNG"
 description.en = "An evolution of Readarr with more ebook and audiobook metadata, edition matching, formats, and integrations"
-version = "0.4.21.37~ynh3"
+version = "0.4.21.37~ynh4"
 maintainers = ["snapetech"]
 
 [upstream]
