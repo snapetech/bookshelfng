@@ -75,9 +75,11 @@ trap 'rm -rf "$staging_dir"' EXIT
 git -C "$repo_root" archive --format=tar HEAD packaging/yunohost | tar -xf - -C "$staging_dir"
 source_dir="$staging_dir/packaging/yunohost"
 
+# YunoHost regenerates README.md from the manifest and package metadata.
 rsync --archive --delete \
 	--exclude='/.git/' \
 	--exclude='/.github/' \
+	--exclude='/README.md' \
 	"$source_dir/" "$target_dir/"
 
 git -C "$target_dir" add --all

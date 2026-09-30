@@ -20,6 +20,8 @@ finish_backup() {
 
 trap finish_backup EXIT
 
+ynh_script_progression "Preparing a consistent BookshelfNG backup..."
+
 if systemctl is-active --quiet "$app"; then
 	service_was_active=true
 	ynh_script_progression "Stopping BookshelfNG for a consistent database backup..."
@@ -33,9 +35,9 @@ rsync --archive --delete \
 	--exclude="/logs/" \
 	"$data_dir/" "$YNH_APP_BACKUP_DIR/data/"
 
-ynh_print_info "Declaring BookshelfNG files for backup..."
+ynh_script_progression "Declaring BookshelfNG files for backup..."
 ynh_backup "$install_dir"
 ynh_backup "/etc/nginx/conf.d/$domain.d/$app.conf"
 ynh_backup "/etc/systemd/system/$app.service"
 
-ynh_print_info "BookshelfNG backup declaration completed"
+ynh_script_progression "BookshelfNG backup declaration completed"
