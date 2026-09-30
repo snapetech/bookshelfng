@@ -25,7 +25,6 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         }
 
         [Test]
-        [Order(2)]
         public void cutoff_should_have_monitored_items()
         {
             EnsureProfileCutoff(1, Quality.AZW3, true);
@@ -38,7 +37,6 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         }
 
         [Test]
-        [Order(2)]
         public void cutoff_should_not_have_unmonitored_items()
         {
             EnsureProfileCutoff(1, Quality.AZW3, true);
@@ -51,7 +49,6 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         }
 
         [Test]
-        [Order(2)]
         public void cutoff_should_have_author()
         {
             EnsureProfileCutoff(1, Quality.AZW3, true);
@@ -65,7 +62,6 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         }
 
         [Test]
-        [Order(2)]
         public void cutoff_should_not_have_author()
         {
             EnsureProfileCutoff(1, Quality.AZW3, true);
@@ -78,7 +74,6 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         }
 
         [Test]
-        [Order(2)]
         public void cutoff_should_have_unmonitored_items()
         {
             EnsureProfileCutoff(1, Quality.AZW3, true);

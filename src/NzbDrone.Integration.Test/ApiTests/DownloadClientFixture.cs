@@ -8,7 +8,6 @@ namespace NzbDrone.Integration.Test.ApiTests
     public class DownloadClientFixture : IntegrationTest
     {
         [Test]
-        [Order(0)]
         public void add_downloadclient_without_name_should_return_badrequest()
         {
             EnsureNoDownloadClient();
@@ -23,7 +22,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(0)]
+        [DependsOnTest(nameof(add_downloadclient_without_name_should_return_badrequest), AllowFailure = true)]
         public void add_downloadclient_without_nzbfolder_should_return_badrequest()
         {
             EnsureNoDownloadClient();
@@ -38,7 +37,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(0)]
+        [DependsOnTest(nameof(add_downloadclient_without_nzbfolder_should_return_badrequest), AllowFailure = true)]
         public void add_downloadclient_without_watchfolder_should_return_badrequest()
         {
             EnsureNoDownloadClient();
@@ -53,7 +52,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(1)]
+        [DependsOnTest(nameof(add_downloadclient_without_watchfolder_should_return_badrequest), AllowFailure = true)]
         public void add_downloadclient()
         {
             EnsureNoDownloadClient();
@@ -71,7 +70,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(2)]
+        [DependsOnTest(nameof(add_downloadclient), AllowFailure = true)]
         public void get_all_downloadclients()
         {
             EnsureDownloadClient();
@@ -82,7 +81,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(2)]
+        [DependsOnTest(nameof(get_all_downloadclients), AllowFailure = true)]
         public void get_downloadclient_by_id()
         {
             var client = EnsureDownloadClient();
@@ -99,7 +98,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(3)]
+        [DependsOnTest(nameof(get_downloadclient_by_id), AllowFailure = true)]
         public void update_downloadclient()
         {
             EnsureNoDownloadClient();
@@ -112,7 +111,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(4)]
+        [DependsOnTest(nameof(update_downloadclient), AllowFailure = true)]
         public void delete_downloadclient()
         {
             var client = EnsureDownloadClient();

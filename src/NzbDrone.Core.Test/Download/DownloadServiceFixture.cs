@@ -102,19 +102,19 @@ namespace NzbDrone.Core.Test.Download
         }
 
         [Test]
-        public void Download_report_should_not_publish_on_failed_grab_event()
+        public async Task Download_report_should_not_publish_on_failed_grab_event()
         {
             var mock = WithUsenetClient();
             mock.Setup(s => s.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()))
                 .Throws(new WebException());
 
-            Assert.ThrowsAsync<WebException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<WebException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             VerifyEventNotPublished<BookGrabbedEvent>();
         }
 
         [Test]
-        public void Download_report_should_trigger_indexer_backoff_on_indexer_error()
+        public async Task Download_report_should_trigger_indexer_backoff_on_indexer_error()
         {
             var mock = WithUsenetClient();
             mock.Setup(s => s.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()))
@@ -123,14 +123,14 @@ namespace NzbDrone.Core.Test.Download
                     throw new ReleaseDownloadException(v.Release, "Error", new WebException());
                 });
 
-            Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IIndexerStatusService>()
                 .Verify(v => v.RecordFailure(It.IsAny<int>(), It.IsAny<TimeSpan>()), Times.Once());
         }
 
         [Test]
-        public void Download_report_should_trigger_indexer_backoff_on_http429_with_long_time()
+        public async Task Download_report_should_trigger_indexer_backoff_on_http429_with_long_time()
         {
             var request = new HttpRequest("http://my.indexer.com");
             var response = new HttpResponse(request, new HttpHeader(), new byte[0], (HttpStatusCode)429);
@@ -143,14 +143,14 @@ namespace NzbDrone.Core.Test.Download
                     throw new ReleaseDownloadException(v.Release, "Error", new TooManyRequestsException(request, response));
                 });
 
-            Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IIndexerStatusService>()
                 .Verify(v => v.RecordFailure(It.IsAny<int>(), TimeSpan.FromMinutes(5.0)), Times.Once());
         }
 
         [Test]
-        public void Download_report_should_trigger_indexer_backoff_on_http429_based_on_date()
+        public async Task Download_report_should_trigger_indexer_backoff_on_http429_based_on_date()
         {
             var request = new HttpRequest("http://my.indexer.com");
             var response = new HttpResponse(request, new HttpHeader(), new byte[0], (HttpStatusCode)429);
@@ -163,7 +163,7 @@ namespace NzbDrone.Core.Test.Download
                     throw new ReleaseDownloadException(v.Release, "Error", new TooManyRequestsException(request, response));
                 });
 
-            Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<ReleaseDownloadException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IIndexerStatusService>()
                 .Verify(v => v.RecordFailure(It.IsAny<int>(),
@@ -171,20 +171,20 @@ namespace NzbDrone.Core.Test.Download
         }
 
         [Test]
-        public void Download_report_should_not_trigger_indexer_backoff_on_downloadclient_error()
+        public async Task Download_report_should_not_trigger_indexer_backoff_on_downloadclient_error()
         {
             var mock = WithUsenetClient();
             mock.Setup(s => s.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()))
                 .Throws(new DownloadClientException("Some Error"));
 
-            Assert.ThrowsAsync<DownloadClientException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<DownloadClientException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IIndexerStatusService>()
                 .Verify(v => v.RecordFailure(It.IsAny<int>(), It.IsAny<TimeSpan>()), Times.Never());
         }
 
         [Test]
-        public void Download_report_should_not_trigger_indexer_backoff_on_indexer_404_error()
+        public async Task Download_report_should_not_trigger_indexer_backoff_on_indexer_404_error()
         {
             var mock = WithUsenetClient();
             mock.Setup(s => s.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()))
@@ -193,16 +193,16 @@ namespace NzbDrone.Core.Test.Download
                     throw new ReleaseUnavailableException(v.Release, "Error", new WebException());
                 });
 
-            Assert.ThrowsAsync<ReleaseUnavailableException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<ReleaseUnavailableException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IIndexerStatusService>()
                 .Verify(v => v.RecordFailure(It.IsAny<int>(), It.IsAny<TimeSpan>()), Times.Never());
         }
 
         [Test]
-        public void should_not_attempt_download_if_client_isnt_configured()
+        public async Task should_not_attempt_download_if_client_isnt_configured()
         {
-            Assert.ThrowsAsync<DownloadClientUnavailableException>(async () => await Subject.DownloadReport(_parseResult, null));
+            await Assert.ThrowsAsync<DownloadClientUnavailableException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Mocker.GetMock<IDownloadClient>().Verify(c => c.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
             VerifyEventNotPublished<BookGrabbedEvent>();
@@ -258,7 +258,7 @@ namespace NzbDrone.Core.Test.Download
         }
 
         [Test]
-        public void should_report_an_existing_torrent_instead_of_downloading_it_again()
+        public async Task should_report_an_existing_torrent_instead_of_downloading_it_again()
         {
             var mockTorrent = WithTorrentClient();
             var infoHash = "abcdef123456";
@@ -270,7 +270,7 @@ namespace NzbDrone.Core.Test.Download
             mockTorrent.Setup(v => v.GetItems())
                 .Returns(new[] { new DownloadClientItem { DownloadId = infoHash.ToUpperInvariant(), Title = "Existing torrent" } });
 
-            var exception = Assert.ThrowsAsync<ExistingTorrentFoundException>(async () => await Subject.DownloadReport(_parseResult, null));
+            var exception = await Assert.ThrowsAsync<ExistingTorrentFoundException>(async () => await Subject.DownloadReport(_parseResult, null));
 
             Assert.That(exception.DownloadTitle, Is.EqualTo("Existing torrent"));
             mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
@@ -302,7 +302,7 @@ namespace NzbDrone.Core.Test.Download
         }
 
         [Test]
-        public void should_not_adopt_a_torrent_that_is_no_longer_in_the_download_client()
+        public async Task should_not_adopt_a_torrent_that_is_no_longer_in_the_download_client()
         {
             var mockTorrent = WithTorrentClient();
             _parseResult.Release = Builder<TorrentInfo>.CreateNew()
@@ -312,14 +312,14 @@ namespace NzbDrone.Core.Test.Download
                 .Build();
             mockTorrent.Setup(v => v.GetItems()).Returns(Array.Empty<DownloadClientItem>());
 
-            Assert.ThrowsAsync<ExistingTorrentNotFoundException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
+            await Assert.ThrowsAsync<ExistingTorrentNotFoundException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
 
             mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
             VerifyEventNotPublished<BookGrabbedEvent>();
         }
 
         [Test]
-        public void should_not_adopt_a_torrent_when_the_client_cannot_be_checked()
+        public async Task should_not_adopt_a_torrent_when_the_client_cannot_be_checked()
         {
             var mockTorrent = WithTorrentClient();
             _parseResult.Release = Builder<TorrentInfo>.CreateNew()
@@ -329,7 +329,7 @@ namespace NzbDrone.Core.Test.Download
                 .Build();
             mockTorrent.Setup(v => v.GetItems()).Throws(new DownloadClientException("Client unavailable"));
 
-            Assert.ThrowsAsync<DownloadClientException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
+            await Assert.ThrowsAsync<DownloadClientException>(async () => await Subject.AdoptExistingTorrent(_parseResult, null));
 
             mockTorrent.Verify(v => v.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()), Times.Never());
             VerifyEventNotPublished<BookGrabbedEvent>();
