@@ -173,7 +173,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         id: softcover_image
         with:
           context: .
@@ -189,7 +189,7 @@ jobs:
             IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
             IMAGE_FLAVOR=softcover
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         id: hardcover_image
         with:
           context: .
