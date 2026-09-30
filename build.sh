@@ -274,10 +274,21 @@ YarnInstall()
     ProgressEnd 'yarn install'
 }
 
+CheckReactRouterContext()
+{
+    ProgressStart 'Checking React Router context'
+    node scripts/check-react-router-context.js
+    ProgressEnd 'Checking React Router context'
+}
+
 RunWebpack()
 {
     ProgressStart 'Running webpack'
     yarn run build --env production
+    if [ ! -s "$outputFolder/UI/index.html" ]; then
+        echo "[ERROR] Frontend build completed without creating $outputFolder/UI/index.html" >&2
+        return 1
+    fi
     ProgressEnd 'Running webpack'
 }
 
@@ -518,12 +529,29 @@ PackageTests()
 {
     local framework="$1"
     local runtime="$2"
+    local publishFolder="$testPackageFolder/$framework/$runtime/publish"
 
-    cp test.sh "$testPackageFolder/$framework/$runtime/publish"
+    if [ ! -d "$publishFolder" ]; then
+        echo "[ERROR] Test publish output not found: $publishFolder" >&2
+        echo "[ERROR] Check that the requested framework and runtime match this checkout's build outputs." >&2
+        return 1
+    fi
 
-    rm -f $testPackageFolder/$framework/$runtime/*.log.config
+    cp test.sh "$publishFolder/"
+    rm -f "$publishFolder"/*.log.config
 
     ProgressEnd 'Creating Test Package'
+}
+
+NormalizeFramework()
+{
+    if [ "$FRAMEWORK" = "net6.0" ]; then
+        echo "[WARNING] This checkout targets net10.0; treating the obsolete -f net6.0 option as net10.0." >&2
+        FRAMEWORK="net10.0"
+    elif [ -n "$FRAMEWORK" ] && [ "$FRAMEWORK" != "net10.0" ]; then
+        echo "[ERROR] This checkout targets net10.0; unsupported framework: $FRAMEWORK" >&2
+        return 2
+    fi
 }
 
 # Use mono or .net depending on OS
@@ -621,6 +649,10 @@ case $key in
 esac
 done
 
+if [ "$BACKEND" = "YES" ] || [ "$PACKAGES" = "YES" ]; then
+    NormalizeFramework
+fi
+
 if [ "$ENABLE_EXTRA_PLATFORMS_IN_SDK" = "YES" ];
 then
     EnableExtraPlatformsInSDK
@@ -637,6 +669,26 @@ then
         PrepareExtraRuntimePacks
     fi
     Build
+fi
+
+if [[ "$LINT" = "YES" || "$FRONTEND" = "YES" ]];
+then
+    YarnInstall
+    CheckReactRouterContext
+fi
+
+if [ "$LINT" = "YES" ];
+then
+    LintUI
+fi
+
+if [ "$FRONTEND" = "YES" ];
+then
+    RunWebpack
+fi
+
+if [ "$BACKEND" = "YES" ];
+then
     if [[ -z "$RID" || -z "$FRAMEWORK" ]];
     then
         PackageTests "net10.0" "linux-musl-x64"
@@ -648,21 +700,6 @@ then
     else
         PackageTests "$FRAMEWORK" "$RID"
     fi
-fi
-
-if [[ "$LINT" = "YES" || "$FRONTEND" = "YES" ]];
-then
-    YarnInstall
-fi
-
-if [ "$LINT" = "YES" ];
-then
-    LintUI
-fi
-
-if [ "$FRONTEND" = "YES" ];
-then
-    RunWebpack
 fi
 
 if [ "$PACKAGES" = "YES" ];
