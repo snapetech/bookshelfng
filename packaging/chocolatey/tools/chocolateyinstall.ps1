@@ -18,9 +18,34 @@ $nssm = Get-Command nssm.exe -ErrorAction SilentlyContinue
 
 if ($nssm) {
   New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-  & $nssm.Source install BookshelfNG $exePath "-nobrowser -data=$dataDir"
-  if ($LASTEXITCODE -ne 0) { throw 'NSSM could not install the BookshelfNG service.' }
-  & $nssm.Source set BookshelfNG AppDirectory $installDir
-  & $nssm.Source set BookshelfNG Start SERVICE_AUTO_START
-  Write-Host 'BookshelfNG service installed. Start it with: Start-Service BookshelfNG'
+
+  function Set-BookshelfServiceSetting {
+    param(
+      [Parameter(Mandatory = $true)] [string] $Name,
+      [Parameter(Mandatory = $true)] [string] $Value
+    )
+
+    & $nssm.Source set BookshelfNG $Name $Value
+    if ($LASTEXITCODE -ne 0) { throw "NSSM could not set BookshelfNG $Name." }
+  }
+
+  $service = Get-Service -Name BookshelfNG -ErrorAction SilentlyContinue
+  if ($service) {
+    if ($service.Status -ne 'Stopped') {
+      Stop-Service -Name BookshelfNG -Force
+      $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+    }
+  }
+  else {
+    & $nssm.Source install BookshelfNG $exePath "-nobrowser -data=$dataDir"
+    if ($LASTEXITCODE -ne 0) { throw 'NSSM could not install the BookshelfNG service.' }
+  }
+
+  Set-BookshelfServiceSetting 'Application' $exePath
+  Set-BookshelfServiceSetting 'AppDirectory' $installDir
+  Set-BookshelfServiceSetting 'AppParameters' "-nobrowser -data=$dataDir"
+  Set-BookshelfServiceSetting 'Start' 'SERVICE_AUTO_START'
+
+  Start-Service -Name BookshelfNG
+  Write-Host 'BookshelfNG service started.'
 }
