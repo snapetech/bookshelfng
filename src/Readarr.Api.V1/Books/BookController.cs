@@ -7,6 +7,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.AuthorStats;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Events;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
@@ -141,6 +142,55 @@ namespace Readarr.Api.V1.Books
             }
 
             return MapToResource(_bookService.GetBooks(bookIds), false);
+        }
+
+        [HttpGet("paged")]
+        public PagedBookResource GetPagedBooks([FromQuery]int? offset, [FromQuery]int? pageSize)
+        {
+            const int defaultPageSize = 50;
+            const int maximumPageSize = 200;
+
+            var normalizedOffset = global::System.Math.Max(0, offset ?? 0);
+            var normalizedPageSize = global::System.Math.Clamp(pageSize ?? defaultPageSize, 1, maximumPageSize);
+            var baseOffset = (normalizedOffset / normalizedPageSize) * normalizedPageSize;
+            var offsetWithinPage = normalizedOffset - baseOffset;
+            var pagedBooks = _bookService.GetPagedBooks(new PagingSpec<Book>
+            {
+                Page = (baseOffset / normalizedPageSize) + 1,
+                PageSize = normalizedPageSize + offsetWithinPage,
+                SortKey = "Title",
+                SortDirection = SortDirection.Ascending
+            });
+            var books = pagedBooks.Records.Skip(offsetWithinPage).Take(normalizedPageSize).ToList();
+
+            if (books.Count > 0)
+            {
+                var authors = _authorService.GetAuthorsByMetadataId(books.Select(book => book.AuthorMetadataId).Distinct())
+                    .ToDictionary(author => author.AuthorMetadataId);
+                var editions = _editionService.GetEditionsByBook(books.Select(book => book.Id))
+                    .GroupBy(edition => edition.BookId)
+                    .ToDictionary(group => group.Key, group => group.ToList());
+
+                foreach (var book in books)
+                {
+                    if (authors.TryGetValue(book.AuthorMetadataId, out var author))
+                    {
+                        book.Author = author;
+                    }
+
+                    book.Editions = editions.TryGetValue(book.Id, out var bookEditions)
+                        ? bookEditions
+                        : new List<Edition>();
+                }
+            }
+
+            return new PagedBookResource
+            {
+                Records = MapToResource(books, true, false),
+                Offset = normalizedOffset,
+                PageSize = normalizedPageSize,
+                TotalCount = pagedBooks.TotalRecords
+            };
         }
 
         [HttpGet("{id:int}/overview")]
