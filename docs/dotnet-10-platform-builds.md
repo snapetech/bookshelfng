@@ -25,19 +25,13 @@ The Quick Start names its Compose service `bookshelf`. The UI files are inside
 the running container at `/app/readarr/bin/UI`; list them with:
 
 ```bash
-docker compose exec bookshelf ls /app/readarr/bin/UI
+docker compose exec bookshelf ls -lah /app/readarr/bin/UI
 ```
 
-To copy that bundled UI folder from the container to your current host
-directory:
-
-```bash
-docker cp "$(docker compose ps -q bookshelf)":/app/readarr/bin/UI ./UI
-```
-
-You do not need to copy the folder to run the app. The published image already
-has it. This copies the release UI out to `./UI` on the host; it does not copy
-local source changes into the container.
+That command only checks the bundled assets. The UI is installed in the image
+and served by the application; it does not need to be copied to the host. If
+the page is blank, include the image tag, browser console error, and
+`docker compose logs --tail=100 bookshelf` when reporting it.
 
 ## Pack sources
 
@@ -94,6 +88,7 @@ image:
 
 ```bash
 ./build.sh --backend --frontend
+test -s _output/UI/index.html
 docker buildx build --load --platform linux/amd64 \
   --file docker/Dockerfile \
   --tag bookshelfng:local \
@@ -114,17 +109,6 @@ this path; the standalone `linux-x64` build command below creates a different
 runtime output. `--packages` is for standalone app directories and is not
 needed for this Docker build.
 
-For a one-off UI check against the Compose service from the Quick Start, first
-run the frontend build above, then copy its compiled assets into the running
-container:
-
-```bash
-docker cp _output/UI/. "$(docker compose ps -q bookshelf)":/app/readarr/bin/UI/
-```
-
-This overwrites files in that one running container. Recreating the container
-discards the copy; build a custom image when you need a repeatable result.
-
 ## Build and package a standalone app locally
 
 These commands create an app directory to run directly on the host; they do
@@ -139,6 +123,11 @@ For a standard Linux x64 build, use the SDK runtime packs:
 ```bash
 ./build.sh --backend --frontend --packages --framework net10.0 --runtime linux-x64
 ```
+
+This checkout targets .NET 10. Older source-build guides may still show
+`--framework net6.0`; `build.sh` warns and maps that obsolete value to
+`net10.0` so the generated output stays under the correct framework directory.
+Use `net10.0` in new commands.
 
 The packaged app is under
 `_artifacts/linux-x64/net10.0/Readarr/`; it contains the `Readarr` executable
