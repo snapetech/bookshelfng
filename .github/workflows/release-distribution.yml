@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: all
+      chocolatey_use_main_packaging:
+        description: Use main's Chocolatey package scripts while resubmitting a pending version; the release archive still comes from the selected tag
+        required: false
+        type: boolean
+        default: false
       skip_announcement:
         description: Skip Discord announcement when retrying distribution
         required: false
@@ -67,6 +72,11 @@ on:
         required: false
         type: string
         default: all
+      chocolatey_use_main_packaging:
+        description: Use main's Chocolatey package scripts while resubmitting a pending version; the release archive still comes from the selected tag
+        required: false
+        type: boolean
+        default: false
       skip_announcement:
         description: Skip Discord announcement for a manual distribution retry
         required: false
@@ -97,8 +107,14 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ inputs.tag }}
+          CHANNELS: ${{ inputs.channels }}
+          CHOCOLATEY_USE_MAIN_PACKAGING: ${{ inputs.chocolatey_use_main_packaging }}
         run: |
           set -euo pipefail
+          if [[ "$CHOCOLATEY_USE_MAIN_PACKAGING" == true && "$CHANNELS" != chocolatey ]]; then
+            echo "Using main's Chocolatey scripts is only allowed when channels is exactly chocolatey." >&2
+            exit 2
+          fi
           tag="$RELEASE_TAG"
           [[ "$tag" =~ ^main-v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "Invalid BookshelfNG stable tag: $tag" >&2
@@ -953,7 +969,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.validate.outputs.tag }}
+          ref: ${{ inputs.chocolatey_use_main_packaging && 'main' || needs.validate.outputs.tag }}
           persist-credentials: false
 
       - name: Download Windows x64 archive

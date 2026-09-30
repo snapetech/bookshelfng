@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: all
+      chocolatey_use_main_packaging:
+        description: Use main's Chocolatey package scripts while resubmitting a pending version; the release archive still comes from the selected tag
+        required: false
+        type: boolean
+        default: false
       skip_announcement:
         description: Prevent a duplicate Discord announcement (true by default for retries)
         required: false
@@ -50,5 +55,6 @@ jobs:
       hardcover_digest: ${{ inputs.hardcover_digest }}
       runtime_pack_run_id: ${{ inputs.runtime_pack_run_id }}
       channels: ${{ inputs.channels }}
+      chocolatey_use_main_packaging: ${{ inputs.chocolatey_use_main_packaging }}
       skip_announcement: ${{ inputs.skip_announcement }}
     secrets: inherit

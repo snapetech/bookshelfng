@@ -6,6 +6,7 @@
     <title>BookshelfNG</title>
     <authors>Snapetech</authors>
     <owners>Snapetech</owners>
+    <copyright>Copyright (c) 2026 Snapetech</copyright>
     <projectUrl>https://github.com/snapetech/bookshelfng</projectUrl>
     <packageSourceUrl>https://github.com/snapetech/bookshelfng/tree/main/packaging/chocolatey</packageSourceUrl>
     <docsUrl>https://github.com/snapetech/bookshelfng#readme</docsUrl>
