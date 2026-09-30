@@ -19,6 +19,7 @@ namespace NzbDrone.Core.Instrumentation
                                       "VALUES(@Message,@Time,@Logger,@Exception,@ExceptionType,@Level)";
 
         private readonly IConnectionStringFactory _connectionStringFactory;
+        private bool _configurationChangedEventSubscribed;
 
         public DatabaseTarget(IConnectionStringFactory connectionStringFactory)
         {
@@ -33,22 +34,35 @@ namespace NzbDrone.Core.Instrumentation
 
             LogManager.Configuration.AddTarget("DbLogger", target);
             LogManager.Configuration.LoggingRules.Add(Rule);
-            LogManager.ConfigurationReloaded += OnLogManagerOnConfigurationReloaded;
+            if (!_configurationChangedEventSubscribed)
+            {
+                LogManager.ConfigurationChanged += OnLogManagerOnConfigurationChanged;
+                _configurationChangedEventSubscribed = true;
+            }
+
             LogManager.ReconfigExistingLoggers();
         }
 
         public void UnRegister()
         {
-            LogManager.ConfigurationReloaded -= OnLogManagerOnConfigurationReloaded;
+            if (_configurationChangedEventSubscribed)
+            {
+                LogManager.ConfigurationChanged -= OnLogManagerOnConfigurationChanged;
+                _configurationChangedEventSubscribed = false;
+            }
+
             LogManager.Configuration.RemoveTarget("DbLogger");
             LogManager.Configuration.LoggingRules.Remove(Rule);
             LogManager.ReconfigExistingLoggers();
             Dispose();
         }
 
-        private void OnLogManagerOnConfigurationReloaded(object sender, LoggingConfigurationReloadedEventArgs args)
+        private void OnLogManagerOnConfigurationChanged(object sender, LoggingConfigurationChangedEventArgs args)
         {
-            Register();
+            if (args.ActivatedConfiguration != null)
+            {
+                Register();
+            }
         }
 
         public LoggingRule Rule { get; set; }

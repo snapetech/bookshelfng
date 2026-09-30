@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   validate:
@@ -34,7 +35,9 @@ jobs:
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
-          PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || github.event.head_commit.message || '' }}
+          PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || '' }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event_name == 'push' && github.event.head_commit.message || '' }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -44,6 +47,12 @@ jobs:
             # A push can contain both user-facing commits and internal commits
             # marked release-note: none. Added fragments cover the whole push.
             : > "$body_file"
+          elif [[ "$GITHUB_EVENT_NAME" == 'push' ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/pulls" \
+              --jq '.[0].body // empty' > "$body_file"
+            if [[ ! -s "$body_file" ]]; then
+              printf '%s' "$HEAD_COMMIT_MESSAGE" > "$body_file"
+            fi
           else
             printf '%s' "$PR_BODY" > "$body_file"
           fi
