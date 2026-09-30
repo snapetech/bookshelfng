@@ -65,9 +65,8 @@ namespace Readarr.Api.V1.Calendar
                 occurrence.Description = book.Editions.Value.Single(x => x.Monitored).Overview;
                 occurrence.Categories = book.Genres;
 
-                occurrence.Start = new CalDateTime(book.ReleaseDate.Value.ToLocalTime()) { HasTime = false };
+                occurrence.Start = new CalDateTime(book.ReleaseDate.Value.ToLocalTime(), false);
                 occurrence.End = occurrence.Start;
-                occurrence.IsAllDay = true;
 
                 occurrence.Summary = $"{author.Name} - {book.Title}";
             }
