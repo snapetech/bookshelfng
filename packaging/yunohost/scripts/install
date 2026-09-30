@@ -1,0 +1,16 @@
+#!/bin/bash
+
+source _common.sh
+
+ynh_script_progression "Installing the pinned BookshelfNG release..."
+ynh_setup_source --dest_dir="$install_dir" --source_id="main"
+chown -R "$app:$app" "$install_dir"
+
+ynh_script_progression "Configuring persistent data, the local service, and the reverse proxy..."
+bookshelfng_prepare_service
+
+ynh_script_progression "Starting BookshelfNG..."
+bookshelfng_start_service
+bookshelfng_register_service
+
+ynh_script_progression "BookshelfNG installation completed"
