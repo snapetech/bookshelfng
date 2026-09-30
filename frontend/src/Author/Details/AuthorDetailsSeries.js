@@ -114,6 +114,7 @@ class AuthorDetailsSeries extends Component {
 
   render() {
     const {
+      id,
       label,
       items,
       positionMap,
