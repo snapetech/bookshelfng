@@ -827,6 +827,19 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$COPR_WEBHOOK_URL"
+          copr_url="$COPR_WEBHOOK_URL"
+          copr_url="${copr_url#"${copr_url%%[![:space:]]*}"}"
+          copr_url="${copr_url%"${copr_url##*[![:space:]]}"}"
+          if [[ "$copr_url" != https://* || "$copr_url" =~ [[:space:]] ]]; then
+            echo 'COPR_WEBHOOK_URL must be a whitespace-free HTTPS URL.' >&2
+            exit 1
+          fi
+          copr_authority="${copr_url#https://}"
+          copr_authority="${copr_authority%%[/?#]*}"
+          if [[ -z "$copr_authority" ]]; then
+            echo 'COPR_WEBHOOK_URL must include a host.' >&2
+            exit 1
+          fi
           response="$(curl \
             --fail-with-body \
             --silent \
@@ -834,7 +847,7 @@ jobs:
             --max-time 60 \
             --header 'Content-Type: text/plain' \
             --data-binary "$TAG" \
-            "$COPR_WEBHOOK_URL")"
+            "$copr_url")"
           echo "COPR accepted the build trigger for ${TAG}. The custom source downloads and verifies the release SRPM."
           if [[ -n "$response" ]]; then
             echo 'COPR webhook returned a response; see the job log if COPR reports an error.'
