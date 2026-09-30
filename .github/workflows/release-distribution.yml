@@ -596,10 +596,11 @@ jobs:
     if: >-
       always() &&
       needs.validate.result == 'success' &&
+      needs.publisher-credentials.result == 'success' &&
       needs.build-release-assets.result == 'success' &&
       needs.build-linux-packages.result == 'success' &&
       needs.build-helm.result == 'success'
-    needs: [validate, build-release-assets, build-linux-packages, build-helm]
+    needs: [validate, publisher-credentials, build-release-assets, build-linux-packages, build-helm]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -668,7 +669,7 @@ jobs:
           gh release edit "$TAG" --draft=false
 
   publisher-credentials:
-    name: Check optional publisher credentials
+    name: Validate optional publisher configuration
     needs: [validate]
     runs-on: ubuntu-latest
     outputs:
@@ -677,7 +678,13 @@ jobs:
       ppa: ${{ steps.check.outputs.ppa }}
       chocolatey: ${{ steps.check.outputs.chocolatey }}
     steps:
-      - id: check
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
+
+      - name: Validate configured publisher settings
+        id: check
         env:
           AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
           COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
@@ -686,13 +693,7 @@ jobs:
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
         run: |
           set -euo pipefail
-          for name in aur copr ppa chocolatey; do
-            echo "$name=false" >> "$GITHUB_OUTPUT"
-          done
-          [[ -n "$AUR_SSH_KEY" ]] && echo 'aur=true' >> "$GITHUB_OUTPUT" || echo 'AUR_SSH_KEY is not set; AUR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
-          [[ -n "$COPR_WEBHOOK_URL" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'COPR_WEBHOOK_URL is not set; COPR upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
-          [[ -n "$GPG_PRIVATE_KEY" && -n "$LAUNCHPAD_PPA" ]] && echo 'ppa=true' >> "$GITHUB_OUTPUT" || echo 'GPG_PRIVATE_KEY or LAUNCHPAD_PPA is not set; PPA upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
-          [[ -n "$CHOCOLATEY_API_KEY" ]] && echo 'chocolatey=true' >> "$GITHUB_OUTPUT" || echo 'CHOCOLATEY_API_KEY is not set; Chocolatey upload will be skipped.' >> "$GITHUB_STEP_SUMMARY"
+          bash scripts/validate-release-publisher-config.sh publishers
 
   publish-aur:
     name: Publish AUR package

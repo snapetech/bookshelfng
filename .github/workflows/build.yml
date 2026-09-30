@@ -57,6 +57,13 @@ jobs:
             exit 1
           fi
 
+      - name: Validate Discord webhook before publishing images
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/main-')
+        shell: bash
+        env:
+          DISCORD_RELEASE_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: bash scripts/validate-release-publisher-config.sh discord
+
       - uses: jdx/mise-action@v4
 
       - name: Setup Environment Variables
@@ -231,17 +238,14 @@ jobs:
       - name: Validate release tag and Discord configuration
         shell: bash
         env:
-          DISCORD_WEBHOOK_CONFIGURED: ${{ secrets.DISCORD_RELEASE_WEBHOOK != '' }}
+          DISCORD_RELEASE_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^main-v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "Invalid BookshelfNG release tag: $RELEASE_TAG" >&2
             exit 2
           }
-          test "$DISCORD_WEBHOOK_CONFIGURED" = true || {
-            echo 'DISCORD_RELEASE_WEBHOOK is required to complete a release.' >&2
-            exit 1
-          }
+          bash scripts/validate-release-publisher-config.sh discord
           test -n "$SOFTCOVER_DIGEST"
           test -n "$HARDCOVER_DIGEST"
 

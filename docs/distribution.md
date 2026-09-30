@@ -20,7 +20,7 @@ release and sends the existing Discord announcement.
 | Chocolatey | `bookshelfng` Windows package | Downloads the checksummed x64 release asset and registers a Windows service. |
 | Helm | OCI chart in GHCR | Chart is versioned with each stable BookshelfNG release. |
 | Containers | GHCR and Docker Hub | Multi-architecture `amd64` and `arm64`, with Softcover and Hardcover tags. |
-| Unraid | Community application template | Uses the Docker Hub Hardcover tag by default; edit the image tag for Softcover. |
+| Unraid | Community application template | Uses the moving `ghcr.io/snapetech/bookshelfng:hardcover` tag by default; use `:softcover` to keep Readarr-compatible database lineage. |
 
 The distribution workflow reports publisher channels that lack credentials as
 skipped. It does not claim an upload succeeded unless the publisher command
@@ -32,23 +32,33 @@ before expecting an external package store to receive a release.
 | Secret or variable | Used by |
 | --- | --- |
 | `AUR_SSH_KEY` | Pushes the `bookshelfng-bin` package to AUR. Add the matching public key to the AUR account. |
-| `COPR_WEBHOOK_URL` | Triggers the configured COPR custom source build after release assets are published. |
+| `COPR_WEBHOOK_URL` | Package-scoped COPR custom webhook URL for the `bookshelfng` package. |
 | `GPG_PRIVATE_KEY` | Signs source packages before upload to Launchpad. |
 | `LAUNCHPAD_PPA` | Existing PPA target (`ppa:<owner>/<archive>`), set as an Actions secret or repository variable. |
 | `CHOCOLATEY_API_KEY` | Pushes `bookshelfng` packages to Chocolatey Community Repository. |
 | `DISCORD_RELEASE_WEBHOOK` | Required. Sends the curated release notes and image digests to the BookshelfNG release channel. |
 
-The Launchpad upload runs only when `GPG_PRIVATE_KEY` and `LAUNCHPAD_PPA` are
-configured. Set `LAUNCHPAD_PPA` to an existing PPA as a repository variable or
-Actions secret; the publisher account must have permission to upload to it.
-The COPR build uses a custom webhook URL rather than a COPR API token. The URL
-can trigger the configured `bookshelfng` build only; treat it as a secret
-because anyone who obtains it can request a build. COPR's [API documentation](https://copr.fedorainfracloud.org/api/)
-says API tokens expire after 180 days. The [custom webhook documentation](https://docs.copr.fedorainfracloud.org/user_documentation.html#custom-webhook)
-and [custom source method documentation](https://docs.copr.fedorainfracloud.org/custom_source_method.html)
-do not describe a scheduled expiration for webhook URLs. The release workflow
-calls the URL only after the GitHub Release is public. COPR then downloads the
-versioned source RPM and its SHA-256 file from that release, verifies the
+Before making a GitHub Release public, the workflow validates configured
+optional publishers. It skips malformed AUR, COPR, Launchpad, or Chocolatey
+settings and records the reason in the workflow summary. Missing optional
+credentials are also reported and skipped. The required Discord webhook is
+validated before the release draft is created, so malformed settings do not
+leave a public release without its announcement.
+
+The Launchpad upload runs only when `GPG_PRIVATE_KEY` contains an importable
+private signing key and `LAUNCHPAD_PPA` names an existing public PPA. Set
+`LAUNCHPAD_PPA` as a repository variable or Actions secret; the publisher
+account must have permission to upload to it.
+
+The COPR build uses a custom webhook URL rather than a COPR API token. Use the
+package-scoped URL from the `bookshelfng` package settings, in this form:
+`https://copr.fedorainfracloud.org/webhooks/custom/<ID>/<UUID>/bookshelfng/`.
+The workflow skips the COPR channel if the URL does not match this route. Treat
+the URL as a secret because anyone who obtains it can request a build. COPR's
+[custom webhook documentation](https://docs.copr.fedorainfracloud.org/user_documentation.html#custom-webhook)
+describes this endpoint and the package-specific URL segment. The release
+workflow calls it only after the GitHub Release is public. COPR then downloads
+the versioned source RPM and its SHA-256 file from that release, verifies the
 checksum, and extracts the spec and sources for its build. The source
 preparation script is [`packaging/rpm/copr-source.sh`](../packaging/rpm/copr-source.sh).
 

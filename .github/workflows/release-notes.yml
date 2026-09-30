@@ -28,8 +28,8 @@ jobs:
           node-version: '22.22.2'
           package-manager-cache: false
 
-      - name: Test release-note selection
-        run: node --test scripts/release-notes.test.mjs
+      - name: Test repository scripts
+        run: node --test scripts/release-notes.test.mjs scripts/validate-release-publisher-config.test.mjs
 
       - name: Validate release-note fragment or explicit opt-out
         env:
