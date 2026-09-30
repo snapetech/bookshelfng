@@ -56,7 +56,10 @@ namespace NzbDrone.Core.Download.Clients.Direct
 
             if (!Json.TryDeserialize<DirectDownloadClientState>(json, out var state) || state == null)
             {
-                _logger.Warn("Ignoring malformed Direct download state file '{0}'.", stateFilePath);
+                var safeStateFilePath = (stateFilePath ?? string.Empty)
+                    .Replace('\r', ' ')
+                    .Replace('\n', ' ');
+                _logger.Warn("Ignoring malformed Direct download state file '{0}'.", safeStateFilePath);
                 return null;
             }
 

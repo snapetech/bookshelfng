@@ -291,7 +291,10 @@ namespace NzbDrone.Core.Books
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Unable to determine available space for media move target {0}", preview.DestinationPath);
+                var safeDestinationPath = (preview.DestinationPath ?? string.Empty)
+                    .Replace('\r', ' ')
+                    .Replace('\n', ' ');
+                _logger.Debug(ex, "Unable to determine available space for media move target {0}", safeDestinationPath);
                 preview.Warnings.Add("Available space at the destination could not be checked.");
             }
 

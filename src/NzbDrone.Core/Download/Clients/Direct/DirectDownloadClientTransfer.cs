@@ -67,7 +67,10 @@ namespace NzbDrone.Core.Download.Clients.Direct
             }
             catch (OperationCanceledException)
             {
-                _logger.Debug("Direct download '{0}' was cancelled.", downloadId);
+                var safeDownloadId = (downloadId ?? string.Empty)
+                    .Replace('\r', ' ')
+                    .Replace('\n', ' ');
+                _logger.Debug("Direct download '{0}' was cancelled.", safeDownloadId);
             }
             finally
             {
