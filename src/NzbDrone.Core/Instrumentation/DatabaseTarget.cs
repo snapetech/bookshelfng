@@ -39,6 +39,7 @@ namespace NzbDrone.Core.Instrumentation
                 LogManager.ConfigurationChanged += OnLogManagerOnConfigurationChanged;
                 _configurationChangedEventSubscribed = true;
             }
+
             LogManager.ReconfigExistingLoggers();
         }
 
@@ -49,6 +50,7 @@ namespace NzbDrone.Core.Instrumentation
                 LogManager.ConfigurationChanged -= OnLogManagerOnConfigurationChanged;
                 _configurationChangedEventSubscribed = false;
             }
+
             LogManager.Configuration.RemoveTarget("DbLogger");
             LogManager.Configuration.LoggingRules.Remove(Rule);
             LogManager.ReconfigExistingLoggers();
