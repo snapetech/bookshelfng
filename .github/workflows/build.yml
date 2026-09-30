@@ -57,7 +57,7 @@ jobs:
             exit 1
           fi
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4
 
       - name: Setup Environment Variables
         id: variables
@@ -136,9 +136,9 @@ jobs:
           reporter: dotnet-nunit
           fail-on-error: true
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: gr_meta
         with:
           images: |
@@ -149,7 +149,7 @@ jobs:
             type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
             type=raw,value=softcover-v${{ steps.variables.outputs.build_version }}
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: hc_meta
         with:
           images: |
@@ -173,7 +173,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         id: softcover_image
         with:
           context: .
@@ -189,7 +189,7 @@ jobs:
             IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
             IMAGE_FLAVOR=softcover
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         id: hardcover_image
         with:
           context: .

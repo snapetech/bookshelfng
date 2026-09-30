@@ -51,13 +51,64 @@ ASP.NET Core shared framework come from the platform packs. The workflow uses
 [`scripts/install-dotnet10-platform-runtime.sh`](../scripts/install-dotnet10-platform-runtime.sh)
 to assemble that test environment.
 
-## Building and packaging locally
+## Use a published Docker image
 
-A runnable BookshelfNG build needs both the .NET backend and the browser UI.
-Install Node.js 20 and Yarn Classic 1.22.19 as well as the .NET SDK. The
-`--frontend` option installs the locked Yarn dependencies and compiles the UI;
-`--packages` copies the UI beside the backend executable. A backend-only build
-does not produce a runnable app with a web interface.
+To run BookshelfNG in Docker, use the published image described in the
+[README quick start](../README.md#quick-start). Docker Compose pulls the full
+image, including the backend and web UI; no source checkout, .NET SDK, Node.js,
+or `build.sh` is needed.
+
+The path `/app/readarr/bin/UI` is inside the running container. It is not a
+folder on the host. Inspect it with:
+
+```bash
+docker exec <container-name> ls /app/readarr/bin/UI
+```
+
+Replace `<container-name>` with the name shown by `docker ps`.
+
+## Build a Docker image from source
+
+Use this path when testing changes from a source checkout. The Dockerfile
+consumes the backend and UI produced in `_output`, then copies them into the
+image. Build both parts before building the image:
+
+```bash
+./build.sh --backend --frontend
+docker buildx build --load --platform linux/amd64 \
+  --file docker/Dockerfile \
+  --tag bookshelfng:local \
+  --build-arg GIT_BRANCH=local \
+  --build-arg COMMIT_HASH=local \
+  --build-arg BUILD_DATE=local \
+  --build-arg IMAGE_VERSION=local \
+  --build-arg IMAGE_FLAVOR=hardcover \
+  --build-arg METADATA_URL=https://hardcover.bookinfo.pro \
+  --build-arg HARDCOVER=true \
+  .
+```
+
+Change `linux/amd64` to `linux/arm64` when building for an ARM64 host. The
+Dockerfile copies `_output/UI` into `/app/readarr/bin/UI` and selects the
+matching Linux musl backend output. Leave off `--runtime` and `--framework` on
+this path; the standalone `linux-x64` build command below creates a different
+runtime output. `--packages` is for standalone app directories and is not
+needed for this Docker build.
+
+For a one-off UI check against an existing container, you can copy the compiled
+assets with `docker cp _output/UI/. <container-name>:/app/readarr/bin/UI/`.
+Replace `<container-name>` with the name shown by `docker ps`. That changes only
+the current container; rebuilding or replacing it discards the copy. Build a
+custom image when you need a repeatable result.
+
+## Build and package a standalone app locally
+
+These commands create an app directory to run directly on the host; they do
+not build a Docker image. A runnable BookshelfNG build needs both the .NET
+backend and the browser UI. Install Node.js 20 and Yarn Classic 1.22.19 as well
+as the .NET SDK. The `--frontend` option installs the locked Yarn dependencies
+and compiles the UI; `--packages` copies the UI beside the backend executable.
+A backend-only build does not produce a runnable app with a web interface.
 
 For a standard Linux x64 build, use the SDK runtime packs:
 

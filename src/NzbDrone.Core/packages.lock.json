@@ -817,7 +817,7 @@
           "System.Data.SQLite.Core.Servarr": "[1.0.115.5-18, )",
           "System.IO.Abstractions": "[17.2.26, )",
           "System.ServiceProcess.ServiceController": "[10.0.12, )",
-          "System.ValueTuple": "[4.6.1, )"
+          "System.ValueTuple": "[4.6.2, )"
         }
       },
       "TagLibSharp-Lidarr": {
@@ -899,9 +899,9 @@
       },
       "System.ValueTuple": {
         "type": "CentralTransitive",
-        "requested": "[4.6.1, )",
-        "resolved": "4.6.1",
-        "contentHash": "+RJT4qaekpZ7DDLhf+LTjq+E48jieKiY9ulJ+BoxKmZblIJfIJT8Ufcaa/clQqnYvWs8jugfGSMu8ylS0caG0w=="
+        "requested": "[4.6.2, )",
+        "resolved": "4.6.2",
+        "contentHash": "yQgmjfFximrNm9LIV3mL6T5MzjeC+epeE5rl4hXxAlYmxby7RM1dPSkIKXk9HNkl6G54h2JHOmLD46+Pey+IRg=="
       }
     },
     "net10.0/linux-musl-arm64": {

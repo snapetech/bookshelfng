@@ -10,11 +10,11 @@
       },
       "ImpromptuInterface": {
         "type": "Direct",
-        "requested": "[7.0.1, )",
-        "resolved": "7.0.1",
-        "contentHash": "9w44OsRuNJoAX0dbVoNqdljCqQIk33Hha5W+BcnWVwawFCEuVBDZbPQafgE1gVvvRaQhc1FOIKuJIIhXZmadvA==",
+        "requested": "[8.1.0, )",
+        "resolved": "8.1.0",
+        "contentHash": "9zWkR/vTWT3BpIYURdJ56Rey6ZetpIbe8cbNgPkMntX+0rq1CbFRzBuJ9dr1Kf8+pIQLapt7TBHCBgJym/v+gg==",
         "dependencies": {
-          "Dynamitey": "2.0.9.136"
+          "Dynamitey": "3.0.3"
         }
       },
       "NLog": {
@@ -36,11 +36,8 @@
       },
       "Dynamitey": {
         "type": "Transitive",
-        "resolved": "2.0.9.136",
-        "contentHash": "SzGWOl8nKR4r7WYiyMgJ0n/MuncdtPSyjxe1+znH8KVKOFQAckXFOeqOXgcWSMLHT+ehAYtZHPWjX+GsH7eI4Q==",
-        "dependencies": {
-          "NETStandard.Library": "1.6.1"
-        }
+        "resolved": "3.0.3",
+        "contentHash": "ocF4rRKgnmBkblk8RrgRP9YxxeJBvoaoCNLXgmUMgQCjZRw2v6Rtqxt5Kni6/TtbvICeWVN9X/69G5jltUEnbQ=="
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
@@ -347,11 +344,6 @@
           "Microsoft.IdentityModel.Logging": "6.36.0"
         }
       },
-      "Microsoft.NETCore.Platforms": {
-        "type": "Transitive",
-        "resolved": "1.1.0",
-        "contentHash": "kz0PEW2lhqygehI/d6XsPCQzD7ff7gUJaVGPVETX611eadGsA3A877GdSlU0LRVMCTH/+P3o2iDTak+S08V2+A=="
-      },
       "MimeKit": {
         "type": "Transitive",
         "resolved": "4.18.1",
@@ -365,14 +357,6 @@
         "type": "Transitive",
         "resolved": "3.0.1",
         "contentHash": "TLaz/q4i81y5nRyqBlJO2JS73JRyB1y6uhcgxhiyIn3MMIgH1mlTOPZNX7uUB0XYg6+7Igp4tFAqf/u+Unc3tw=="
-      },
-      "NETStandard.Library": {
-        "type": "Transitive",
-        "resolved": "1.6.1",
-        "contentHash": "WcSp3+vP+yHNgS8EV5J7pZ9IRpeDuARBPN28by8zqff1wJQXm26PVU8L3/fYLBJVU7BtDyqNVWq2KlCVvSSR4A==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "1.1.0"
-        }
       },
       "Polly.Contrib.WaitAndRetry": {
         "type": "Transitive",
@@ -595,7 +579,7 @@
           "System.Data.SQLite.Core.Servarr": "[1.0.115.5-18, )",
           "System.IO.Abstractions": "[17.2.26, )",
           "System.ServiceProcess.ServiceController": "[10.0.12, )",
-          "System.ValueTuple": "[4.6.1, )"
+          "System.ValueTuple": "[4.6.2, )"
         }
       },
       "readarr.core": {
@@ -970,9 +954,9 @@
       },
       "System.ValueTuple": {
         "type": "CentralTransitive",
-        "requested": "[4.6.1, )",
-        "resolved": "4.6.1",
-        "contentHash": "+RJT4qaekpZ7DDLhf+LTjq+E48jieKiY9ulJ+BoxKmZblIJfIJT8Ufcaa/clQqnYvWs8jugfGSMu8ylS0caG0w=="
+        "requested": "[4.6.2, )",
+        "resolved": "4.6.2",
+        "contentHash": "yQgmjfFximrNm9LIV3mL6T5MzjeC+epeE5rl4hXxAlYmxby7RM1dPSkIKXk9HNkl6G54h2JHOmLD46+Pey+IRg=="
       }
     },
     "net10.0/linux-musl-arm64": {

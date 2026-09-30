@@ -150,6 +150,10 @@ handling, troubleshooting logs, and source-code references.
 
 ## Quick start
 
+For a normal Docker install, use the published image below. You do not need to
+clone the source repository or run `build.sh`; the image already contains the
+backend and web UI. Save the example as `compose.yaml` in an empty directory.
+
 The web interface listens on port `8787`. Persist `/config`, and mount your
 downloads and library paths so BookshelfNG and your download clients can
 access them.
@@ -167,8 +171,9 @@ services:
     restart: unless-stopped
 ```
 
-Start it with `docker compose up -d`, then open `http://localhost:8787` to set
-up your root folder, metadata source, indexers, and download clients. The
+Run `docker compose pull` and `docker compose up -d`, then open
+`http://localhost:8787` to set up your root folder, metadata source, indexers,
+and download clients. The
 `softcover` image is available for Goodreads-compatible libraries. Both
 published Linux images support `amd64` and `arm64` hosts.
 
