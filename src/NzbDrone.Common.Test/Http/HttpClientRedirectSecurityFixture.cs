@@ -43,45 +43,45 @@ namespace NzbDrone.Common.Test.Http
         }
 
         [Test]
-        public void should_not_forward_api_key_headers_to_another_origin()
+        public async Task should_not_forward_api_key_headers_to_another_origin()
         {
             var request = CreateRequest();
             request.Headers.Add("X-Api-Key", "secret");
 
-            Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
+            await Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
 
             Assert.That(_requests, Has.Count.EqualTo(1));
         }
 
         [Test]
-        public void should_not_forward_credentials_to_another_origin()
+        public async Task should_not_forward_credentials_to_another_origin()
         {
             var request = CreateRequest();
             request.Credentials = new NetworkCredential("reader", "secret");
 
-            Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
+            await Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
 
             Assert.That(_requests, Has.Count.EqualTo(1));
         }
 
         [Test]
-        public void should_not_forward_cookies_to_another_origin()
+        public async Task should_not_forward_cookies_to_another_origin()
         {
             var request = CreateRequest();
             request.Cookies.Add("session", "secret");
 
-            Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
+            await Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
 
             Assert.That(_requests, Has.Count.EqualTo(1));
         }
 
         [Test]
-        public void should_not_forward_request_bodies_to_another_origin()
+        public async Task should_not_forward_request_bodies_to_another_origin()
         {
             var request = CreateRequest();
             request.SetContent("{\"password\":\"secret\"}");
 
-            Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
+            await Assert.ThrowsAsync<WebException>(async () => await Subject.ExecuteAsync(request));
 
             Assert.That(_requests, Has.Count.EqualTo(1));
         }
