@@ -3,7 +3,7 @@
 source ../settings/scripts/_common.sh
 
 ynh_script_progression "Restoring BookshelfNG files..."
-ynh_restore
+ynh_restore "$install_dir"
 
 if [[ ! -d "$YNH_APP_BACKUP_DIR/data" ]]; then
 	ynh_die --message="BookshelfNG database and configuration snapshot is missing from this backup."
@@ -13,6 +13,8 @@ rsync --archive --delete "$YNH_APP_BACKUP_DIR/data/" "$data_dir/"
 chown -R "$app:$app" "$install_dir" "$data_dir"
 
 ynh_script_progression "Restoring the BookshelfNG service and reverse proxy..."
+ynh_restore "/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_restore "/etc/systemd/system/$app.service"
 bookshelfng_prepare_service
 
 ynh_script_progression "Starting BookshelfNG..."

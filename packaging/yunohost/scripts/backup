@@ -34,8 +34,8 @@ rsync --archive --delete \
 	"$data_dir/" "$YNH_APP_BACKUP_DIR/data/"
 
 ynh_print_info "Declaring BookshelfNG files for backup..."
-ynh_backup --src_path="$install_dir" --is_big
-ynh_backup --src_path="/etc/nginx/conf.d/$domain.d/$app.conf"
-ynh_backup --src_path="/etc/systemd/system/$app.service"
+ynh_backup "$install_dir"
+ynh_backup "/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_backup "/etc/systemd/system/$app.service"
 
 ynh_print_info "BookshelfNG backup declaration completed"
