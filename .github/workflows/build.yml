@@ -37,7 +37,7 @@ jobs:
       softcover_digest: ${{ steps.softcover_image.outputs.digest }}
       hardcover_digest: ${{ steps.hardcover_image.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -74,7 +74,7 @@ jobs:
           echo "Resolved BookshelfNG version: $build_version"
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: _cache/nuget
           key: nuget-${{ runner.os }}-${{ hashFiles('src/Directory.Packages.props', 'src/**/*.csproj', 'global.json') }}
@@ -82,7 +82,7 @@ jobs:
             nuget-${{ runner.os }}-
 
       - name: Cache Node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             _cache/node
@@ -92,7 +92,7 @@ jobs:
             node-${{ runner.os }}-
 
       - name: Cache MSBuild outputs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: _cache/msbuild
           key: msbuild-${{ runner.os }}-${{ hashFiles('src/**/*.cs', 'src/**/*.csproj', 'src/**/*.targets', 'src/**/*.props') }}
@@ -101,7 +101,7 @@ jobs:
             msbuild-${{ runner.os }}-
 
       - name: Cache Webpack
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: _cache/webpack
           key: webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
@@ -127,7 +127,7 @@ jobs:
         run: ./test.sh Linux Unit Test
 
       - name: Report test results
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Unit Test Results
@@ -160,14 +160,14 @@ jobs:
             type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
             type=raw,value=hardcover-v${{ steps.variables.outputs.build_version }}
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         if: ${{ github.event_name == 'push' }}
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         if: ${{ github.event_name == 'push' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -324,7 +324,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install git-cliff
-        uses: taiki-e/install-action@d438492cf8a250514fa2d34b30bc3c0dc37c65ff # v2.87.8
+        uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
         with:
           tool: git-cliff
 
