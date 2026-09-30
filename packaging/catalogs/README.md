@@ -18,4 +18,10 @@ download client shares that path.
 The `softcover-v0.4.21.37` tag is available for existing Goodreads-compatible
 libraries. The platform-specific submissions prepared from this contract are
 CasaOS / ZimaOS, Umbrel, TrueNAS, Cosmos, CapRover, Portainer, Co-op Cloud,
-Cloudron, and StartOS. Unraid and YunoHost are maintained separately.
+Cloudron, and StartOS. Unraid is maintained separately.
+
+The YunoHost package source lives in `packaging/yunohost/` and syncs to the
+sibling `bookshelfng_ynh` checkout's `testing` branch after each commit. Run
+`scripts/install-yunohost-sync-hook.sh` once to enable that post-commit hook;
+set `BOOKSHELFNG_YNH_REPO` if the package checkout is elsewhere. Package
+updates are submitted from `testing` to `main` as a pull request.

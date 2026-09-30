@@ -1,0 +1,1 @@
+BookshelfNG is an evolution of Readarr for ebook and audiobook libraries. It keeps Readarr's author and book monitoring and download automation, while adding selectable metadata catalogs, identifier-aware edition matching, broader ebook and audiobook format handling, and integrations such as Hardcover, MyAnonamouse, BookLore, and Calibre.
