@@ -133,12 +133,12 @@
       },
       "MonoTorrent": {
         "type": "Direct",
-        "requested": "[2.0.7, )",
-        "resolved": "2.0.7",
-        "contentHash": "xNzK9pD+U79/wB03ztOBv+7Pr8ra1nWmnLwcSPVQ2BkIL6yiiYiLVIGoECR9GTI5F2yRsQQv55hDbI7GsjYptA==",
+        "requested": "[3.0.2, )",
+        "resolved": "3.0.2",
+        "contentHash": "kWy0mLj2MKX9uUGe3lnNYfyQhthjUK4IAMNJO8llXP9yB3ZYfGaAy9ag20wMcjTz2YfhKOW/uZ5FR//BYZGeYA==",
         "dependencies": {
-          "Mono.Nat": "[3.0.1, 4.0.0)",
-          "ReusableTasks": "[2.0.0, 3.0.0)"
+          "Mono.Nat": "3.0.0",
+          "ReusableTasks": "4.0.0"
         }
       },
       "Newtonsoft.Json": {
@@ -599,8 +599,8 @@
       },
       "Mono.Nat": {
         "type": "Transitive",
-        "resolved": "3.0.1",
-        "contentHash": "TLaz/q4i81y5nRyqBlJO2JS73JRyB1y6uhcgxhiyIn3MMIgH1mlTOPZNX7uUB0XYg6+7Igp4tFAqf/u+Unc3tw=="
+        "resolved": "3.0.0",
+        "contentHash": "LgRC8/8plJfvr1nCPmyHNIwP4fs346doMA/UVDZvFN0RfGJdyD2uS7Dl1AydxjVLrIvad8ghozI0vYFWcfPeYQ=="
       },
       "Polly.Contrib.WaitAndRetry": {
         "type": "Transitive",
@@ -614,8 +614,8 @@
       },
       "ReusableTasks": {
         "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "HWb7Yy7dQfWPh0V4X42ounPkrzUvL6gB7bwshX7EqBDCl879iBQIS0TRrXFXKOTO2dNJxaEfXnAbX8Fzv3U7Cw=="
+        "resolved": "4.0.0",
+        "contentHash": "6EKzscjq+Q+uxD0N5GWUBO2N34cuDiJ08ZxRs1lqS0Hwvnjp6AgimUIX/8dqIxRZbPOG4gcikTMo+PM4D9CfaQ=="
       },
       "Servarr.FluentMigrator": {
         "type": "Transitive",
