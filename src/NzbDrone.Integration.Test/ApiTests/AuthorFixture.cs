@@ -10,7 +10,6 @@ namespace NzbDrone.Integration.Test.ApiTests
     public class AuthorFixture : IntegrationTest
     {
         [Test]
-        [Order(0)]
         public void add_author_with_tags_should_store_them()
         {
             EnsureNoAuthor("14586394", "Andrew Hunter Murray");
@@ -31,7 +30,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(0)]
+        [DependsOnTest(nameof(add_author_with_tags_should_store_them), AllowFailure = true)]
         public void add_author_without_profileid_should_return_badrequest()
         {
             EnsureNoAuthor("14586394", "Andrew Hunter Murray");
@@ -44,7 +43,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(0)]
+        [DependsOnTest(nameof(add_author_without_profileid_should_return_badrequest), AllowFailure = true)]
         public void add_author_without_path_should_return_badrequest()
         {
             EnsureNoAuthor("14586394", "Andrew Hunter Murray");
@@ -57,7 +56,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(1)]
+        [DependsOnTest(nameof(add_author_without_path_should_return_badrequest), AllowFailure = true)]
         public void add_author()
         {
             EnsureNoAuthor("14586394", "Andrew Hunter Murray");
@@ -78,7 +77,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(2)]
+        [DependsOnTest(nameof(add_author), AllowFailure = true)]
         public void get_all_author()
         {
             EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
@@ -92,7 +91,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(2)]
+        [DependsOnTest(nameof(get_all_author), AllowFailure = true)]
         public void get_author_by_id()
         {
             var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
@@ -109,7 +108,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(2)]
+        [DependsOnTest(nameof(get_author_by_id), AllowFailure = true)]
         public void update_author_profile_id()
         {
             var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
@@ -128,7 +127,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(3)]
+        [DependsOnTest(nameof(update_author_profile_id), AllowFailure = true)]
         public void update_author_monitored()
         {
             var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray", false);
@@ -143,7 +142,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(3)]
+        [DependsOnTest(nameof(update_author_monitored), AllowFailure = true)]
         public void update_author_tags()
         {
             var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
@@ -166,7 +165,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
-        [Order(4)]
+        [DependsOnTest(nameof(update_author_tags), AllowFailure = true)]
         public void delete_author()
         {
             var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
