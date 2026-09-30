@@ -3,9 +3,13 @@
 source /usr/share/yunohost/helpers
 
 bookshelfng_prepare_service() {
-	install -d -o "$app" -g "$app" -m 0750 "$data_dir/logs"
+	bookshelfng_prepare_log_dir
 	ynh_config_add_nginx
 	ynh_config_add_systemd
+}
+
+bookshelfng_prepare_log_dir() {
+	install -d -o "$app" -g "$app" -m 0750 "$data_dir/logs"
 }
 
 bookshelfng_start_service() {
