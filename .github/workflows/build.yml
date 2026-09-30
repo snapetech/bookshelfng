@@ -138,7 +138,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: gr_meta
         with:
           images: |
@@ -149,7 +149,7 @@ jobs:
             type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
             type=raw,value=softcover-v${{ steps.variables.outputs.build_version }}
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: hc_meta
         with:
           images: |
