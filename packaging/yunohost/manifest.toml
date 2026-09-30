@@ -5,7 +5,7 @@ packaging_format = 2
 id = "bookshelfng"
 name = "BookshelfNG"
 description.en = "An evolution of Readarr with more ebook and audiobook metadata, edition matching, formats, and integrations"
-version = "0.4.21.37~ynh6"
+version = "0.4.21.37~ynh7"
 maintainers = ["snapetech"]
 
 [upstream]
@@ -32,7 +32,7 @@ ram.runtime = "1G"
   [install.path]
   type = "path"
   default = "/bookshelfng"
-  pattern = { regexp = "^/[^/]+(/[^/]+)*$", error = "Choose a non-root URL path such as /bookshelfng." }
+  pattern = { regexp = "^/$|^/[^/]+(/[^/]+)*$", error = "Choose / for the domain root or a subpath such as /bookshelfng." }
 
   [install.init_main_permission]
   type = "group"
