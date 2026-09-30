@@ -37,7 +37,7 @@ jobs:
       softcover_digest: ${{ steps.softcover_image.outputs.digest }}
       hardcover_digest: ${{ steps.hardcover_image.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
