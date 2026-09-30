@@ -15,6 +15,7 @@ namespace NzbDrone.Core.Books
         Author GetAuthor(int authorId);
         Author GetAuthorByMetadataId(int authorMetadataId);
         List<Author> GetAuthors(IEnumerable<int> authorIds);
+        List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataIds);
         Author AddAuthor(Author newAuthor, bool doRefresh);
         List<Author> AddAuthors(List<Author> newAuthors, bool doRefresh);
         Author FindById(string foreignAuthorId);
@@ -221,6 +222,11 @@ namespace NzbDrone.Core.Books
         public List<Author> GetAuthors(IEnumerable<int> authorIds)
         {
             return _authorRepository.Get(authorIds).ToList();
+        }
+
+        public List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataIds)
+        {
+            return _authorRepository.GetAuthorsByMetadataId(authorMetadataIds);
         }
 
         public void RemoveAddOptions(Author author)

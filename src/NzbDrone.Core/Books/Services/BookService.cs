@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Books
         List<Book> GetCandidates(int authorMetadataId, string title);
         void DeleteBook(int bookId, bool deleteFiles, bool addImportListExclusion = false);
         List<Book> GetAllBooks();
+        PagingSpec<Book> GetPagedBooks(PagingSpec<Book> pagingSpec);
         Book UpdateBook(Book book);
         void SetBookMonitored(int bookId, bool monitored);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
@@ -174,6 +175,11 @@ namespace NzbDrone.Core.Books
         public List<Book> GetAllBooks()
         {
             return _bookRepository.All().ToList();
+        }
+
+        public PagingSpec<Book> GetPagedBooks(PagingSpec<Book> pagingSpec)
+        {
+            return _bookRepository.GetPaged(pagingSpec);
         }
 
         public Book GetBook(int bookId)
