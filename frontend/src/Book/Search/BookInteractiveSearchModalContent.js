@@ -20,23 +20,28 @@ function BookInteractiveSearchModalContent(props) {
     onModalClose
   } = props;
 
+  const hasSeries = seriesId !== null && seriesId !== undefined;
+  const hasBook = bookId !== null;
+  const searchPayload = hasSeries ? { seriesId, authorId } : { bookId };
+
+  let modalHeader = translate('InteractiveSearchModalHeader');
+
+  if (hasSeries) {
+    modalHeader = translate('InteractiveSearchModalHeaderSeriesAuthor', { seriesTitle, authorName });
+  } else if (hasBook) {
+    modalHeader = translate('InteractiveSearchModalHeaderBookAuthor', { bookTitle, authorName });
+  }
+
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>
-        {seriesId != null ?
-          translate('InteractiveSearchModalHeaderSeriesAuthor', { seriesTitle, authorName }) :
-          (bookId === null ?
-            translate('InteractiveSearchModalHeader') :
-            translate('InteractiveSearchModalHeaderBookAuthor', { bookTitle, authorName }))
-        }
+        {modalHeader}
       </ModalHeader>
 
       <ModalBody scrollDirection={scrollDirections.BOTH}>
         <InteractiveSearchConnector
           type="book"
-          searchPayload={{
-            ...(seriesId != null ? { seriesId, authorId } : { bookId })
-          }}
+          searchPayload={searchPayload}
         />
       </ModalBody>
 
