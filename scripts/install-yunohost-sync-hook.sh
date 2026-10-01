@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-source_hook="$repo_root/.githooks/post-commit"
+hook_names=(post-commit pre-push)
 sync_scripts=(
 	"$repo_root/scripts/sync-yunohost-package.sh"
 	"$repo_root/scripts/sync-unraid-package.sh"
@@ -25,7 +25,6 @@ if [[ "$hooks_dir" != /* ]]; then
 fi
 
 mkdir -p "$hooks_dir"
-hook_path="$hooks_dir/post-commit"
 
 for sync_script in "${sync_scripts[@]}"; do
 	if [[ ! -f "$sync_script" ]]; then
@@ -34,17 +33,31 @@ for sync_script in "${sync_scripts[@]}"; do
 	fi
 	chmod +x "$sync_script"
 done
-chmod +x "$source_hook"
 
-if [[ -e "$hook_path" || -L "$hook_path" ]]; then
-	if [[ "$hook_path" -ef "$source_hook" ]]; then
-		echo "BookshelfNG package sync hook is already installed."
-		exit 0
+for hook_name in "${hook_names[@]}"; do
+	source_hook="$repo_root/.githooks/$hook_name"
+	hook_path="$hooks_dir/$hook_name"
+	if [[ ! -f "$source_hook" ]]; then
+		echo "Missing package sync hook: $source_hook" >&2
+		exit 1
 	fi
 
-	echo "Refusing to replace an existing post-commit hook: $hook_path" >&2
-	exit 1
-fi
+	chmod +x "$source_hook"
+	if [[ -e "$hook_path" || -L "$hook_path" ]]; then
+		if [[ ! "$hook_path" -ef "$source_hook" ]]; then
+			echo "Refusing to replace an existing $hook_name hook: $hook_path" >&2
+			exit 1
+		fi
+	fi
+done
 
-ln -s "$source_hook" "$hook_path"
-echo "Installed BookshelfNG package sync hook at $hook_path"
+for hook_name in "${hook_names[@]}"; do
+	source_hook="$repo_root/.githooks/$hook_name"
+	hook_path="$hooks_dir/$hook_name"
+	if [[ -e "$hook_path" || -L "$hook_path" ]]; then
+		echo "BookshelfNG $hook_name package sync hook is already installed."
+	else
+		ln -s "$source_hook" "$hook_path"
+		echo "Installed BookshelfNG $hook_name package sync hook at $hook_path"
+	fi
+done

@@ -21,8 +21,8 @@ branch=main
 source_path=packaging/unraid
 
 if ! git -C "$repo_root" cat-file -e "HEAD:$source_path" >/dev/null 2>&1; then
-	echo "No committed Unraid package source exists at $source_path yet; skipping sync."
-	exit 0
+	echo "No committed Unraid package source exists at $source_path; cannot sync." >&2
+	exit 1
 fi
 
 if ! command -v rsync >/dev/null 2>&1; then

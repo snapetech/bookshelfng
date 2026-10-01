@@ -8,8 +8,8 @@ remote="${BOOKSHELFNG_YNH_REMOTE:-origin}"
 branch="${BOOKSHELFNG_YNH_BRANCH:-testing}"
 
 if ! git -C "$repo_root" cat-file -e "HEAD:packaging/yunohost" >/dev/null 2>&1; then
-	echo "No committed YunoHost package source exists at packaging/yunohost yet; skipping sync."
-	exit 0
+	echo "No committed YunoHost package source exists at packaging/yunohost; cannot sync." >&2
+	exit 1
 fi
 
 if ! git -C "$repo_root" cat-file -e "HEAD:packaging/yunohost/manifest.toml" >/dev/null 2>&1; then
@@ -17,9 +17,9 @@ if ! git -C "$repo_root" cat-file -e "HEAD:packaging/yunohost/manifest.toml" >/d
 	exit 1
 fi
 
-if [[ ! -d "$target_dir/.git" ]]; then
+if ! git -C "$target_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 	echo "YunoHost package checkout not found at $target_dir; clone it or set BOOKSHELFNG_YNH_REPO." >&2
-	exit 0
+	exit 1
 fi
 
 if ! command -v rsync >/dev/null 2>&1; then
