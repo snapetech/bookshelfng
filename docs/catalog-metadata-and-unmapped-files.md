@@ -34,6 +34,11 @@ API. For example, `metadataCoverSourcePreference` and
 `metadataAuthorImageSourcePreference` can select separate image catalogs on
 `PUT /api/v1/config/metadataprovider/1`.
 
+Author portraits use their own source preference, independent of book fields.
+For example, Open Library can supply author portraits while Internet Archive
+supplies a book's description and cover and another catalog supplies its
+genres.
+
 ## Retry unmapped library files
 
 The **Unmapped Files** page lists files still missing a book edition. Use

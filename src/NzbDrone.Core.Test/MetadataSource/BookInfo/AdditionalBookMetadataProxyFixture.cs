@@ -6,8 +6,10 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http;
+using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Test.Framework;
 
@@ -37,6 +39,8 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
                             ? request.Url.Path.EndsWith("advancedsearch.php", StringComparison.Ordinal) ? InternetArchiveSearchResponse() : InternetArchiveDetailResponse()
                             : request.Url.Host == "www.loc.gov"
                                 ? request.Url.Path.EndsWith("/books/", StringComparison.Ordinal) ? LocSearchResponse() : LocDetailResponse()
+                                : request.Url.Host == "openlibrary.org"
+                                    ? OpenLibraryResponse(request.Url.Path)
                                 : request.Url.Path.EndsWith("search.json", StringComparison.Ordinal)
                                     ? SearchResponse()
                                     : DetailResponse();
@@ -206,6 +210,85 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
                 It.IsAny<TimeSpan>()), Times.Once());
         }
 
+        [Test]
+        public void should_compose_book_metadata_cover_and_author_image_from_independent_catalogs()
+        {
+            Environment.SetEnvironmentVariable("BOOKSHELF_METADATA_SOURCES", "internetarchive,openlibrary");
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.MetadataDescriptionSourcePreference)
+                .Returns("internetarchive");
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.MetadataCoverSourcePreference)
+                .Returns("internetarchive");
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.MetadataGenresSourcePreference)
+                .Returns("openlibrary");
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(x => x.MetadataAuthorImageSourcePreference)
+                .Returns("openlibrary");
+
+            var book = CreatePrimaryBook();
+            var proxy = CreateProxy();
+
+            proxy.ApplyFieldSourcePreferences(book);
+            proxy.ApplyAuthorImageSourcePreference(book.Author.Value, book);
+
+            book.ForeignBookId.Should().Be("hardcover:alice-work");
+            book.Editions.Value.Should().ContainSingle();
+            book.Editions.Value[0].ForeignEditionId.Should().Be("hardcover-edition:alice-1994");
+            book.Editions.Value[0].Isbn13.Should().Be("9781850812333");
+            book.Editions.Value[0].Overview.Should().Be("An Internet Archive description.");
+            book.Editions.Value[0].Images.Should().ContainSingle()
+                .Which.Url.Should().Be("https://archive.org/services/img/alicesadventures0000carr_y8t2");
+            book.Genres.Should().Contain("Fantasy");
+            book.Author.Value.Metadata.Value.ForeignAuthorId.Should().Be("hardcover-author:lewis-carroll");
+            book.Author.Value.Metadata.Value.Images.Should().ContainSingle()
+                .Which.Url.Should().Be("https://covers.openlibrary.org/a/id/123456-M.jpg?default=false");
+        }
+
+        private static Book CreatePrimaryBook()
+        {
+            var authorMetadata = new AuthorMetadata
+            {
+                ForeignAuthorId = "hardcover-author:lewis-carroll",
+                Name = "Lewis Carroll"
+            };
+            var author = new Author
+            {
+                Metadata = authorMetadata,
+                Books = new System.Collections.Generic.List<Book>()
+            };
+            var book = new Book
+            {
+                ForeignBookId = "hardcover:alice-work",
+                Title = "Alice's Adventures in Wonderland",
+                CleanTitle = "Alices Adventures in Wonderland",
+                AuthorMetadata = authorMetadata,
+                Author = author,
+                Genres = new System.Collections.Generic.List<string> { "Primary catalog genre" },
+                Editions = new System.Collections.Generic.List<Edition>
+                {
+                    new Edition
+                    {
+                        ForeignEditionId = "hardcover-edition:alice-1994",
+                        Isbn13 = "9781850812333",
+                        Title = "Alice's Adventures in Wonderland",
+                        Overview = "Primary catalog description.",
+                        Images = new System.Collections.Generic.List<MediaCover.MediaCover>
+                        {
+                            new MediaCover.MediaCover
+                            {
+                                Url = "https://primary.example/alice.jpg",
+                                CoverType = MediaCoverTypes.Cover
+                            }
+                        }
+                    }
+                }
+            };
+            author.Books.Value.Add(book);
+            return book;
+        }
+
         private AdditionalBookMetadataProxy CreateProxy() => new (
             Mocker.GetMock<IHttpClient>().Object,
             Mocker.GetMock<ICachedHttpResponseService>().Object,
@@ -290,11 +373,94 @@ namespace NzbDrone.Core.Test.MetadataSource.BookInfo
             ["identifier"] = "alicesadventures0000carr_y8t2",
             ["title"] = "Alice's Adventures in Wonderland",
             ["creator"] = new JArray("Carroll, Lewis, 1832-1898"),
-            ["description"] = new JArray("A public catalog record."),
+            ["description"] = new JArray("An Internet Archive description."),
             ["date"] = "1994",
             ["language"] = "eng",
             ["isbn"] = new JArray("1850812330", "9781850812333")
         };
+
+        private static JObject OpenLibraryResponse(string path)
+        {
+            if (path == "/search.json")
+            {
+                return new JObject
+                {
+                    ["docs"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["key"] = "/works/OL82586W",
+                            ["title"] = "Alice's Adventures in Wonderland",
+                            ["author_name"] = new JArray("Lewis Carroll"),
+                            ["author_key"] = new JArray("OL1A"),
+                            ["subject"] = new JArray("Fantasy", "Adventure"),
+                            ["editions"] = new JObject
+                            {
+                                ["docs"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["key"] = "/books/OL7394331M",
+                                        ["title"] = "Alice's Adventures in Wonderland",
+                                        ["isbn_13"] = new JArray("9781850812333"),
+                                        ["covers"] = new JArray(98765)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            if (path == "/works/OL82586W.json")
+            {
+                return new JObject
+                {
+                    ["title"] = "Alice's Adventures in Wonderland",
+                    ["authors"] = new JArray
+                    {
+                        new JObject { ["author"] = new JObject { ["key"] = "/authors/OL1A" } }
+                    },
+                    ["description"] = new JObject { ["value"] = "An Open Library description." },
+                    ["subjects"] = new JArray("Fantasy", "Adventure"),
+                    ["covers"] = new JArray(98765)
+                };
+            }
+
+            if (path == "/works/OL82586W/editions.json")
+            {
+                return new JObject
+                {
+                    ["entries"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["key"] = "/books/OL7394331M",
+                            ["title"] = "Alice's Adventures in Wonderland",
+                            ["isbn_13"] = new JArray("9781850812333"),
+                            ["publishers"] = new JArray("Open Library Press"),
+                            ["covers"] = new JArray(98765)
+                        }
+                    }
+                };
+            }
+
+            if (path == "/authors/OL1A.json")
+            {
+                return new JObject
+                {
+                    ["name"] = "Lewis Carroll",
+                    ["photos"] = new JArray(123456)
+                };
+            }
+
+            if (path == "/authors/OL1A/works.json")
+            {
+                return new JObject { ["entries"] = new JArray() };
+            }
+
+            return new JObject();
+        }
 
         private static JObject LocSearchResponse() => new ()
         {

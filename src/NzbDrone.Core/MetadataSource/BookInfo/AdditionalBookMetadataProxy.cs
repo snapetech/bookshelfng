@@ -525,7 +525,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 try
                 {
-                    var sourceBook = SearchProvider(source, query)
+                    var sourceBook = SearchProvider(query, source)
                         .FirstOrDefault(candidate => IsSameWork(targetBook, candidate));
                     var sourceMetadata = sourceBook?.AuthorMetadata?.Value;
                     if (sourceMetadata == null || NormalizeMatchText(sourceMetadata.Name) != targetAuthorName)
