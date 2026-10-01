@@ -29,18 +29,18 @@ trap finish_backup EXIT
 #=================================================
 # STOP SYSTEMD SERVICE
 #=================================================
-ynh_script_progression "Preparing a consistent BookshelfNG backup..."
+ynh_print_info "Preparing a consistent BookshelfNG backup..."
 
 if systemctl is-active --quiet "$app"; then
     service_was_active=true
-    ynh_script_progression "Stopping BookshelfNG for a consistent database backup..."
+    ynh_print_info "Stopping BookshelfNG for a consistent database snapshot..."
     ynh_systemctl --service="$app" --action="stop"
 fi
 
 #=================================================
 # BACKUP THE DATA DIR
 #=================================================
-ynh_script_progression "Snapshotting BookshelfNG configuration and database..."
+ynh_print_info "Snapshotting BookshelfNG configuration and database..."
 
 mkdir -p "$YNH_APP_BACKUP_DIR/data"
 rsync --archive --delete \
@@ -51,7 +51,7 @@ rsync --archive --delete \
 #=================================================
 # BACKUP THE APP MAIN DIR
 #=================================================
-ynh_script_progression "Declaring BookshelfNG files for backup..."
+ynh_print_info "Declaring BookshelfNG files for backup..."
 
 ynh_backup "$install_dir"
 
@@ -64,4 +64,4 @@ ynh_backup "/etc/systemd/system/$app.service"
 #=================================================
 # END OF SCRIPT
 #=================================================
-ynh_script_progression "BookshelfNG backup declaration completed"
+ynh_print_info "BookshelfNG backup declaration completed"
