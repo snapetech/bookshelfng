@@ -335,13 +335,20 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     var fileRootFolder = _rootFolderService.GetBestRootFolder(file.Path);
                     var fileInfo = _diskProvider.GetFileInfo(file.Path);
                     var fileTrackInfo = _metadataTagService.ReadTags(fileInfo) ?? new ParsedTrackInfo();
+                    var part = fileTrackInfo.TrackNumbers.FirstOrDefault();
+
+                    // Keep unknown audio part numbers at zero so ImportApprovedBooks can infer their order.
+                    if (part == 0 && !MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(file.Path)))
+                    {
+                        part = 1;
+                    }
 
                     var localTrack = new LocalBook
                     {
                         ExistingFile = fileRootFolder != null,
                         FileTrackInfo = fileTrackInfo,
                         Path = file.Path,
-                        Part = fileTrackInfo.TrackNumbers.Any() ? fileTrackInfo.TrackNumbers.First() : 1,
+                        Part = part,
                         PartCount = importBookId.Count(),
                         Size = fileInfo.Length,
                         Modified = fileInfo.LastWriteTimeUtc,

@@ -186,6 +186,20 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
             _bookpass3.Verify(c => c.IsSatisfiedBy(It.IsAny<LocalEdition>(), It.IsAny<DownloadClientItem>()), Times.Once());
         }
 
+        [TestCase(@"C:\Test\UnknownPart.mp3", 0)]
+        [TestCase(@"C:\Test\UnknownPart.epub", 1)]
+        public void should_preserve_unknown_audio_parts_but_default_unknown_ebook_parts(string path, int expectedPart)
+        {
+            GivenAudioFiles(new[] { path.AsOsAgnostic() });
+            Mocker.GetMock<IMetadataTagService>()
+                .Setup(s => s.ReadTags(It.IsAny<IFileInfo>()))
+                .Returns(new ParsedTrackInfo { TrackNumbers = new[] { 0 } });
+
+            var tracks = Subject.GetLocalTracks(_fileInfos, null, null, FilterFilesType.None).Item1;
+
+            tracks.Should().ContainSingle().Which.Part.Should().Be(expectedPart);
+        }
+
         [Test]
         public void should_call_all_track_specifications_if_book_accepted()
         {

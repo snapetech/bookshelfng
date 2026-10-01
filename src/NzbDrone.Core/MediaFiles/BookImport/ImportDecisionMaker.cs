@@ -111,13 +111,20 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 try
                 {
                     var fileTrackInfo = _metadataTagService.ReadTags(file);
+                    var part = fileTrackInfo.TrackNumbers.FirstOrDefault();
+
+                    // Keep unknown audio part numbers at zero so ImportApprovedBooks can infer their order.
+                    if (part == 0 && !MediaFileExtensions.AudioExtensions.Contains(file.Extension))
+                    {
+                        part = 1;
+                    }
 
                     localTrack = new LocalBook
                     {
                         DownloadClientBookInfo = downloadClientItemInfo,
                         FolderTrackInfo = folderInfo,
                         Path = file.FullName,
-                        Part = fileTrackInfo.TrackNumbers.Any() ? fileTrackInfo.TrackNumbers.First() : 1,
+                        Part = part,
                         Size = file.Length,
                         Modified = file.LastWriteTimeUtc,
                         FileTrackInfo = fileTrackInfo,
