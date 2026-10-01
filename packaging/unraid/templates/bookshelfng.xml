@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>BookshelfNG</Name>
+  <Repository>ghcr.io/snapetech/bookshelfng:latest</Repository>
+  <Registry>https://ghcr.io/snapetech/bookshelfng</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Icon>https://raw.githubusercontent.com/snapetech/bookshelfng/main/Logo/512.png</Icon>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <Overview>Built on .NET 10 LTS, one BookshelfNG instance manages ebook and audiobook libraries, with optional SeerrNG integration.</Overview>
+  <Description>BookshelfNG is a complete standalone library and acquisition app; SeerrNG is optional. This Snapetech NG fork supplies the book contract used by SeerrNG. The Hardcover image needs a personal Hardcover API token for native metadata. Add it in HARDCOVER_AUTH or in BookshelfNG settings. One instance can manage both ebooks and audiobooks; point both SeerrNG service entries at this instance when using both formats. Do not attach an existing softcover or Readarr database to the Hardcover image without migration.</Description>
+  <Support>https://github.com/snapetech/seerrng/issues</Support>
+  <Project>https://github.com/snapetech/bookshelfng</Project>
+  <TemplateURL>https://raw.githubusercontent.com/snapetech/bookshelfng-unraid/main/templates/bookshelfng.xml</TemplateURL>
+  <ReadMe>https://github.com/snapetech/bookshelfng-unraid/blob/main/docs/installation.md</ReadMe>
+  <Category>MediaApp:Books</Category>
+  <ExtraSearchTerms>bookshelfng bookshelf readarr hardcover ebook audiobook seerrng</ExtraSearchTerms>
+  <Changes>Use the rolling latest tag for the Hardcover image. BookshelfNG runs independently with optional SeerrNG integration.</Changes>
+  <Requires>Docker and persistent appdata. Configure this app independently before connecting it to SeerrNG.</Requires>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+
+  <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Web UI Port for the standalone web interface." Type="Port" Display="always" Required="false" Mask="false">8787</Config>
+  <Config Name="Appdata" Target="/config" Default="/mnt/user/appdata/bookshelfng" Mode="rw" Description="Persistent BookshelfNG database, settings, and logs." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/bookshelfng</Config>
+  <Config Name="Media" Target="/data" Default="/mnt/user/media" Mode="rw" Description="Ebook and audiobook library root." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/media</Config>
+  <Config Name="Downloads" Target="/download" Default="/mnt/user/downloads" Mode="rw" Description="Downloads shared with the configured download client." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/downloads</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for files created by this service." Type="Variable" Display="always" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for files created by this service." Type="Variable" Display="always" Required="false" Mask="false">100</Config>
+  <Config Name="TZ" Target="TZ" Default="Etc/UTC" Mode="" Description="Time zone used by this service." Type="Variable" Display="always" Required="false" Mask="false">Etc/UTC</Config>
+  <Config Name="HARDCOVER" Target="HARDCOVER" Default="true" Mode="" Description="Enable Hardcover metadata for this image." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="HARDCOVER_NATIVE" Target="HARDCOVER_NATIVE" Default="true" Mode="" Description="Use native Hardcover metadata access." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="HARDCOVER_AUTH" Target="HARDCOVER_AUTH" Default="" Mode="" Description="Personal Hardcover API token, including the Bearer prefix. Can also be entered in BookshelfNG settings." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+</Container>

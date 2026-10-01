@@ -3,11 +3,15 @@ set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 source_hook="$repo_root/.githooks/post-commit"
+sync_scripts=(
+	"$repo_root/scripts/sync-yunohost-package.sh"
+	"$repo_root/scripts/sync-unraid-package.sh"
+)
 local_hooks_dir="$(git -C "$repo_root" config --local --path core.hooksPath || true)"
 effective_hooks_dir="$(git -C "$repo_root" config --path core.hooksPath || true)"
 
 if [[ -n "$effective_hooks_dir" && -z "$local_hooks_dir" ]]; then
-	echo "A shared core.hooksPath is configured. Set a repository-local core.hooksPath before installing this hook." >&2
+	echo "A shared core.hooksPath is configured. Set a repository-local core.hooksPath before installing the package sync hook." >&2
 	exit 1
 fi
 
@@ -23,9 +27,18 @@ fi
 mkdir -p "$hooks_dir"
 hook_path="$hooks_dir/post-commit"
 
+for sync_script in "${sync_scripts[@]}"; do
+	if [[ ! -f "$sync_script" ]]; then
+		echo "Missing package sync script: $sync_script" >&2
+		exit 1
+	fi
+	chmod +x "$sync_script"
+done
+chmod +x "$source_hook"
+
 if [[ -e "$hook_path" || -L "$hook_path" ]]; then
 	if [[ "$hook_path" -ef "$source_hook" ]]; then
-		echo "BookshelfNG YunoHost sync hook is already installed."
+		echo "BookshelfNG package sync hook is already installed."
 		exit 0
 	fi
 
@@ -33,6 +46,5 @@ if [[ -e "$hook_path" || -L "$hook_path" ]]; then
 	exit 1
 fi
 
-chmod +x "$source_hook" "$repo_root/scripts/sync-yunohost-package.sh"
 ln -s "$source_hook" "$hook_path"
-echo "Installed BookshelfNG YunoHost sync hook at $hook_path"
+echo "Installed BookshelfNG package sync hook at $hook_path"

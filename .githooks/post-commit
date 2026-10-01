@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-exec "$repo_root/scripts/sync-yunohost-package.sh"
+overall_status=0
+
+for script in sync-yunohost-package.sh sync-unraid-package.sh; do
+	sync_script="$repo_root/scripts/$script"
+	if [[ ! -f "$sync_script" ]]; then
+		echo "Package sync script not found: $sync_script" >&2
+		overall_status=1
+		continue
+	fi
+
+	if bash "$sync_script"; then
+		:
+	else
+		sync_status=$?
+		echo "Package sync failed: $script (exit $sync_status)." >&2
+		overall_status=1
+	fi
+done
+
+exit "$overall_status"

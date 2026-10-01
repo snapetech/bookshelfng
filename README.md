@@ -1,10 +1,15 @@
 # BookshelfNG
 
+[![.NET 10 LTS](https://img.shields.io/badge/.NET-10%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/platform/support/policy)
+
 BookshelfNG is a self-hosted ebook and audiobook library manager descended
 from Readarr. Follow authors and books, monitor indexers for new releases,
 automatically grab downloads, and organize, rename, and upgrade files in your
 library. BookshelfNG is a complete app on its own. It does not require SeerrNG
 or a metadata proxy.
+
+BookshelfNG is built on .NET 10 LTS. Published containers and native release
+archives include the required runtime; source builds require the .NET 10 SDK.
 
 On Unraid, install [BookshelfNG from Community Apps](https://ca.unraid.net/apps/bookshelfng-1fdcqrv18pja7r).
 See the [Unraid installation guide](https://github.com/snapetech/bookshelfng-unraid#installation-and-setup)
@@ -508,6 +513,12 @@ you can also authenticate with package read access.
 
 Please file a GitHub issue or start a discussion for help. Contributions are
 welcome, especially fixes and quality-of-life improvements.
+
+After cloning, maintainers can run `scripts/install-yunohost-sync-hook.sh` to
+install the post-commit package sync hook. It mirrors committed Unraid package
+files from `packaging/unraid/` and runs the existing YunoHost package sync. Set
+`BOOKSHELFNG_UNRAID_REPO` or `BOOKSHELFNG_YNH_REPO` if either companion checkout
+is outside the sibling-repository layout.
 
 ## Optional diagnostics
 
