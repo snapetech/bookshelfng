@@ -3,12 +3,16 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(git -C "$script_dir/.." rev-parse --show-toplevel)"
-source_repo="$(basename "$repo_root")"
+# Worktree directory names are arbitrary, so identify the product from its Git remote.
+origin_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+source_repo="${origin_url%/}"
+source_repo="${source_repo##*/}"
+source_repo="${source_repo%.git}"
 
 case "$source_repo" in
 	bookshelfng|chaptarrng) ;;
 	*)
-		echo "Unraid package sync is not configured for $source_repo." >&2
+		echo "Unraid package sync is not configured for the source repository '$source_repo'." >&2
 		exit 1
 		;;
 esac
