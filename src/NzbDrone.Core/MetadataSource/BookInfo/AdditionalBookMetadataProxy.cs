@@ -720,9 +720,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             var (provider, encodedName) = ParseId(foreignAuthorId);
+            var source = provider.EndsWith("-author", StringComparison.OrdinalIgnoreCase)
+                ? provider.Substring(0, provider.Length - "-author".Length)
+                : provider;
             var name = Decode(encodedName);
-            var books = IsEnabled(provider)
-                ? SearchSources(name, new HashSet<string>(new[] { provider }, StringComparer.OrdinalIgnoreCase))
+            var books = IsEnabled(source)
+                ? SearchSources(name, new HashSet<string>(new[] { source }, StringComparer.OrdinalIgnoreCase))
                 : new List<Book>();
             books = books.Where(x =>
                 x.AuthorMetadata.Value.ForeignAuthorId == foreignAuthorId).ToList();
