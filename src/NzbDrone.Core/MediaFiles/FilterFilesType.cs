@@ -4,6 +4,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         None,
         Matched,
-        Known
+        Known,
+        Unmapped
     }
 }

@@ -178,7 +178,9 @@ class UnmappedFilesTable extends Component {
       onTableOptionChange,
       onSortPress,
       isScanningFolders,
+      isRetryingUnmappedFiles,
       onAddMissingAuthorsPress,
+      onRetryUnmappedFilesPress,
       deleteUnmappedFiles,
       ...otherProps
     } = this.props;
@@ -199,14 +201,22 @@ class UnmappedFilesTable extends Component {
             <PageToolbarButton
               label={translate('AddMissing')}
               iconName={icons.ADD_MISSING_AUTHORS}
-              isDisabled={isPopulated && !error && !items.length}
+              isDisabled={isScanningFolders || isRetryingUnmappedFiles || (isPopulated && !error && !items.length)}
               isSpinning={isScanningFolders}
               onPress={onAddMissingAuthorsPress}
             />
             <PageToolbarButton
+              label={translate('RetryUnmappedFiles')}
+              iconName={icons.REFRESH}
+              spinningName={icons.REFRESH}
+              isDisabled={isScanningFolders || isRetryingUnmappedFiles || (isPopulated && !error && !items.length)}
+              isSpinning={isRetryingUnmappedFiles}
+              onPress={onRetryUnmappedFilesPress}
+            />
+            <PageToolbarButton
               label={translate('DeleteSelected')}
               iconName={icons.DELETE}
-              isDisabled={selectedTrackFileIds.length === 0}
+              isDisabled={isDeleting || selectedTrackFileIds.length === 0}
               isSpinning={isDeleting}
               onPress={this.onDeleteUnmappedFilesPress}
             />
@@ -289,7 +299,9 @@ UnmappedFilesTable.propTypes = {
   deleteUnmappedFile: PropTypes.func.isRequired,
   deleteUnmappedFiles: PropTypes.func.isRequired,
   isScanningFolders: PropTypes.bool.isRequired,
-  onAddMissingAuthorsPress: PropTypes.func.isRequired
+  isRetryingUnmappedFiles: PropTypes.bool.isRequired,
+  onAddMissingAuthorsPress: PropTypes.func.isRequired,
+  onRetryUnmappedFilesPress: PropTypes.func.isRequired
 };
 
 export default UnmappedFilesTable;

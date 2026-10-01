@@ -38,6 +38,7 @@ namespace Readarr.Api.V1.Config
         public string MetadataReleaseDateSourcePreference { get; set; }
         public string MetadataPageCountSourcePreference { get; set; }
         public string MetadataCoverSourcePreference { get; set; }
+        public string MetadataAuthorImageSourcePreference { get; set; }
         public string MetadataGenresSourcePreference { get; set; }
 
         // Credential inputs are write-only: GET returns an empty input plus a
@@ -130,6 +131,7 @@ namespace Readarr.Api.V1.Config
                 MetadataReleaseDateSourcePreference = model.MetadataReleaseDateSourcePreference,
                 MetadataPageCountSourcePreference = model.MetadataPageCountSourcePreference,
                 MetadataCoverSourcePreference = model.MetadataCoverSourcePreference,
+                MetadataAuthorImageSourcePreference = model.MetadataAuthorImageSourcePreference,
                 MetadataGenresSourcePreference = model.MetadataGenresSourcePreference,
                 GoogleBooksApiKey = string.Empty,
                 HasGoogleBooksApiKey = !string.IsNullOrWhiteSpace(googleBooksApiKey),

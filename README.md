@@ -298,10 +298,12 @@ including the configured primary provider's catalog search.
 
 Field-level metadata preferences are configured separately from catalog
 search. Choose an enabled supplemental catalog for a book's title,
-description, publisher, language, release date, page count, cover, or genres.
-The alternate catalog only supplies a field when it returns an edition with
-the same ISBN; otherwise BookshelfNG keeps the selected book source's value.
+description, publisher, language, release date, page count, cover, genres, or
+author image. Edition details require a matching ISBN; work-level metadata
+and images can also use an exact title-and-author match.
 See [capabilities and compatibility](docs/capabilities-and-compatibility.md#per-field-metadata-source-preferences).
+Use [catalog metadata composition and unmapped-file recovery](docs/catalog-metadata-and-unmapped-files.md)
+to retry old no-match files in the UI, API, or CLI.
 
 `BOOKSHELF_METADATA_SOURCES` accepts `hardcover`, `metadata-api`,
 `openlibrary`, `googlebooks`, `loc`, `gutendex`, `internetarchive`, `ndl`,

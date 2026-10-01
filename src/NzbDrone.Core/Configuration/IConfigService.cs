@@ -80,6 +80,7 @@ namespace NzbDrone.Core.Configuration
         string MetadataReleaseDateSourcePreference { get; set; }
         string MetadataPageCountSourcePreference { get; set; }
         string MetadataCoverSourcePreference { get; set; }
+        string MetadataAuthorImageSourcePreference { get; set; }
         string MetadataGenresSourcePreference { get; set; }
         string GoogleBooksApiKey { get; set; }
         string EuropeanaApiKey { get; set; }

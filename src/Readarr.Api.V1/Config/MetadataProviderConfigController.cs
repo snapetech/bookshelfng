@@ -103,6 +103,7 @@ namespace Readarr.Api.V1.Config
                 ["MetadataReleaseDateSourcePreference"] = resource.MetadataReleaseDateSourcePreference,
                 ["MetadataPageCountSourcePreference"] = resource.MetadataPageCountSourcePreference,
                 ["MetadataCoverSourcePreference"] = resource.MetadataCoverSourcePreference,
+                ["MetadataAuthorImageSourcePreference"] = resource.MetadataAuthorImageSourcePreference,
                 ["MetadataGenresSourcePreference"] = resource.MetadataGenresSourcePreference
             };
 

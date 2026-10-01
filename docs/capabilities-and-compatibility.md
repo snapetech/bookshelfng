@@ -116,16 +116,21 @@ does not suppress other selected providers.
 
 In **Settings > Metadata > Metadata Field Source Preferences**, operators can
 choose an enabled supplemental catalog for each of these fields: title,
-description, publisher, language, release date, page count, cover, and genres.
+description, publisher, language, release date, page count, cover, author
+image, and genres.
 The available catalogs are Open Library, Google Books, Library of Congress,
 Gutendex, Internet Archive, NDL Search, Europeana, and the Goodreads-compatible
 Apify adapter.
 
-BookshelfNG applies a preference only when that catalog returns an edition
-with the same normalized ISBN as the selected book. If it cannot find an exact
-ISBN match or does not provide the requested value, BookshelfNG keeps the
-selected book source's value. This changes field values; it does not change
-the book's provider identity or the source used for discovery.
+BookshelfNG uses matching normalized ISBNs for edition-specific details such
+as publisher, language, release date, and page count. When ISBNs are missing,
+an exact normalized title-and-author match can supply work-level fields,
+descriptions, and covers. Author images also require the selected source to
+match both the author name and a book work. Missing values keep the selected
+book source's value. These preferences combine field values without changing
+the book's provider identity or discovery source. See [catalog metadata
+composition and unmapped-file recovery](catalog-metadata-and-unmapped-files.md)
+for the retry workflow.
 
 Search results are cached for ten minutes. Open Library, Google Books, LOC,
 Gutendex, Internet Archive, NDL Search, and Europeana HTTP responses and Apify

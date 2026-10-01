@@ -79,6 +79,7 @@ const metadataFieldPreferences = [
   { name: 'metadataReleaseDateSourcePreference', label: 'MetadataReleaseDateSourcePreference' },
   { name: 'metadataPageCountSourcePreference', label: 'MetadataPageCountSourcePreference' },
   { name: 'metadataCoverSourcePreference', label: 'MetadataCoverSourcePreference' },
+  { name: 'metadataAuthorImageSourcePreference', label: 'MetadataAuthorImageSourcePreference' },
   { name: 'metadataGenresSourcePreference', label: 'MetadataGenresSourcePreference' }
 ];
 

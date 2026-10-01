@@ -367,6 +367,12 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MetadataCoverSourcePreference", value ?? string.Empty); }
         }
 
+        public string MetadataAuthorImageSourcePreference
+        {
+            get { return GetValue("MetadataAuthorImageSourcePreference", string.Empty); }
+            set { SetValue("MetadataAuthorImageSourcePreference", value ?? string.Empty); }
+        }
+
         public string MetadataGenresSourcePreference
         {
             get { return GetValue("MetadataGenresSourcePreference", string.Empty); }

@@ -104,7 +104,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public Author GetAuthorInfo(string foreignAuthorId, bool useCache = false)
         {
-            return GetAuthorInfo(foreignAuthorId, useCache, false);
+            return GetAuthorInfoWithSourcePreferences(foreignAuthorId, useCache, false);
+        }
+
+        private Author GetAuthorInfoWithSourcePreferences(string foreignAuthorId, bool useCache, bool interactiveSearch)
+        {
+            var author = GetAuthorInfo(foreignAuthorId, useCache, interactiveSearch);
+            return _additionalBookMetadataProxy.ApplyAuthorImageSourcePreference(author);
         }
 
         private Author GetAuthorInfo(string foreignAuthorId, bool useCache, bool interactiveSearch)
@@ -207,6 +213,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (bookInfo?.Item2 != null)
             {
                 _additionalBookMetadataProxy.ApplyFieldSourcePreferences(bookInfo.Item2);
+
+                var author = bookInfo.Item2.Author?.Value;
+                if (author != null)
+                {
+                    _additionalBookMetadataProxy.ApplyAuthorImageSourcePreference(author, bookInfo.Item2);
+                }
             }
 
             return bookInfo;
@@ -263,7 +275,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (TryGetNamespacedId(title, "metadata-api-author:", out _) ||
                 TryGetNamespacedId(title, "hardcover-author:", out _))
             {
-                return GetAuthorInfo(title, false, interactiveSearch).Books.Value;
+                return GetAuthorInfoWithSourcePreferences(title, false, interactiveSearch).Books.Value;
             }
 
             var q = title.ToLower().Trim();

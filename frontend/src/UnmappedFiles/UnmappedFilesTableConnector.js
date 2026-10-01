@@ -17,10 +17,12 @@ function createMapStateToProps() {
   return createSelector(
     createClientSideCollectionSelector('bookFiles'),
     createCommandExecutingSelector(commandNames.RESCAN_FOLDERS),
+    createCommandExecutingSelector(commandNames.RETRY_UNMAPPED_FILES),
     createDimensionsSelector(),
     (
       bookFiles,
       isScanningFolders,
+      isRetryingUnmappedFiles,
       dimensionsState
     ) => {
       // bookFiles could pick up mapped entries via signalR so filter again here
@@ -47,6 +49,7 @@ function createMapStateToProps() {
         ...otherProps,
         columns,
         isScanningFolders,
+        isRetryingUnmappedFiles,
         isSmallScreen: dimensionsState.isSmallScreen
       };
     }
@@ -80,6 +83,13 @@ function createMapDispatchToProps(dispatch, props) {
         name: commandNames.RESCAN_FOLDERS,
         addNewAuthors: true,
         filter: 'matched'
+      }));
+    },
+
+    onRetryUnmappedFilesPress() {
+      dispatch(executeCommand({
+        name: commandNames.RETRY_UNMAPPED_FILES,
+        commandFinished: () => dispatch(fetchBookFiles({ unmapped: true }))
       }));
     }
   };
@@ -125,7 +135,9 @@ UnmappedFilesTableConnector.propTypes = {
   onTableOptionChange: PropTypes.func.isRequired,
   fetchUnmappedFiles: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
-  deleteUnmappedFiles: PropTypes.func.isRequired
+  deleteUnmappedFiles: PropTypes.func.isRequired,
+  isRetryingUnmappedFiles: PropTypes.bool.isRequired,
+  onRetryUnmappedFilesPress: PropTypes.func.isRequired
 };
 
 export default withCurrentPage(

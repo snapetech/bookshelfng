@@ -150,6 +150,14 @@ namespace NzbDrone.Core.MediaFiles
                     .ToList();
                 _logger.Trace($"{unwanted.Count} unchanged files that are matched or already remote-searched");
             }
+            else if (filter == FilterFilesType.Unmapped)
+            {
+                unwanted = combined
+                    .Where(x => IsUnchanged(x.DiskFile, x.DbFile) && x.DbFile.EditionId > 0)
+                    .Select(x => x.DiskFile)
+                    .ToList();
+                _logger.Trace($"{unwanted.Count} unchanged files that are already mapped");
+            }
             else
             {
                 throw new ArgumentException("Unrecognised value of FilterFilesType filter");

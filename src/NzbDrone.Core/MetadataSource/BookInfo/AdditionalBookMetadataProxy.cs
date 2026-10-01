@@ -29,6 +29,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         Tuple<string, Book, List<AuthorMetadata>> GetBook(string foreignBookId);
         Author GetAuthor(string foreignAuthorId);
         Book ApplyFieldSourcePreferences(Book book);
+        Author ApplyAuthorImageSourcePreference(Author author, Book contextBook = null);
     }
 
     /// <summary>
@@ -355,11 +356,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var enabledSources = EnabledSources;
             var records = new Dictionary<string, Book>(StringComparer.OrdinalIgnoreCase);
             var originalSource = GetSourceFromForeignId(book.ForeignBookId);
+            var workQuery = BuildWorkQuery(book);
 
             foreach (var targetEdition in editions)
             {
                 var isbn = NormalizeIsbn13(targetEdition.Isbn13);
-                if (isbn == null)
+                if (isbn == null && workQuery.IsNullOrWhiteSpace())
                 {
                     continue;
                 }
@@ -380,38 +382,31 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                         continue;
                     }
 
-                    var recordKey = source + ":" + isbn;
+                    var lookupKey = isbn == null ? "work:" + workQuery : "isbn:" + isbn;
+                    var recordKey = source + ":" + lookupKey;
                     if (!records.TryGetValue(recordKey, out var sourceBook))
                     {
                         try
                         {
-                            var candidate = SearchByProvider(source, isbn)
-                                .FirstOrDefault(x => HasMatchingIsbn(x, isbn));
-                            if (candidate == null)
-                            {
-                                records[recordKey] = null;
-                                continue;
-                            }
-
-                            var details = GetBook(candidate.ForeignBookId)?.Item2;
-                            sourceBook = HasMatchingIsbn(details, isbn) ? details : candidate;
+                            sourceBook = FindPreferredSourceBook(source, book, isbn, workQuery);
                             records[recordKey] = sourceBook;
                         }
                         catch (Exception e)
                         {
-                            _logger.Warn(e, "Could not apply {0} metadata preference from {1} for ISBN {2}", preference.Field, source, isbn);
+                            _logger.Warn(e, "Could not apply {0} metadata preference from {1} for {2}", preference.Field, source, lookupKey);
                             records[recordKey] = null;
                             continue;
                         }
                     }
 
-                    if (sourceBook == null || !HasMatchingIsbn(sourceBook, isbn))
+                    if (sourceBook == null || (isbn != null && !HasMatchingIsbn(sourceBook, isbn)) || (isbn == null && !IsSameWork(book, sourceBook)))
                     {
                         continue;
                     }
 
-                    var sourceEdition = sourceBook.Editions?.Value?.FirstOrDefault(x => NormalizeIsbn13(x.Isbn13) == isbn);
-                    if (sourceEdition == null)
+                    var exactEditionMatch = isbn != null && HasMatchingIsbn(sourceBook, isbn);
+                    var sourceEdition = FindSupplementalEdition(sourceBook, isbn, preference.Field);
+                    if (IsEditionSpecificField(preference.Field) && (!exactEditionMatch || sourceEdition == null))
                     {
                         continue;
                     }
@@ -423,12 +418,14 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                             {
                                 book.Title = sourceBook.Title;
                                 book.CleanTitle = Parser.Parser.CleanAuthorName(sourceBook.Title);
-                                targetEdition.Title = sourceEdition.Title.IsNullOrWhiteSpace() ? sourceBook.Title : sourceEdition.Title;
+                                targetEdition.Title = sourceEdition == null || sourceEdition.Title.IsNullOrWhiteSpace()
+                                    ? sourceBook.Title
+                                    : sourceEdition.Title;
                             }
 
                             break;
                         case "description":
-                            if (!sourceEdition.Overview.IsNullOrWhiteSpace())
+                            if (sourceEdition != null && !sourceEdition.Overview.IsNullOrWhiteSpace())
                             {
                                 targetEdition.Overview = sourceEdition.Overview;
                             }
@@ -464,7 +461,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                             break;
                         case "cover":
-                            if (sourceEdition.Images != null && sourceEdition.Images.Count > 0)
+                            if (sourceEdition?.Images != null && sourceEdition.Images.Count > 0)
                             {
                                 targetEdition.Images = new List<MediaCover.MediaCover>(sourceEdition.Images);
                             }
@@ -484,9 +481,87 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return book;
         }
 
-        private List<Book> SearchByProvider(string provider, string isbn)
+        public Author ApplyAuthorImageSourcePreference(Author author, Book contextBook = null)
         {
-            var query = "isbn:" + isbn;
+            if (author?.Metadata?.Value == null)
+            {
+                return author;
+            }
+
+            var source = _configService.MetadataAuthorImageSourcePreference?.Trim().ToLowerInvariant();
+            if (source.IsNullOrWhiteSpace() || !AdditionalMetadataSources.IsSupportedSource(source) || !IsEnabled(source))
+            {
+                return author;
+            }
+
+            var targetMetadata = author.Metadata.Value;
+            var targetAuthorName = NormalizeMatchText(targetMetadata.Name);
+            if (targetAuthorName.IsNullOrWhiteSpace())
+            {
+                return author;
+            }
+
+            var books = contextBook != null
+                ? new List<Book> { contextBook }
+                : author.Books?.Value ?? new List<Book>();
+            foreach (var targetBook in books)
+            {
+                var query = BuildWorkQuery(targetBook);
+                if (query.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var sourceBook = SearchProvider(source, query)
+                        .FirstOrDefault(candidate => IsSameWork(targetBook, candidate));
+                    var sourceMetadata = sourceBook?.AuthorMetadata?.Value;
+                    if (sourceMetadata != null &&
+                        NormalizeMatchText(sourceMetadata.Name) == targetAuthorName &&
+                        sourceMetadata.Images?.Any() == true)
+                    {
+                        targetMetadata.Images = new List<MediaCover.MediaCover>(sourceMetadata.Images);
+                        break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Could not apply author image preference from {0} for {1}", source, targetMetadata.Name);
+                }
+            }
+
+            return author;
+        }
+
+        private Book FindPreferredSourceBook(string provider, Book targetBook, string isbn, string workQuery)
+        {
+            var candidate = SearchByProvider(provider, isbn == null ? workQuery : "isbn:" + isbn, isbn != null)
+                .FirstOrDefault(x => isbn == null ? IsSameWork(targetBook, x) : HasMatchingIsbn(x, isbn));
+            if (candidate == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var details = GetBook(candidate.ForeignBookId)?.Item2;
+                if (details != null && (isbn == null ? IsSameWork(targetBook, details) : HasMatchingIsbn(details, isbn)))
+                {
+                    return details;
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Debug(e, "Using catalog search details for {0} after its full record lookup failed", candidate.ForeignBookId);
+            }
+
+            return candidate;
+        }
+
+        private List<Book> SearchByProvider(string provider, string query, bool isbnQuery)
+        {
+            var isbn = isbnQuery ? query.Substring("isbn:".Length) : query;
             if (provider == GoogleBooks)
             {
                 return SearchGoogleBooks(query);
@@ -504,31 +579,78 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (provider == Gutendex)
             {
-                return SearchGutendex(isbn);
+                return SearchGutendex(isbnQuery ? isbn : query);
             }
 
             if (provider == InternetArchive)
             {
-                return SearchInternetArchive(isbn);
+                return SearchInternetArchive(isbnQuery ? isbn : query);
             }
 
             if (provider == NdlSearch)
             {
-                return SearchNdl(isbn);
+                return SearchNdl(isbnQuery ? isbn : query);
             }
 
-            if (provider == ApifyGoodreads)
-            {
-                return SearchApify(isbn);
-            }
-
-            if (provider == AdditionalMetadataSources.OpenLibrary)
-            {
-                return _openLibraryMetadataProxy.Search(isbn);
-            }
-
-            return new List<Book>();
+            return SearchProvider(query, provider);
         }
+
+        private static Edition FindSupplementalEdition(Book book, string isbn, string field)
+        {
+            var editions = book?.Editions?.Value;
+            if (editions == null || editions.Count == 0)
+            {
+                return null;
+            }
+
+            if (isbn != null)
+            {
+                return editions.FirstOrDefault(x => NormalizeIsbn13(x.Isbn13) == isbn);
+            }
+
+            if (field == "cover")
+            {
+                return editions.FirstOrDefault(x => x.Images?.Any() == true);
+            }
+
+            if (field == "description")
+            {
+                return editions.FirstOrDefault(x => !x.Overview.IsNullOrWhiteSpace());
+            }
+
+            return editions.FirstOrDefault();
+        }
+
+        private static bool IsEditionSpecificField(string field) =>
+            field == "publisher" || field == "language" || field == "release date" || field == "page count";
+
+        private static string BuildWorkQuery(Book book)
+        {
+            var title = book?.Title;
+            var author = GetBookAuthorName(book);
+            return title.IsNullOrWhiteSpace() || author.IsNullOrWhiteSpace()
+                ? null
+                : title.Trim() + " " + author.Trim();
+        }
+
+        private static bool IsSameWork(Book left, Book right)
+        {
+            var leftTitle = NormalizeMatchText(left?.Title);
+            var rightTitle = NormalizeMatchText(right?.Title);
+            var leftAuthor = NormalizeMatchText(GetBookAuthorName(left));
+            var rightAuthor = NormalizeMatchText(GetBookAuthorName(right));
+
+            return !leftTitle.IsNullOrWhiteSpace() &&
+                leftTitle == rightTitle &&
+                !leftAuthor.IsNullOrWhiteSpace() &&
+                leftAuthor == rightAuthor;
+        }
+
+        private static string GetBookAuthorName(Book book) =>
+            book?.AuthorMetadata?.Value?.Name ?? book?.Author?.Value?.Metadata?.Value?.Name;
+
+        private static string NormalizeMatchText(string value) =>
+            new string((value ?? string.Empty).ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
         private static bool HasMatchingIsbn(Book book, string isbn) =>
             book?.Editions?.Value?.Any(x => NormalizeIsbn13(x.Isbn13) == isbn) == true;

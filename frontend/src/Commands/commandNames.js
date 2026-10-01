@@ -18,6 +18,7 @@ export const BULK_REFRESH_BOOK = 'BulkRefreshBook';
 export const RENAME_FILES = 'RenameFiles';
 export const RENAME_AUTHOR = 'RenameAuthor';
 export const RESCAN_FOLDERS = 'RescanFolders';
+export const RETRY_UNMAPPED_FILES = 'RetryUnmappedFiles';
 export const RETAG_FILES = 'RetagFiles';
 export const RETAG_AUTHOR = 'RetagAuthor';
 export const RESET_API_KEY = 'ResetApiKey';
