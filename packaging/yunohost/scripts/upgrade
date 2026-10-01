@@ -1,19 +1,43 @@
 #!/bin/bash
 
-source _common.sh
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
 
+source _common.sh
+source /usr/share/yunohost/helpers
+
+#=================================================
+# STOP SYSTEMD SERVICE
+#=================================================
 ynh_script_progression "Stopping BookshelfNG..."
+
 ynh_systemctl --service="$app" --action="stop"
 
+#=================================================
+# DOWNLOAD, CHECK AND UNPACK SOURCE
+#=================================================
 ynh_script_progression "Installing the pinned BookshelfNG release..."
-ynh_setup_source --dest_dir="$install_dir" --source_id="main" --full_replace=1
+
+ynh_setup_source --dest_dir="$install_dir" --source_id="main" --full_replace
 chown -R "$app:$app" "$install_dir"
 
+#=================================================
+# REAPPLY SYSTEM CONFIGURATION
+#=================================================
 ynh_script_progression "Refreshing the service and reverse proxy..."
+
 bookshelfng_prepare_service
 
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
 ynh_script_progression "Starting BookshelfNG..."
+
 bookshelfng_start_service
 bookshelfng_register_service
 
+#=================================================
+# END OF SCRIPT
+#=================================================
 ynh_script_progression "BookshelfNG upgrade completed"

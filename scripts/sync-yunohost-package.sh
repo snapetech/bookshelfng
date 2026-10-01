@@ -78,7 +78,6 @@ source_dir="$staging_dir/packaging/yunohost"
 # YunoHost regenerates README.md from the manifest and package metadata.
 rsync --archive --delete \
 	--exclude='/.git/' \
-	--exclude='/.github/' \
 	--exclude='/README.md' \
 	"$source_dir/" "$target_dir/"
 
