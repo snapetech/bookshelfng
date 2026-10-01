@@ -62,6 +62,95 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void FolderWritable_should_work_near_legacy_windows_path_limit()
+        {
+            var tempFolder = GetTempFilePath();
+            Directory.CreateDirectory(tempFolder);
+
+            var longFolder = tempFolder;
+            while (longFolder.Length + 11 < 235)
+            {
+                var childFolder = Path.Combine(longFolder, "abcdefghij");
+                Directory.CreateDirectory(childFolder);
+                longFolder = childFolder;
+            }
+
+            const int LegacyProbeNameLength = 55;
+            const int ShortProbeNameLength = 12;
+            Path.Combine(longFolder, "readarr_write_test.txt").Length.Should().BeLessThan(260);
+            (longFolder.Length + 1 + LegacyProbeNameLength).Should().BeGreaterOrEqualTo(260);
+            (longFolder.Length + 1 + ShortProbeNameLength).Should().BeLessThan(260);
+
+            var fileSystem = new FileSystem();
+            var fileStreamFactory = new Mock<IFileStreamFactory>();
+            fileStreamFactory.Setup(f => f.New(It.IsAny<string>(), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()))
+                .Returns((string path, FileMode mode, FileAccess access, FileShare share) =>
+                {
+                    if (path.Length >= 260)
+                    {
+                        throw new PathTooLongException("Simulated legacy Windows MAX_PATH limit");
+                    }
+
+                    return fileSystem.FileStream.New(path, mode, access, share);
+                });
+
+            var wrappedFileSystem = new Mock<IFileSystem>();
+            wrappedFileSystem.SetupGet(fs => fs.File).Returns(fileSystem.File);
+            wrappedFileSystem.SetupGet(fs => fs.FileStream).Returns(fileStreamFactory.Object);
+            Mocker.SetConstant(wrappedFileSystem.Object);
+
+            var legacyProbePath = Path.Combine(longFolder, $"readarr_write_test_{Guid.NewGuid():N}.txt");
+            legacyProbePath.Length.Should().BeGreaterOrEqualTo(260);
+            Action openLegacyProbe = () => fileStreamFactory.Object.New(legacyProbePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            openLegacyProbe.Should().Throw<PathTooLongException>();
+
+            Subject.FolderWritable(longFolder).Should().BeTrue();
+        }
+
+        [Test]
+        public void FolderWritable_should_retry_probe_name_collision_without_modifying_existing_file()
+        {
+            var tempFolder = GetTempFilePath();
+            Directory.CreateDirectory(tempFolder);
+
+            var fileSystem = new FileSystem();
+            var collidedPath = string.Empty;
+            var firstOpen = true;
+            var fileStreamFactory = new Mock<IFileStreamFactory>();
+            fileStreamFactory.Setup(f => f.New(It.IsAny<string>(), FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                .Returns((string path, FileMode mode, FileAccess access, FileShare share) =>
+                {
+                    if (firstOpen)
+                    {
+                        firstOpen = false;
+                        collidedPath = path;
+                        File.WriteAllText(path, "keep this existing file");
+                        throw new IOException("Probe name already exists");
+                    }
+
+                    return fileSystem.FileStream.New(path, mode, access, share);
+                });
+
+            var wrappedFileSystem = new Mock<IFileSystem>();
+            wrappedFileSystem.SetupGet(fs => fs.File).Returns(fileSystem.File);
+            wrappedFileSystem.SetupGet(fs => fs.FileStream).Returns(fileStreamFactory.Object);
+            Mocker.SetConstant(wrappedFileSystem.Object);
+
+            try
+            {
+                Subject.FolderWritable(tempFolder).Should().BeTrue();
+                File.ReadAllText(collidedPath).Should().Be("keep this existing file");
+            }
+            finally
+            {
+                if (File.Exists(collidedPath))
+                {
+                    File.Delete(collidedPath);
+                }
+            }
+        }
+
+        [Test]
         public void FolderWritable_should_return_true_when_test_file_cannot_be_deleted()
         {
             var tempFolder = GetTempFilePath();
@@ -101,7 +190,7 @@ namespace NzbDrone.Common.Test.DiskTests
             Directory.CreateDirectory(tempFolder);
 
             var fileStream = new Mock<IFileStreamFactory>();
-            fileStream.Setup(f => f.New(It.IsAny<string>(), FileMode.Create, FileAccess.Write, FileShare.None))
+            fileStream.Setup(f => f.New(It.IsAny<string>(), FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 .Throws(new UnauthorizedAccessException("Create access denied"));
             var fileSystem = new Mock<IFileSystem>();
             fileSystem.SetupGet(f => f.File).Returns(new FileSystem().File);

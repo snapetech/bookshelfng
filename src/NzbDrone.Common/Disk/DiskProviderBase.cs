@@ -135,14 +135,41 @@ namespace NzbDrone.Common.Disk
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
 
-            var testPath = Path.Combine(path, $"readarr_write_test_{Guid.NewGuid():N}.txt");
+            var testPath = string.Empty;
+            string cleanupPath = null;
             var writable = false;
 
             try
             {
-                var testContent = $"This file was created to verify if '{path}' is writable. It should've been automatically deleted. Feel free to delete it.";
-                WriteAllText(testPath, testContent);
-                writable = true;
+                for (var attempt = 0; attempt < 3; attempt++)
+                {
+                    // Keep the probe name within the portable 8.3 filename length. A long folder
+                    // path plus a GUID-sized basename can exceed Windows' legacy MAX_PATH limit.
+                    var testName = Path.GetRandomFileName();
+                    testPath = Path.Combine(path, testName);
+
+                    FileSystemStream fileStream;
+                    try
+                    {
+                        // FileShare.None is required for writes to some CIFS mounts.
+                        fileStream = _fileSystem.FileStream.New(testPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                        cleanupPath = testPath;
+                    }
+                    catch (IOException) when (attempt < 2 && _fileSystem.File.Exists(testPath))
+                    {
+                        // A random-name collision must not overwrite another file; try another name.
+                        continue;
+                    }
+
+                    using (fileStream)
+                    using (var writer = new StreamWriter(fileStream))
+                    {
+                        writer.Write('x');
+                    }
+
+                    writable = true;
+                    break;
+                }
             }
             catch (Exception e)
             {
@@ -156,19 +183,22 @@ namespace NzbDrone.Common.Disk
             }
             finally
             {
-                try
+                if (cleanupPath != null)
                 {
-                    _fileSystem.File.Delete(testPath);
-                }
-                catch (Exception e)
-                {
-                    Logger.Warn(
-                        "Unable to remove folder probe '{0}' in directory '{1}' as process account '{2}' (HResult 0x{3:X8}): {4}",
-                        testPath?.ReplaceLineEndings(""),
-                        path?.ReplaceLineEndings(""),
-                        Environment.UserName?.ReplaceLineEndings(""),
-                        e.HResult,
-                        e.ToString().ReplaceLineEndings(" "));
+                    try
+                    {
+                        _fileSystem.File.Delete(cleanupPath);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Warn(
+                            "Unable to remove folder probe '{0}' in directory '{1}' as process account '{2}' (HResult 0x{3:X8}): {4}",
+                            cleanupPath.ReplaceLineEndings(""),
+                            path?.ReplaceLineEndings(""),
+                            Environment.UserName?.ReplaceLineEndings(""),
+                            e.HResult,
+                            e.ToString().ReplaceLineEndings(" "));
+                    }
                 }
             }
 
