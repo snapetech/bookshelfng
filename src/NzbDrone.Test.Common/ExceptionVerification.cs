@@ -94,9 +94,9 @@ namespace NzbDrone.Test.Common
             Expected(LogLevel.Fatal, count);
         }
 
-        public static void ExpectedWarns(int count)
+        public static void ExpectedWarns(int count, params string[] expectedMessages)
         {
-            Expected(LogLevel.Warn, count);
+            Expected(LogLevel.Warn, count, expectedMessages);
         }
 
         public static void IgnoreWarns()
@@ -137,18 +137,22 @@ namespace NzbDrone.Test.Common
             }
         }
 
-        private static void Expected(LogLevel level, int count)
+        private static void Expected(LogLevel level, int count, params string[] expectedMessages)
         {
             lock (_logs)
             {
                 var levelLogs = _logs.Where(l => l.Level == level).ToList();
+                var missingMessages = expectedMessages
+                    .Where(expected => !levelLogs.Any(log => log.FormattedMessage.Contains(expected, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
 
-                if (levelLogs.Count != count)
+                if (levelLogs.Count != count || missingMessages.Any())
                 {
-                    var message = string.Format("{0} {1}(s) were expected but {2} were logged.\n\r{3}",
+                    var message = string.Format("{0} {1}(s) were expected but {2} were logged. Missing message fragments: {3}\n\r{4}",
                         count,
                         level,
                         levelLogs.Count,
+                        string.Join(", ", missingMessages),
                         GetLogsString(levelLogs));
 
                     message = "\n\r****************************************************************************************\n\r"

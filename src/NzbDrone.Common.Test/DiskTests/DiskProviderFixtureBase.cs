@@ -80,7 +80,7 @@ namespace NzbDrone.Common.Test.DiskTests
             {
                 var result = Subject.FolderWritable(tempFolder);
 
-                ExceptionVerification.ExpectedWarns(1);
+                ExceptionVerification.ExpectedWarns(1, "Unable to remove folder probe", "Delete access denied");
                 testFilePath.Should().NotBeNull();
                 File.Exists(testFilePath).Should().BeTrue();
                 result.Should().BeTrue();
@@ -111,7 +111,7 @@ namespace NzbDrone.Common.Test.DiskTests
             var result = Subject.FolderWritable(tempFolder);
 
             result.Should().BeFalse();
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.ExpectedWarns(1, "Failed to write folder probe", "Create access denied", $"process account '{Environment.UserName}'", "HResult 0x");
         }
 
         [Test]
