@@ -11816,6 +11816,42 @@
           },
           "apifyGoodreadsInputTemplateFromEnvironment": {
             "type": "boolean"
+          },
+          "metadataAuthorImageSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataCoverSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataDescriptionSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataGenresSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataLanguageSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataPageCountSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataPublisherSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataReleaseDateSourcePreference": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataTitleSourcePreference": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

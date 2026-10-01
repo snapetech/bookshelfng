@@ -382,13 +382,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                         continue;
                     }
 
-                    var lookupKey = isbn == null ? "work:" + workQuery : "isbn:" + isbn;
+                    var editionSpecificField = IsEditionSpecificField(preference.Field);
+                    if (editionSpecificField && isbn == null)
+                    {
+                        continue;
+                    }
+
+                    var lookupKey = editionSpecificField || workQuery.IsNullOrWhiteSpace()
+                        ? "isbn:" + isbn
+                        : "work:" + workQuery;
                     var recordKey = source + ":" + lookupKey;
                     if (!records.TryGetValue(recordKey, out var sourceBook))
                     {
                         try
                         {
-                            sourceBook = FindPreferredSourceBook(source, book, isbn, workQuery);
+                            sourceBook = FindPreferredSourceBook(source, book, isbn, editionSpecificField ? null : workQuery);
                             records[recordKey] = sourceBook;
                         }
                         catch (Exception e)
@@ -399,14 +407,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                         }
                     }
 
-                    if (sourceBook == null || (isbn != null && !HasMatchingIsbn(sourceBook, isbn)) || (isbn == null && !IsSameWork(book, sourceBook)))
+                    var exactEditionMatch = isbn != null && HasMatchingIsbn(sourceBook, isbn);
+                    var sameWork = IsSameWork(book, sourceBook);
+                    if (sourceBook == null ||
+                        (editionSpecificField && !exactEditionMatch) ||
+                        (!editionSpecificField && !exactEditionMatch && !sameWork))
                     {
                         continue;
                     }
 
-                    var exactEditionMatch = isbn != null && HasMatchingIsbn(sourceBook, isbn);
                     var sourceEdition = FindSupplementalEdition(sourceBook, isbn, preference.Field);
-                    if (IsEditionSpecificField(preference.Field) && (!exactEditionMatch || sourceEdition == null))
+                    if (editionSpecificField && (!exactEditionMatch || sourceEdition == null))
                     {
                         continue;
                     }
@@ -503,7 +514,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             var books = contextBook != null
                 ? new List<Book> { contextBook }
-                : author.Books?.Value ?? new List<Book>();
+                : author.Books?.Value?.Take(3).ToList() ?? new List<Book>();
             foreach (var targetBook in books)
             {
                 var query = BuildWorkQuery(targetBook);
@@ -517,11 +528,20 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     var sourceBook = SearchProvider(source, query)
                         .FirstOrDefault(candidate => IsSameWork(targetBook, candidate));
                     var sourceMetadata = sourceBook?.AuthorMetadata?.Value;
-                    if (sourceMetadata != null &&
-                        NormalizeMatchText(sourceMetadata.Name) == targetAuthorName &&
-                        sourceMetadata.Images?.Any() == true)
+                    if (sourceMetadata == null || NormalizeMatchText(sourceMetadata.Name) != targetAuthorName)
                     {
-                        targetMetadata.Images = new List<MediaCover.MediaCover>(sourceMetadata.Images);
+                        continue;
+                    }
+
+                    var images = sourceMetadata.Images;
+                    if (images?.Any() != true && !sourceMetadata.ForeignAuthorId.IsNullOrWhiteSpace())
+                    {
+                        images = GetAuthor(sourceMetadata.ForeignAuthorId)?.Metadata?.Value?.Images;
+                    }
+
+                    if (images?.Any() == true)
+                    {
+                        targetMetadata.Images = new List<MediaCover.MediaCover>(images);
                         break;
                     }
                 }
@@ -536,17 +556,36 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private Book FindPreferredSourceBook(string provider, Book targetBook, string isbn, string workQuery)
         {
-            var candidate = SearchByProvider(provider, isbn == null ? workQuery : "isbn:" + isbn, isbn != null)
-                .FirstOrDefault(x => isbn == null ? IsSameWork(targetBook, x) : HasMatchingIsbn(x, isbn));
-            if (candidate == null)
+            if (isbn != null)
+            {
+                var isbnCandidate = SearchByProvider(provider, "isbn:" + isbn, true)
+                    .FirstOrDefault(x => HasMatchingIsbn(x, isbn));
+                if (isbnCandidate != null)
+                {
+                    var exactEdition = GetValidatedSourceBook(isbnCandidate, targetBook, isbn, true);
+                    if (exactEdition != null)
+                    {
+                        return exactEdition;
+                    }
+                }
+            }
+
+            if (workQuery.IsNullOrWhiteSpace())
             {
                 return null;
             }
 
+            var workCandidate = SearchByProvider(provider, workQuery, false)
+                .FirstOrDefault(x => IsSameWork(targetBook, x));
+            return workCandidate == null ? null : GetValidatedSourceBook(workCandidate, targetBook, isbn, false);
+        }
+
+        private Book GetValidatedSourceBook(Book candidate, Book targetBook, string isbn, bool requireIsbn)
+        {
             try
             {
                 var details = GetBook(candidate.ForeignBookId)?.Item2;
-                if (details != null && (isbn == null ? IsSameWork(targetBook, details) : HasMatchingIsbn(details, isbn)))
+                if (details != null && (requireIsbn ? HasMatchingIsbn(details, isbn) : IsSameWork(targetBook, details)))
                 {
                     return details;
                 }
@@ -603,19 +642,31 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return null;
             }
 
-            if (isbn != null)
+            var matchingEdition = isbn == null
+                ? null
+                : editions.FirstOrDefault(x => NormalizeIsbn13(x.Isbn13) == isbn);
+            if (IsEditionSpecificField(field))
             {
-                return editions.FirstOrDefault(x => NormalizeIsbn13(x.Isbn13) == isbn);
+                return matchingEdition;
             }
 
             if (field == "cover")
             {
-                return editions.FirstOrDefault(x => x.Images?.Any() == true);
+                return matchingEdition?.Images?.Any() == true
+                    ? matchingEdition
+                    : editions.FirstOrDefault(x => x.Images?.Any() == true) ?? matchingEdition;
             }
 
             if (field == "description")
             {
-                return editions.FirstOrDefault(x => !x.Overview.IsNullOrWhiteSpace());
+                return matchingEdition != null && !matchingEdition.Overview.IsNullOrWhiteSpace()
+                    ? matchingEdition
+                    : editions.FirstOrDefault(x => !x.Overview.IsNullOrWhiteSpace()) ?? matchingEdition;
+            }
+
+            if (matchingEdition != null)
+            {
+                return matchingEdition;
             }
 
             return editions.FirstOrDefault();
@@ -670,7 +721,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             var (provider, encodedName) = ParseId(foreignAuthorId);
             var name = Decode(encodedName);
-            var books = Search(name).Where(x =>
+            var books = IsEnabled(provider)
+                ? SearchSources(name, new HashSet<string>(new[] { provider }, StringComparer.OrdinalIgnoreCase))
+                : new List<Book>();
+            books = books.Where(x =>
                 x.AuthorMetadata.Value.ForeignAuthorId == foreignAuthorId).ToList();
             var metadata = MakeAuthorMetadata(foreignAuthorId, name, null, null);
             books.ForEach(x => x.AuthorMetadata = metadata);

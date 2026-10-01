@@ -123,12 +123,12 @@ Gutendex, Internet Archive, NDL Search, Europeana, and the Goodreads-compatible
 Apify adapter.
 
 BookshelfNG uses matching normalized ISBNs for edition-specific details such
-as publisher, language, release date, and page count. When ISBNs are missing,
-an exact normalized title-and-author match can supply work-level fields,
-descriptions, and covers. Author images also require the selected source to
-match both the author name and a book work. Missing values keep the selected
-book source's value. These preferences combine field values without changing
-the book's provider identity or discovery source. See [catalog metadata
+as publisher, language, release date, and page count. For work-level fields,
+it tries an ISBN match first, then an exact normalized title-and-author match
+across editions. Author images also require the selected source to match both
+the author name and a book work. Missing values keep the selected book source's
+value. These preferences combine field values without changing the book's
+provider identity or discovery source. See [catalog metadata
 composition and unmapped-file recovery](catalog-metadata-and-unmapped-files.md)
 for the retry workflow.
 

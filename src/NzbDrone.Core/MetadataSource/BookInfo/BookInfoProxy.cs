@@ -110,7 +110,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private Author GetAuthorInfoWithSourcePreferences(string foreignAuthorId, bool useCache, bool interactiveSearch)
         {
             var author = GetAuthorInfo(foreignAuthorId, useCache, interactiveSearch);
-            return _additionalBookMetadataProxy.ApplyAuthorImageSourcePreference(author);
+            return _additionalBookMetadataProxy.ApplyAuthorImageSourcePreference(author) ?? author;
         }
 
         private Author GetAuthorInfo(string foreignAuthorId, bool useCache, bool interactiveSearch)

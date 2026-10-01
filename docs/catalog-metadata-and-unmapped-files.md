@@ -14,19 +14,25 @@ remain the book identity while Open Library supplies genres and Google Books
 supplies a cover. Choose **Use the selected book's source** to keep a field
 from the primary record.
 
-BookshelfNG uses a matching ISBN to confirm an edition before copying
-edition-specific values such as publisher, language, release date, or page
-count. When a record has no ISBN, exact normalized title and author matches
-can supply work-level fields such as title, description, genres, and covers.
-Author images use the configured **Author image** source and require a
-matching author name and book work. Empty or unavailable fields leave the
-current value in place.
+BookshelfNG uses a matching ISBN for edition-specific values such as publisher,
+language, release date, or page count. For work-level fields such as title,
+description, genres, and covers, it first looks for an ISBN match and then can
+use an exact normalized title-and-author match across editions. Author images
+use the configured **Author image** source and require a matching author name
+and book work. When available, BookshelfNG fetches the matched catalog's author
+profile to fill the image. Empty or unavailable fields leave the current value
+in place.
 
 Alternate catalogs never replace or impersonate one another's IDs. A book can
 be enriched from several catalogs while retaining a real Hardcover ID,
 another provider-qualified ID, or an existing primary-provider ID. Hardcover
 compatibility is provided by BookshelfNG's normal book and edition model and
 API response shapes; an actual Hardcover ID is not required.
+
+The same field preferences are available through the metadata provider config
+API. For example, `metadataCoverSourcePreference` and
+`metadataAuthorImageSourcePreference` can select separate image catalogs on
+`PUT /api/v1/config/metadataprovider/1`.
 
 ## Retry unmapped library files
 
