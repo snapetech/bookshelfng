@@ -125,9 +125,8 @@ namespace NzbDrone.Core.Download
 
         public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults)
         {
-            var allItemsImported = importResults.Where(c => c.Result == ImportResultType.Imported)
-                                                   .Select(c => c.ImportDecision.Item.Book)
-                                                   .Count() >= Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
+            var allItemsImported = importResults.All(c => c.Result == ImportResultType.Imported) &&
+                                   importResults.Count(c => c.Result == ImportResultType.Imported) >= Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
 
             if (allItemsImported)
             {
@@ -141,34 +140,43 @@ namespace NzbDrone.Core.Download
                 return true;
             }
 
-            // Double check if all episodes were imported by checking the history if at least one
-            // file was imported. This will allow the decision engine to reject already imported
-            // episode files and still mark the download complete when all files are imported.
-
-            // EDGE CASE: This process relies on EpisodeIds being consistent between executions, if a series is updated
-            // and an episode is removed, but later comes back with a different ID then Sonarr will treat it as incomplete.
-            // Since imports should be relatively fast and these types of data changes are infrequent this should be quite
-            // safe, but commenting for future benefit.
-            var atLeastOneEpisodeImported = importResults.Any(c => c.Result == ImportResultType.Imported);
+            // A book can contain several files. History may confirm a rejected result only when
+            // that exact source file was imported in an earlier pass for this download.
+            var atLeastOneFileImported = importResults.Any(c => c.Result == ImportResultType.Imported);
 
             var historyItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
                                               .OrderByDescending(h => h.Date)
                                               .ToList();
 
-            var allEpisodesImportedInHistory = _trackedDownloadAlreadyImported.IsImported(trackedDownload, historyItems);
+            var allBooksImportedInHistory = _trackedDownloadAlreadyImported.IsImported(trackedDownload, historyItems);
+            var allFilesImportedInHistory = importResults.All(result =>
+            {
+                if (result.Result == ImportResultType.Imported)
+                {
+                    return true;
+                }
 
-            if (allEpisodesImportedInHistory)
+                var sourcePath = result.ImportDecision.Item?.Path;
+
+                return sourcePath.IsNotNullOrWhiteSpace() && historyItems.Any(history =>
+                    history.EventType == EntityHistoryEventType.BookFileImported &&
+                    history.Data.TryGetValue("DroppedPath", out var importedPath) &&
+                    importedPath.IsNotNullOrWhiteSpace() &&
+                    importedPath.PathEquals(sourcePath));
+            });
+
+            if (allBooksImportedInHistory && allFilesImportedInHistory)
             {
                 // Log different error messages depending on the circumstances, but treat both as fully imported, because that's the reality.
                 // The second message shouldn't be logged in most cases, but continued reporting would indicate an ongoing issue.
-                if (atLeastOneEpisodeImported)
+                if (atLeastOneFileImported)
                 {
-                    _logger.Debug("All books were imported in history for {0}", trackedDownload.DownloadItem.Title);
+                    _logger.Debug("All files were imported in history for {0}", trackedDownload.DownloadItem.Title);
                 }
                 else
                 {
                     _logger.ForDebugEvent()
-                           .Message("No books were just imported, but all books were previously imported, possible issue with download history.")
+                           .Message("No files were just imported, but all source files were previously imported, possible issue with download history.")
                            .Property("AuthorId", trackedDownload.RemoteBook.Author.Id)
                            .Property("DownloadId", trackedDownload.DownloadItem.DownloadId)
                            .Property("Title", trackedDownload.DownloadItem.Title)
@@ -186,7 +194,7 @@ namespace NzbDrone.Core.Download
                 return true;
             }
 
-            _logger.Debug("Not all books have been imported for {0}", trackedDownload.DownloadItem.Title);
+            _logger.Debug("Not all book files have been imported for {0}", trackedDownload.DownloadItem.Title);
             return false;
         }
 

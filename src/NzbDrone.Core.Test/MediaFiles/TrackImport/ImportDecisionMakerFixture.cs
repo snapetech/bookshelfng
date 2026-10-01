@@ -379,6 +379,24 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         }
 
         [Test]
+        public void should_return_a_rejected_decision_when_file_metadata_cannot_be_read()
+        {
+            var path = @"C:\Test\Unreadable.mp3".AsOsAgnostic();
+            GivenAudioFiles(new[] { path });
+            Mocker.GetMock<IMetadataTagService>()
+                .Setup(s => s.ReadTags(It.IsAny<IFileInfo>()))
+                .Throws<TestException>();
+
+            var decision = Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig)
+                .Should().ContainSingle().Which;
+
+            decision.Approved.Should().BeFalse();
+            decision.Item.Path.Should().Be(path);
+            decision.Rejections.Should().ContainSingle()
+                .Which.Reason.Should().Be("Unable to read metadata from file");
+        }
+
+        [Test]
         public void should_return_a_decision_when_exception_is_caught()
         {
             Mocker.GetMock<IAugmentingService>()

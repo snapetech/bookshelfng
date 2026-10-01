@@ -187,7 +187,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         }
 
         [Test]
-        public void should_mark_as_imported_if_all_tracks_were_imported_but_extra_files_were_not()
+        public void should_not_mark_as_imported_if_an_extra_source_file_was_not_imported()
         {
             GivenAuthorMatch();
 
@@ -210,7 +210,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
 
             Subject.Import(_trackedDownload);
 
-            AssertImported();
+            AssertNotImported();
         }
 
         [Test]
@@ -256,18 +256,27 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             var books = Builder<Book>.CreateListOfSize(3).BuildList();
 
             _trackedDownload.RemoteBook.Books = books;
+            var firstPath = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic();
+            var secondPath = @"C:\TestPath\Droned.S01E02.mkv".AsOsAgnostic();
+            var thirdPath = @"C:\TestPath\Droned.S01E03.mkv".AsOsAgnostic();
 
             Mocker.GetMock<IDownloadedBooksImportService>()
                 .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<IdentificationOverrides>(), It.IsAny<DownloadClientItem>()))
                 .Returns(new List<ImportResult>
                 {
-                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv" })),
-                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv" }), "Test Failure"),
-                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv" }), "Test Failure")
+                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = firstPath })),
+                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = secondPath }), "Test Failure"),
+                    new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = thirdPath }), "Test Failure")
                 });
 
-            var history = Builder<EntityHistory>.CreateListOfSize(2)
-                                                  .BuildList();
+            var history = new List<EntityHistory>
+            {
+                new EntityHistory
+                {
+                    EventType = EntityHistoryEventType.BookFileImported,
+                    Data = new Dictionary<string, string> { ["DroppedPath"] = secondPath }
+                }
+            };
 
             Mocker.GetMock<IHistoryService>()
                   .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
@@ -275,7 +284,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
 
             Mocker.GetMock<ITrackedDownloadAlreadyImported>()
                   .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
-                  .Returns(false);
+                  .Returns(true);
 
             Subject.Import(_trackedDownload);
 
@@ -314,6 +323,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             var books = Builder<Book>.CreateListOfSize(2).BuildList();
 
             _trackedDownload.RemoteBook.Books = books;
+            var previouslyImportedPath = @"C:\TestPath\Droned.S01E02.mkv".AsOsAgnostic();
 
             Mocker.GetMock<IDownloadedBooksImportService>()
                 .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<IdentificationOverrides>(), It.IsAny<DownloadClientItem>()))
@@ -325,7 +335,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
 
                     new ImportResult(
                         new ImportDecision<LocalBook>(
-                            new LocalBook { Path = @"C:\TestPath\Droned.S01E02.mkv", Book = books[1], Author = _author }), "Test Failure")
+                            new LocalBook { Path = previouslyImportedPath, Book = books[1], Author = _author }), "Test Failure")
                 });
 
             var history = Builder<EntityHistory>.CreateListOfSize(2)
@@ -333,6 +343,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                 .With(x => x.EventType = EntityHistoryEventType.BookFileImported)
                 .With(x => x.AuthorId = 1)
                 .BuildList();
+            history[0].Data["DroppedPath"] = previouslyImportedPath;
 
             Mocker.GetMock<IHistoryService>()
                   .Setup(s => s.FindByDownloadId(It.IsAny<string>()))

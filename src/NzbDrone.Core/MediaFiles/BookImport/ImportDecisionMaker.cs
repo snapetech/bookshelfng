@@ -140,6 +140,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     if (localTrack == null)
                     {
                         _logger.Warn("Skipping unreadable file. {0}", file.FullName);
+                        decisions.Add(new ImportDecision<LocalBook>(
+                            new LocalBook { Path = file.FullName },
+                            new Rejection("Unable to read metadata from file")));
                         continue;
                     }
 
@@ -150,6 +153,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     if (localTrack == null)
                     {
                         _logger.Warn(e, "Skipping unreadable file. {0}", file.FullName);
+                        decisions.Add(new ImportDecision<LocalBook>(
+                            new LocalBook { Path = file.FullName },
+                            new Rejection("Unable to read metadata from file")));
                         continue;
                     }
 

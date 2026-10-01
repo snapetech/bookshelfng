@@ -214,6 +214,33 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_infer_parts_for_distinct_audio_files_with_repeated_track_numbers()
+        {
+            var firstDecision = _approvedDecisions.Single();
+            firstDecision.Item.Path = Path.Combine(firstDecision.Item.Author.Path, "Alien Ant Farm - 01 - Pilot.mp3");
+            firstDecision.Item.Part = 1;
+
+            var secondDecision = new ImportDecision<LocalBook>(
+                new LocalBook
+                {
+                    Author = firstDecision.Item.Author,
+                    Book = firstDecision.Item.Book,
+                    Edition = firstDecision.Item.Edition,
+                    Part = 1,
+                    Path = Path.Combine(firstDecision.Item.Author.Path, "Alien Ant Farm - 02 - Pilot.mp3"),
+                    Quality = firstDecision.Item.Quality,
+                    Size = firstDecision.Item.Size,
+                    FileTrackInfo = new ParsedTrackInfo()
+                });
+
+            var results = Subject.Import(new List<ImportDecision<LocalBook>> { firstDecision, secondDecision }, false);
+
+            results.Where(result => result.Result == ImportResultType.Imported).Should().HaveCount(2);
+            firstDecision.Item.Part.Should().Be(1);
+            secondDecision.Item.Part.Should().Be(2);
+        }
+
+        [Test]
         public void should_import_larger_files_for_same_quality_first()
         {
             var fileDecision = _approvedDecisions.First();

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -130,14 +131,37 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 //     RemoveExistingTrackFiles(author, book);
                 // }
 
-                // Make sure part numbers are populated for audiobooks
-                // If all audio files and all part numbers are zero, set them by filename order
-                if (decisionList.All(b => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(b.Item.Path)) && b.Item.Part == 0))
+                // Make sure every audiobook file has a distinct part number. Missing or repeated
+                // tags are common, so infer the order from filenames when the tags cannot identify
+                // every file in a format group.
+                var audioFileGroups = decisionList
+                    .Where(b => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(b.Item.Path)))
+                    .GroupBy(b => Path.GetExtension(b.Item.Path), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var audioFileGroup in audioFileGroups)
                 {
-                    var part = 1;
-                    foreach (var d in decisionList.OrderBy(x => PadNumbers.Replace(x.Item.Path)))
+                    var audioFiles = audioFileGroup.ToList();
+                    var uniqueAudioFiles = audioFiles
+                        .GroupBy(b => b.Item.Path, PathEqualityComparer.Instance)
+                        .Select(group => group.ToList())
+                        .ToList();
+                    var hasUnknownOrRepeatedParts = uniqueAudioFiles.Any(file => file.Any(b => b.Item.Part == 0)) ||
+                        uniqueAudioFiles.GroupBy(file => file.First().Item.Part).Any(group => group.Count() > 1);
+
+                    if (!hasUnknownOrRepeatedParts)
                     {
-                        d.Item.Part = part++;
+                        continue;
+                    }
+
+                    var part = 1;
+                    foreach (var file in uniqueAudioFiles.OrderBy(x => PadNumbers.Replace(x.First().Item.Path)))
+                    {
+                        foreach (var decision in file)
+                        {
+                            decision.Item.Part = part;
+                        }
+
+                        part++;
                     }
                 }
 
