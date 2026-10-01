@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Abstractions;
 using FluentAssertions;
+using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Test.Common;
@@ -58,6 +59,37 @@ namespace NzbDrone.Common.Test.DiskTests
             var result = Subject.FolderWritable(tempFolder);
 
             result.Should().BeTrue();
+        }
+
+        [Test]
+        public void FolderWritable_should_return_true_when_test_file_cannot_be_deleted()
+        {
+            var tempFolder = GetTempFilePath();
+            Directory.CreateDirectory(tempFolder);
+            string testFilePath = null;
+            var file = new Mock<IFile>();
+            file.Setup(f => f.Delete(It.IsAny<string>()))
+                .Callback<string>(path => testFilePath = path)
+                .Throws(new UnauthorizedAccessException("Delete access denied"));
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.SetupGet(f => f.File).Returns(file.Object);
+            Mocker.SetConstant(fileSystem.Object);
+
+            try
+            {
+                var result = Subject.FolderWritable(tempFolder);
+
+                testFilePath.Should().NotBeNull();
+                File.Exists(testFilePath).Should().BeTrue();
+                result.Should().BeTrue();
+            }
+            finally
+            {
+                if (testFilePath != null && File.Exists(testFilePath))
+                {
+                    File.Delete(testFilePath);
+                }
+            }
         }
 
         [Test]

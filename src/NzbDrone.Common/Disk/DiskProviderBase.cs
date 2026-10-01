@@ -135,19 +135,32 @@ namespace NzbDrone.Common.Disk
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
 
+            var testPath = Path.Combine(path, $"readarr_write_test_{Guid.NewGuid():N}.txt");
+            var writable = false;
+
             try
             {
-                var testPath = Path.Combine(path, "readarr_write_test.txt");
                 var testContent = $"This file was created to verify if '{path}' is writable. It should've been automatically deleted. Feel free to delete it.";
                 WriteAllText(testPath, testContent);
-                _fileSystem.File.Delete(testPath);
-                return true;
+                writable = true;
             }
             catch (Exception e)
             {
                 Logger.Trace("Directory '{0}' isn't writable. {1}", path?.ReplaceLineEndings(""), e.Message?.ReplaceLineEndings(""));
-                return false;
             }
+            finally
+            {
+                try
+                {
+                    _fileSystem.File.Delete(testPath);
+                }
+                catch (Exception e)
+                {
+                    Logger.Trace("Unable to delete write test file '{0}'. {1}", testPath?.ReplaceLineEndings(""), e.Message?.ReplaceLineEndings(""));
+                }
+            }
+
+            return writable;
         }
 
         public bool FolderEmpty(string path)
