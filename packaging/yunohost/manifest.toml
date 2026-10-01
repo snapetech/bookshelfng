@@ -5,7 +5,7 @@ packaging_format = 2
 id = "bookshelfng"
 name = "BookshelfNG"
 description.en = "An evolution of Readarr with more ebook and audiobook metadata, edition matching, formats, and integrations"
-version = "0.4.21.37~ynh8"
+version = "0.4.21.57~ynh1"
 maintainers = ["snapetech"]
 
 [upstream]
@@ -43,10 +43,10 @@ ram.runtime = "1G"
         [resources.sources.main]
         in_subdir = true
         format = "tar.gz"
-        amd64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.37/BookshelfNG-main-v0.4.21.37-linux-x64.tar.gz"
-        amd64.sha256 = "a13707ece111a3391e886a82b560937322b127a94de2ab7f54ba2f0d1ab02f5c"
-        arm64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.37/BookshelfNG-main-v0.4.21.37-linux-arm64.tar.gz"
-        arm64.sha256 = "1377630f6f88bb8d688865b5db2ff25a729a89bd68caefde3f80d2e872831ac2"
+        amd64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.57/BookshelfNG-main-v0.4.21.57-linux-x64.tar.gz"
+        amd64.sha256 = "f7c81a3e7210d0324ae4167e06e84b2bda3b4ce128aa65d77a10b238f390798f"
+        arm64.url = "https://github.com/snapetech/bookshelfng/releases/download/main-v0.4.21.57/BookshelfNG-main-v0.4.21.57-linux-arm64.tar.gz"
+        arm64.sha256 = "6435faec7a3ea3889661dc0daac62698bb5b624c47f7ba7979bfe1d9daee289c"
         autoupdate.strategy = "latest_github_release"
         autoupdate.version_regex = "^main-v(.*)$"
         autoupdate.asset.amd64 = "^BookshelfNG-main-v.*-linux-x64\\.tar\\.gz$"
