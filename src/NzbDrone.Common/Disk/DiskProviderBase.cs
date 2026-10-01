@@ -146,7 +146,13 @@ namespace NzbDrone.Common.Disk
             }
             catch (Exception e)
             {
-                Logger.Trace("Directory '{0}' isn't writable. {1}", path?.ReplaceLineEndings(""), e.Message?.ReplaceLineEndings(""));
+                Logger.Warn(
+                    "Failed to write folder probe '{0}' in directory '{1}' as process account '{2}' (HResult 0x{3:X8}): {4}",
+                    testPath?.ReplaceLineEndings(""),
+                    path?.ReplaceLineEndings(""),
+                    Environment.UserName?.ReplaceLineEndings(""),
+                    e.HResult,
+                    e.ToString().ReplaceLineEndings(" "));
             }
             finally
             {
@@ -156,7 +162,13 @@ namespace NzbDrone.Common.Disk
                 }
                 catch (Exception e)
                 {
-                    Logger.Trace("Unable to delete write test file '{0}'. {1}", testPath?.ReplaceLineEndings(""), e.Message?.ReplaceLineEndings(""));
+                    Logger.Warn(
+                        "Unable to remove folder probe '{0}' in directory '{1}' as process account '{2}' (HResult 0x{3:X8}): {4}",
+                        testPath?.ReplaceLineEndings(""),
+                        path?.ReplaceLineEndings(""),
+                        Environment.UserName?.ReplaceLineEndings(""),
+                        e.HResult,
+                        e.ToString().ReplaceLineEndings(" "));
                 }
             }
 
@@ -358,7 +370,7 @@ namespace NzbDrone.Common.Disk
 
             // File.WriteAllText is broken on net core when writing to some CIFS mounts
             // This workaround from https://github.com/dotnet/runtime/issues/42790#issuecomment-700362617
-            using (var fs = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var fs = _fileSystem.FileStream.New(filename, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 using (var writer = new StreamWriter(fs))
                 {

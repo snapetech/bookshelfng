@@ -17,6 +17,9 @@ namespace NzbDrone.Test.Common
 
         protected static void InitLogging()
         {
+            // Initialize NzbDroneLogger before configuring the test target; its first use resets NLog configuration.
+            _ = TestLogger.Name;
+
             new StartupContext();
 
             if (LogManager.Configuration == null || LogManager.Configuration.AllTargets.None(c => c is ExceptionVerification))

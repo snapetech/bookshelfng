@@ -13,7 +13,7 @@ namespace NzbDrone.Core.Validation.Paths
             _diskProvider = diskProvider;
         }
 
-        protected override string GetDefaultMessageTemplate() => "Folder '{path}' is not writable by user '{user}'";
+        protected override string GetDefaultMessageTemplate() => "Folder '{path}' is not writable by the BookshelfNG process account '{user}'";
 
         protected override bool IsValid(PropertyValidatorContext context)
         {

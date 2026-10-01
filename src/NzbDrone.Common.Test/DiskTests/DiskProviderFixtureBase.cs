@@ -73,12 +73,14 @@ namespace NzbDrone.Common.Test.DiskTests
                 .Throws(new UnauthorizedAccessException("Delete access denied"));
             var fileSystem = new Mock<IFileSystem>();
             fileSystem.SetupGet(f => f.File).Returns(file.Object);
+            fileSystem.SetupGet(f => f.FileStream).Returns(new FileSystem().FileStream);
             Mocker.SetConstant(fileSystem.Object);
 
             try
             {
                 var result = Subject.FolderWritable(tempFolder);
 
+                ExceptionVerification.ExpectedWarns(1);
                 testFilePath.Should().NotBeNull();
                 File.Exists(testFilePath).Should().BeTrue();
                 result.Should().BeTrue();
@@ -90,6 +92,26 @@ namespace NzbDrone.Common.Test.DiskTests
                     File.Delete(testFilePath);
                 }
             }
+        }
+
+        [Test]
+        public void FolderWritable_should_log_filesystem_error_when_write_probe_fails()
+        {
+            var tempFolder = GetTempFilePath();
+            Directory.CreateDirectory(tempFolder);
+
+            var fileStream = new Mock<IFileStreamFactory>();
+            fileStream.Setup(f => f.New(It.IsAny<string>(), FileMode.Create, FileAccess.Write, FileShare.None))
+                .Throws(new UnauthorizedAccessException("Create access denied"));
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.SetupGet(f => f.File).Returns(new FileSystem().File);
+            fileSystem.SetupGet(f => f.FileStream).Returns(fileStream.Object);
+            Mocker.SetConstant(fileSystem.Object);
+
+            var result = Subject.FolderWritable(tempFolder);
+
+            result.Should().BeFalse();
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
