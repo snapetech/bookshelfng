@@ -1,0 +1,27 @@
+name: Package sync
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    tags:
+      - "main-*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Check package repository sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify YunoHost and Unraid package repositories
+        run: bash scripts/verify-package-sync.sh
