@@ -1,6 +1,7 @@
 name: Package sync
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -16,6 +17,7 @@ permissions:
 jobs:
   verify:
     name: Check package repository sync
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,4 +26,42 @@ jobs:
           persist-credentials: false
 
       - name: Verify YunoHost and Unraid package repositories
+        run: bash scripts/verify-package-sync.sh
+
+  sync_yunohost:
+    name: Sync YunoHost package after merge
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: yunohost-package-sync
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Clone package branch with write access
+        env:
+          YUNOHOST_REPO_TOKEN: ${{ secrets.YUNOHOST_REPO_TOKEN }}
+          TARGET_DIR: ${{ runner.temp }}/bookshelfng_ynh
+        run: |
+          if [[ -z "$YUNOHOST_REPO_TOKEN" ]]; then
+            echo "Set the YUNOHOST_REPO_TOKEN repository secret with contents:write access to YunoHost-Apps/bookshelfng_ynh." >&2
+            exit 1
+          fi
+
+          git clone --quiet --depth 1 --branch testing \
+            "https://x-access-token:${YUNOHOST_REPO_TOKEN}@github.com/YunoHost-Apps/bookshelfng_ynh.git" \
+            "$TARGET_DIR"
+
+          git -C "$TARGET_DIR" config user.name "github-actions[bot]"
+          git -C "$TARGET_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "BOOKSHELFNG_YNH_REPO=$TARGET_DIR" >> "$GITHUB_ENV"
+
+      - name: Sync latest committed package code
+        run: bash scripts/sync-yunohost-package.sh
+
+      - name: Verify synced package repositories
         run: bash scripts/verify-package-sync.sh
