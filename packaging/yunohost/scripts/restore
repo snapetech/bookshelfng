@@ -19,11 +19,7 @@ ynh_restore "$install_dir"
 #=================================================
 ynh_script_progression "Restoring BookshelfNG configuration and database..."
 
-if [[ ! -d "$YNH_APP_BACKUP_DIR/data" ]]; then
-    ynh_die --message="BookshelfNG database and configuration snapshot is missing from this backup."
-fi
-install -d -o "$app" -g "$app" -m 0750 "$data_dir"
-rsync --archive --delete "$YNH_APP_BACKUP_DIR/data/" "$data_dir/"
+ynh_restore "$data_dir"
 chown -R "$app:$app" "$install_dir" "$data_dir"
 
 #=================================================
