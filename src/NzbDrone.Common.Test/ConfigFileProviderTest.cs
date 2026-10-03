@@ -158,7 +158,7 @@ namespace NzbDrone.Common.Test
         {
             var result = Subject.AuthenticationMethod;
 
-            result.Should().Be(AuthenticationType.None);
+            result.Should().Be(AuthenticationType.Forms);
         }
 
         [Test]

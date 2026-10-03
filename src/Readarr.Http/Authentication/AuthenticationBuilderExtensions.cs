@@ -51,7 +51,7 @@ namespace Readarr.Http.Authentication
                     options.ReturnUrlParameter = "returnUrl";
                 });
 
-            return services.AddAuthentication()
+            var authenticationBuilder = services.AddAuthentication()
                 .AddNone(AuthenticationType.None.ToString())
                 .AddExternal(AuthenticationType.External.ToString())
                 .AddBasic(AuthenticationType.Basic.ToString())
@@ -60,12 +60,24 @@ namespace Readarr.Http.Authentication
                 {
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "apikey";
+                    options.AllowQueryString = false;
                 })
                 .AddApiKey("SignalR", options =>
                 {
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "access_token";
+                    options.AllowQueryString = true;
                 });
+
+            services.Configure<ApiKeyAuthenticationOptions>("API", options =>
+            {
+                options.AllowQueryString = string.Equals(
+                    Environment.GetEnvironmentVariable("BOOKSHELF_ALLOW_API_KEY_QUERY"),
+                    "true",
+                    StringComparison.OrdinalIgnoreCase);
+            });
+
+            return authenticationBuilder;
         }
     }
 }

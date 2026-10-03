@@ -2,7 +2,6 @@ name: CI
 
 permissions:
   contents: read
-  packages: write
 
 on:
   workflow_dispatch:
@@ -10,13 +9,11 @@ on:
     tags:
       - "main-*"
     paths-ignore:
-      - ".github/**"
       - "README.md"
       - "docs/**"
       - "src/Readarr.Api.*/openapi.json"
   pull_request:
     paths-ignore:
-      - ".github/**"
       - "README.md"
       - "docs/**"
       - "src/NzbDrone.Core/Localization/Core"
@@ -34,10 +31,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      softcover_digest: ${{ steps.softcover_image.outputs.digest }}
-      hardcover_digest: ${{ steps.hardcover_image.outputs.digest }}
+      build_version: ${{ steps.variables.outputs.build_version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -68,7 +64,7 @@ jobs:
           DISCORD_RELEASE_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
         run: bash scripts/validate-release-publisher-config.sh discord
 
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
 
       - name: Setup Environment Variables
         id: variables
@@ -85,7 +81,7 @@ jobs:
           echo "Resolved BookshelfNG version: $build_version"
 
       - name: Cache NuGet packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: _cache/nuget
           key: nuget-${{ runner.os }}-${{ hashFiles('src/Directory.Packages.props', 'src/**/*.csproj', 'global.json') }}
@@ -93,7 +89,7 @@ jobs:
             nuget-${{ runner.os }}-
 
       - name: Cache Node modules
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             _cache/node
@@ -103,7 +99,7 @@ jobs:
             node-${{ runner.os }}-
 
       - name: Cache MSBuild outputs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: _cache/msbuild
           key: msbuild-${{ runner.os }}-${{ hashFiles('src/**/*.cs', 'src/**/*.csproj', 'src/**/*.targets', 'src/**/*.props') }}
@@ -112,7 +108,7 @@ jobs:
             msbuild-${{ runner.os }}-
 
       - name: Cache Webpack
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: _cache/webpack
           key: webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
@@ -138,7 +134,7 @@ jobs:
         run: ./test.sh Linux Unit Test
 
       - name: Report test results
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@2bf7bc7bba0f63da7f183274c61b24c27fb03989 # v3
         if: always()
         with:
           name: Unit Test Results
@@ -147,9 +143,44 @@ jobs:
           reporter: dotnet-nunit
           fail-on-error: true
 
-      - uses: docker/setup-buildx-action@v4
+      - name: Upload container build output
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bookshelfng-publish-output
+          path: _output/
+          compression-level: 0
+          retention-days: 1
 
-      - uses: docker/metadata-action@v6
+  publish-images:
+    name: Publish container images
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    outputs:
+      softcover_digest: ${{ steps.softcover_image.outputs.digest }}
+      hardcover_digest: ${{ steps.hardcover_image.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: bookshelfng-publish-output
+          path: _output
+
+      - name: Set image build date
+        run: echo "DATE=$(date --rfc-3339=date)" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         id: gr_meta
         with:
           images: |
@@ -158,9 +189,9 @@ jobs:
           tags: |
             type=raw,value=softcover
             type=raw,value=softcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
-            type=raw,value=softcover-v${{ steps.variables.outputs.build_version }}
+            type=raw,value=softcover-v${{ needs.build.outputs.build_version }}
 
-      - uses: docker/metadata-action@v6
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         id: hc_meta
         with:
           images: |
@@ -170,59 +201,123 @@ jobs:
             type=raw,value=hardcover
             type=raw,value=latest
             type=raw,value=hardcover-v${{ env.READARR_VERSION }},enable=${{ github.ref_type != 'tag' }}
-            type=raw,value=hardcover-v${{ steps.variables.outputs.build_version }}
+            type=raw,value=hardcover-v${{ needs.build.outputs.build_version }}
 
-      - uses: docker/login-action@v4
-        if: ${{ github.event_name == 'push' }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/login-action@v4
-        if: ${{ github.event_name == 'push' }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         id: softcover_image
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: "linux/amd64,linux/arm64"
-          push: ${{ github.event_name == 'push' }}
+          push: true
+          sbom: true
+          provenance: mode=max
           tags: ${{ steps.gr_meta.outputs.tags }}
           labels: ${{ steps.gr_meta.outputs.labels }}
           build-args: |
             GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
-            COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
+            COMMIT_HASH=${{ github.sha }}
             BUILD_DATE=${{ env.DATE }}
-            IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
+            IMAGE_VERSION=${{ needs.build.outputs.build_version }}
             IMAGE_FLAVOR=softcover
 
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         id: hardcover_image
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: "linux/amd64,linux/arm64"
-          push: ${{ github.event_name == 'push' }}
+          push: true
+          sbom: true
+          provenance: mode=max
           tags: ${{ steps.hc_meta.outputs.tags }}
           labels: ${{ steps.hc_meta.outputs.labels }}
           build-args: |
             GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
-            COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
+            COMMIT_HASH=${{ github.sha }}
             BUILD_DATE=${{ env.DATE }}
-            IMAGE_VERSION=${{ steps.variables.outputs.build_version }}
+            IMAGE_VERSION=${{ needs.build.outputs.build_version }}
             IMAGE_FLAVOR=hardcover
             METADATA_URL=https://hardcover.bookinfo.pro
             HARDCOVER=true
 
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.softcover_image.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.hardcover_image.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+  container-scan:
+    name: Scan published container images
+    if: github.event_name == 'push'
+    needs: publish-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - name: Scan Softcover image
+        id: softcover_scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ needs.publish-images.outputs.softcover_digest }}
+          format: sarif
+          output: trivy-softcover.sarif
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload Softcover findings
+        if: steps.softcover_scan.outcome == 'success'
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: trivy-softcover.sarif
+          category: trivy-softcover
+
+      - name: Scan Hardcover image
+        id: hardcover_scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ needs.publish-images.outputs.hardcover_digest }}
+          format: sarif
+          output: trivy-hardcover.sarif
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload Hardcover findings
+        if: steps.hardcover_scan.outcome == 'success'
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: trivy-hardcover.sarif
+          category: trivy-hardcover
+
   release:
     name: Prepare release notes and draft
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/main-')
-    needs: build
+    needs: [build, publish-images]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -231,8 +326,8 @@ jobs:
       runtime_pack_run_id: ${{ steps.runtime-packs.outputs.run_id }}
     env:
       RELEASE_TAG: ${{ github.ref_name }}
-      SOFTCOVER_DIGEST: ${{ needs.build.outputs.softcover_digest }}
-      HARDCOVER_DIGEST: ${{ needs.build.outputs.hardcover_digest }}
+      SOFTCOVER_DIGEST: ${{ needs.publish-images.outputs.softcover_digest }}
+      HARDCOVER_DIGEST: ${{ needs.publish-images.outputs.hardcover_digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -396,7 +491,7 @@ jobs:
   distribution:
     name: Build and publish standalone release channels
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/main-')
-    needs: [build, release]
+    needs: [publish-images, release]
     permissions:
       actions: read
       contents: write
@@ -405,7 +500,7 @@ jobs:
     uses: ./.github/workflows/release-distribution.yml
     with:
       tag: ${{ github.ref_name }}
-      softcover_digest: ${{ needs.build.outputs.softcover_digest }}
-      hardcover_digest: ${{ needs.build.outputs.hardcover_digest }}
+      softcover_digest: ${{ needs.publish-images.outputs.softcover_digest }}
+      hardcover_digest: ${{ needs.publish-images.outputs.hardcover_digest }}
       runtime_pack_run_id: ${{ needs.release.outputs.runtime_pack_run_id }}
     secrets: inherit

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Threading.RateLimiting;
 using DryIoc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -59,30 +61,83 @@ namespace NzbDrone.Host
 
             services.Configure<ForwardedHeadersOptions>(options =>
             {
-                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-                options.KnownIPNetworks.Clear();
-                options.KnownProxies.Clear();
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardLimit = 1;
+                options.RequireHeaderSymmetry = true;
+
+                var trustedProxies = Configuration["Readarr:Server:TrustedProxies"];
+                foreach (var proxy in (trustedProxies ?? string.Empty)
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (proxy.Contains('/'))
+                    {
+                        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(proxy));
+                    }
+                    else
+                    {
+                        options.KnownProxies.Add(IPAddress.Parse(proxy));
+                    }
+                }
             });
 
             services.AddRouting(options => options.LowercaseUrls = true);
 
             services.AddResponseCompression(options => options.EnableForHttps = true);
 
+            var allowedOrigins = (Configuration["Readarr:Server:AllowedOrigins"] ?? string.Empty)
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
             services.AddCors(options =>
             {
                 options.AddPolicy(VersionedApiControllerAttribute.API_CORS_POLICY,
                     builder =>
-                    builder.AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .WithExposedHeaders("X-Bookshelf-Request-Id"));
+                    {
+                        builder.AllowAnyMethod()
+                            .AllowAnyHeader()
+                            .WithExposedHeaders("X-Bookshelf-Request-Id");
+
+                        if (allowedOrigins.Length > 0)
+                        {
+                            builder.WithOrigins(allowedOrigins);
+                        }
+                    });
 
                 options.AddPolicy("AllowGet",
                     builder =>
-                    builder.AllowAnyOrigin()
-                    .WithMethods("GET", "OPTIONS")
-                    .AllowAnyHeader()
-                    .WithExposedHeaders("X-Bookshelf-Request-Id"));
+                    {
+                        builder.WithMethods("GET", "OPTIONS")
+                            .AllowAnyHeader()
+                            .WithExposedHeaders("X-Bookshelf-Request-Id");
+
+                        if (allowedOrigins.Length > 0)
+                        {
+                            builder.WithOrigins(allowedOrigins);
+                        }
+                    });
+            });
+
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                var requestsPerMinute = Math.Clamp(
+                    Configuration.GetValue<int?>("Readarr:Server:RequestsPerMinute") ?? 600,
+                    60,
+                    6000);
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = requestsPerMinute,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        }));
+                options.OnRejected = (context, _) =>
+                {
+                    context.HttpContext.Response.Headers["Retry-After"] = "60";
+                    return System.Threading.Tasks.ValueTask.CompletedTask;
+                };
             });
 
             services
@@ -124,7 +179,7 @@ namespace NzbDrone.Host
                     Name = "X-Api-Key",
                     Type = SecuritySchemeType.ApiKey,
                     Scheme = "apiKey",
-                    Description = "Apikey passed as header",
+                    Description = "API key passed in the X-Api-Key header. REST query-string credentials are disabled by default.",
                     In = ParameterLocation.Header,
                     Reference = new OpenApiReference
                     {
@@ -140,20 +195,6 @@ namespace NzbDrone.Host
                     { apiKeyHeader, Array.Empty<string>() }
                 });
 
-                var apikeyQuery = new OpenApiSecurityScheme
-                {
-                    Name = "apikey",
-                    Type = SecuritySchemeType.ApiKey,
-                    Scheme = "apiKey",
-                    Description = "Apikey passed as query parameter",
-                    In = ParameterLocation.Query,
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "apikey"
-                    },
-                };
-
                 c.AddServer(new OpenApiServer
                 {
                     Url = "{protocol}://{hostpath}",
@@ -162,13 +203,6 @@ namespace NzbDrone.Host
                         { "protocol", new OpenApiServerVariable { Default = "http", Enum = new List<string> { "http", "https" } } },
                         { "hostpath", new OpenApiServerVariable { Default = "localhost:8787" } }
                     }
-                });
-
-                c.AddSecurityDefinition("apikey", apikeyQuery);
-
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    { apikeyQuery, Array.Empty<string>() }
                 });
 
                 c.DescribeAllParametersInCamelCase();
@@ -234,6 +268,13 @@ namespace NzbDrone.Host
 
             configFileProvider.EnsureDefaultConfigFile();
 
+            if (configFileProvider.AuthenticationMethod == NzbDrone.Core.Authentication.AuthenticationType.None &&
+                configFileProvider.BindAddress != "127.0.0.1" && configFileProvider.BindAddress != "::1" &&
+                configFileProvider.BindAddress != "localhost")
+            {
+                NLog.LogManager.GetLogger("Security").Warn("Authentication is disabled while BookshelfNG is bound to a non-loopback address. The UI initialization endpoint exposes the API key to authenticated UI sessions; enable Forms or Basic authentication before exposing this listener.");
+            }
+
             reconfigureLogging.Reconfigure();
 
             EnsureSingleInstance(false, startupContext, singleInstancePolicy);
@@ -267,7 +308,10 @@ namespace NzbDrone.Host
                 ExceptionHandler = errorHandler.HandleException
             });
 
+            app.UseMiddleware<SecurityHeadersMiddleware>();
+            app.UseMiddleware<SeerrIntegrationPathMiddleware>();
             app.UseRouting();
+            app.UseRateLimiter();
             app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();

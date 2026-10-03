@@ -4,7 +4,7 @@ services:
     container_name: bookshelfng
     restart: unless-stopped
     ports:
-      - "8787:8787/tcp"
+      - "127.0.0.1:8787:8787/tcp"
     volumes:
       - bookshelfng-config:/config
       - bookshelfng-books:/books

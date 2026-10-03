@@ -168,7 +168,7 @@ services:
   bookshelf:
     image: ghcr.io/snapetech/bookshelfng:hardcover
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     volumes:
       - ./bookshelf-config:/config
       - /path/to/downloads:/downloads
@@ -461,6 +461,23 @@ potential charges; Goodreads does not issue new public developer API keys.
 SeerrNG can connect to BookshelfNG as a Readarr-compatible ebook or audiobook
 service. That integration is optional; BookshelfNG can monitor, download, and
 manage a library without SeerrNG.
+
+Use one BookshelfNG instance and its existing database for both SeerrNG service
+entries. New installations require Forms authentication for the web interface;
+SeerrNG should use an API key in the `X-Api-Key` header. To give SeerrNG a
+separate restricted key, set `BOOKSHELF_SEERRNG_API_KEY` from a Docker/Kubernetes
+secret. That credential can read library/search/profile/root-folder data and
+add or update authors and books, but it cannot change system settings, reset
+the administrator key, or run arbitrary commands. Replace the secret and
+restart BookshelfNG to rotate it. Existing global API keys continue to work.
+
+BookshelfNG advertises a versioned SeerrNG capability contract and accepts the
+format-scoped routes `/readarr/{gr|hc}/ebook/api/v1` and
+`/readarr/{gr|hc}/audiobook/api/v1`, where the dialect matches the configured
+metadata provider. Both routes use the same BookshelfNG library and
+database; a second instance or a database merge is not required. See the
+[SeerrNG integration and security guide](docs/seerrng-integration.md) for
+trusted proxy, allowed-origin, API credential, and upgrade details.
 
 For compatible book-add requests, BookshelfNG's
 `/api/v1/book/lookup` response includes nested author and edition metadata when
