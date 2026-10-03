@@ -204,7 +204,7 @@ namespace NzbDrone.Core.Configuration
 
                 return Enum.TryParse<AuthenticationType>(_authOptions.Method, out var enumValue)
                     ? enumValue
-                    : GetValueEnum("AuthenticationMethod", AuthenticationType.None);
+                    : GetValueEnum("AuthenticationMethod", AuthenticationType.Forms);
             }
         }
 

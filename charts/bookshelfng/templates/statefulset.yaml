@@ -23,6 +23,7 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: {{ if .Values.serviceAccount.create }}{{ default (include "bookshelfng.fullname" .) .Values.serviceAccount.name }}{{ else }}{{ default "default" .Values.serviceAccount.name }}{{ end }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}

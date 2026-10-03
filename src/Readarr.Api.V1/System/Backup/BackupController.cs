@@ -92,6 +92,7 @@ namespace Readarr.Api.V1.System.Backup
         }
 
         [HttpPost("restore/upload")]
+        [RequestSizeLimit(1000000000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 1000000000)]
         public object UploadAndRestore()
         {

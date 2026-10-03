@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -89,6 +90,28 @@ namespace Readarr.Api.V1.System
                 PackageAuthor = _deploymentInfoProvider.PackageAuthor,
                 PackageUpdateMechanism = _deploymentInfoProvider.PackageUpdateMechanism,
                 PackageUpdateMechanismMessage = _deploymentInfoProvider.PackageUpdateMechanismMessage
+            };
+        }
+
+        [HttpGet("capabilities")]
+        public object GetSeerrCapabilities()
+        {
+            var nativeHardcoverEnabled =
+                string.Equals(Environment.GetEnvironmentVariable("HARDCOVER"), "true", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(Environment.GetEnvironmentVariable("HARDCOVER_NATIVE"), "false", StringComparison.OrdinalIgnoreCase);
+
+            return new
+            {
+                contract = "seerrng-bookshelf",
+                contractVersion = 1,
+                providerIdDialect = nativeHardcoverEnabled ? "hc" : "gr",
+                mediaTypes = new[] { "ebook", "audiobook" },
+                features = new
+                {
+                    formatScopedFacade = true,
+                    formatSpecificPaths = true,
+                    restrictedSeerrKey = true
+                }
             };
         }
 

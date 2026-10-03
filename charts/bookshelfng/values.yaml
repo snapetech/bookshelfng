@@ -13,11 +13,15 @@ serviceAccount:
   create: false
   annotations: {}
   name: ""
+  automountServiceAccountToken: false
 
 podAnnotations: {}
 podLabels: {}
-podSecurityContext: {}
-containerSecurityContext: {}
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
 
 service:
   type: ClusterIP

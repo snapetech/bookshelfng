@@ -19,4 +19,12 @@ storage, ingress, service type, resources, and Kubernetes environment values.
 Reference Kubernetes Secrets through `extraEnv[].valueFrom` for credentials; do
 not put provider tokens in Helm values committed to source.
 
+The chart disables automatic ServiceAccount token mounting, uses the
+RuntimeDefault seccomp profile, and disables container privilege escalation.
+The image still starts its LinuxServer service supervisor as root before
+dropping the BookshelfNG process to its service account; do not set
+`runAsNonRoot` or `readOnlyRootFilesystem` without replacing that startup path
+and providing writable runtime mounts. Use Kubernetes Secret references for
+the optional `BOOKSHELF_SEERRNG_API_KEY` integration credential.
+
 See the [full installation guide](https://github.com/snapetech/bookshelfng/blob/main/docs/standalone-install.md).
