@@ -468,7 +468,9 @@ manage a library without SeerrNG.
 
 Use one BookshelfNG instance and its existing database for both SeerrNG service
 entries. New installations require Forms authentication for the web interface;
-SeerrNG should use an API key in the `X-Api-Key` header. To give SeerrNG a
+SeerrNG should use an API key in the `X-Api-Key` header. Legacy Readarr clients
+that send `?apikey=` remain supported; set `BOOKSHELF_ALLOW_API_KEY_QUERY=false`
+to require header credentials. To give SeerrNG a
 separate restricted key, set `BOOKSHELF_SEERRNG_API_KEY` from a Docker/Kubernetes
 secret. That credential can read library/search/profile/root-folder data and
 add or update authors and books, but it cannot change system settings, reset

@@ -17,12 +17,12 @@ Older BookshelfNG versions continue to use the ordinary `/api/v1` routes.
 ## Credentials
 
 New BookshelfNG configurations require Forms authentication for the web UI.
-The global API key remains accepted through `X-Api-Key` and is still supported
-for existing Readarr-compatible clients. REST API keys in query strings are
-disabled by default; use the header. To temporarily restore query-string
-support for a legacy client, set `BOOKSHELF_ALLOW_API_KEY_QUERY=true`, then
-remove that setting after migrating the client. SignalR's `access_token`
-query parameter remains available for WebSocket compatibility.
+The global API key is accepted through `X-Api-Key` (recommended) and the
+legacy `?apikey=` query parameter used by Readarr-compatible clients. URLs can
+be retained in browser history, application logs, and proxy access logs. To
+require header credentials, set `BOOKSHELF_ALLOW_API_KEY_QUERY=false`.
+SignalR's `access_token` query parameter remains available for WebSocket
+compatibility.
 
 For a separate SeerrNG credential, set `BOOKSHELF_SEERRNG_API_KEY` from a
 secret manager and enter that value in both SeerrNG service entries. Generate a

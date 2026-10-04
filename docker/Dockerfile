@@ -64,7 +64,10 @@ RUN --mount=type=bind,source=_output,target=_output \
     esac; \
     cp -r /_output/UI /app/readarr/bin/UI
 
-RUN test -s /app/readarr/bin/UI/index.html && \
+RUN chmod -R a+rX /app/readarr && \
+    chmod a+x /app/readarr/bin/Readarr && \
+    test -x /app/readarr/bin/Readarr && \
+    test -s /app/readarr/bin/UI/index.html && \
     test -n "$(find /app/readarr/bin/UI -type f -name '*.js' -print -quit)" && \
     test -n "$(find /app/readarr/bin/UI -type f -name '*.css' -print -quit)"
 
