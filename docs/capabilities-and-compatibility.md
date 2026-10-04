@@ -254,7 +254,9 @@ following import and service connections:
   qBittorrent authentication and other download clients.
 - A Readarr-compatible API. `/api/v1/book/lookup` includes nested author and
   edition records when the provider can resolve them, which lets SeerrNG
-  consume useful metadata in a request flow.
+  consume useful metadata in a request flow. Book statistics preserve the
+  aggregate Readarr fields and add separate ebook/audiobook file counts and
+  sizes, advertised through the SeerrNG capability contract.
 - Optional chaptered M4B generation for multi-track audiobook downloads; see
   [Audiobook M4B merging](#audiobook-m4b-merging).
 - Import matching that preserves multiple ebook and audiobook formats on the

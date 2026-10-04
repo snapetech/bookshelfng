@@ -110,6 +110,7 @@ namespace Readarr.Api.V1.System
                 {
                     formatScopedFacade = true,
                     formatSpecificPaths = true,
+                    formatSpecificAvailabilityStatistics = true,
                     restrictedSeerrKey = true
                 }
             };

@@ -57,6 +57,8 @@ namespace NzbDrone.Core.Test.AuthorStatsTests
 
         private void GivenTwoBookFiles()
         {
+            _bookFiles[0].Path = @"C:\Books\A.mp3";
+            _bookFiles[1].Path = @"C:\Books\B.mp3";
             Db.InsertMany(_bookFiles);
         }
 
@@ -125,6 +127,31 @@ namespace NzbDrone.Core.Test.AuthorStatsTests
             bookStats.AvailableBookCount.Should().Be(1);
             bookStats.SizeOnDisk.Should().Be(_bookFiles.Sum(x => x.Size));
             bookStats.BookFileCount.Should().Be(2);
+            bookStats.AudiobookFileCount.Should().Be(2);
+            bookStats.EbookFileCount.Should().Be(0);
+            bookStats.AudiobookSizeOnDisk.Should().Be(_bookFiles.Sum(x => x.Size));
+            bookStats.EbookSizeOnDisk.Should().Be(0);
+        }
+
+        [Test]
+        public void should_separate_ebook_and_audiobook_file_statistics()
+        {
+            _bookFiles[0].Path = @"C:\Books\Text.EPUB";
+            _bookFiles[0].Size = 100;
+            _bookFiles[1].Path = @"C:\Books\Audio.m4b";
+            _bookFiles[1].Size = 250;
+            Db.InsertMany(_bookFiles);
+
+            var stats = Subject.AuthorStatistics();
+
+            stats.Should().ContainSingle();
+            var bookStats = stats.Single();
+            bookStats.BookFileCount.Should().Be(2);
+            bookStats.EbookFileCount.Should().Be(1);
+            bookStats.AudiobookFileCount.Should().Be(1);
+            bookStats.SizeOnDisk.Should().Be(350);
+            bookStats.EbookSizeOnDisk.Should().Be(100);
+            bookStats.AudiobookSizeOnDisk.Should().Be(250);
         }
     }
 }
