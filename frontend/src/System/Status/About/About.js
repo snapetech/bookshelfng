@@ -37,6 +37,11 @@ class About extends Component {
       <FieldSet legend={translate('About')}>
         <DescriptionList className={styles.descriptionList}>
           <DescriptionListItem
+            title="Support"
+            data={<a href="https://ko-fi.com/snapetech" target="_blank" rel="noopener noreferrer">Support BookshelfNG on Ko-fi</a>}
+          />
+
+          <DescriptionListItem
             title={translate('Version')}
             data={version}
           />
