@@ -14,6 +14,14 @@ BookshelfNG exposes `/api/v1/system/capabilities` with the
 Readarr-compatible API and do not create separate libraries.
 Older BookshelfNG versions continue to use the ordinary `/api/v1` routes.
 
+Book statistics retain the Readarr-compatible aggregate fields and also expose
+`ebookFileCount`, `audiobookFileCount`, `ebookSizeOnDisk`, and
+`audiobookSizeOnDisk`. SeerrNG uses the count for the configured service type,
+so an ebook does not make an audiobook request appear available (or vice
+versa). The capability response advertises this with
+`features.formatSpecificAvailabilityStatistics`; clients that do not recognize
+the fields can continue using `bookFileCount` and `sizeOnDisk`.
+
 ## Credentials
 
 New BookshelfNG configurations require Forms authentication for the web UI.

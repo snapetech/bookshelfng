@@ -23,6 +23,8 @@ namespace NzbDrone.Core.AuthorStats
         IHandle<BookImportedEvent>,
         IHandle<BookEditedEvent>,
         IHandle<BookUpdatedEvent>,
+        IHandle<BookFileAddedEvent>,
+        IHandle<BookFileRetaggedEvent>,
         IHandle<BookFileDeletedEvent>
     {
         private readonly IAuthorStatisticsRepository _authorStatisticsRepository;
@@ -136,6 +138,18 @@ namespace NzbDrone.Core.AuthorStats
             {
                 _cache.Remove(authorId);
             }
+        }
+
+        [EventHandleOrder(EventHandleOrder.First)]
+        public void Handle(BookFileAddedEvent message)
+        {
+            _cache.Clear();
+        }
+
+        [EventHandleOrder(EventHandleOrder.First)]
+        public void Handle(BookFileRetaggedEvent message)
+        {
+            _cache.Clear();
         }
     }
 }
