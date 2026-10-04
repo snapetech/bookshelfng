@@ -122,6 +122,9 @@ jobs:
         env:
           READARRVERSION: ${{ steps.variables.outputs.build_version }}
 
+      - name: Install Chromium for direct-download browser tests
+        run: pwsh ./_tests/net10.0/linux-x64/playwright.ps1 install --with-deps chromium
+
       - name: Prepare tests
         run: |
           mkdir -p _tests/bin
@@ -131,6 +134,8 @@ jobs:
 
       - name: Test
         shell: bash
+        env:
+          DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: "true"
         run: ./test.sh Linux Unit Test
 
       - name: Report test results
