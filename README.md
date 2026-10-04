@@ -8,7 +8,11 @@ automatically grab downloads, and organize, rename, and upgrade files in your
 library. BookshelfNG is a complete app on its own. It does not require SeerrNG
 or a metadata proxy.
 
-BookshelfNG is built on .NET 10 LTS. Published containers and native release
+BookshelfNG is built on .NET 10 LTS.
+
+Support BookshelfNG on [Ko-fi](https://ko-fi.com/snapetech).
+
+Published containers and native release
 archives include the required runtime; source builds require the .NET 10 SDK.
 
 On Unraid, install [BookshelfNG from Community Apps](https://ca.unraid.net/apps/bookshelfng-1fdcqrv18pja7r).
