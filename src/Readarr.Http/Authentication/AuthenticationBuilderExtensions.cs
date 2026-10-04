@@ -71,9 +71,9 @@ namespace Readarr.Http.Authentication
 
             services.Configure<ApiKeyAuthenticationOptions>("API", options =>
             {
-                options.AllowQueryString = string.Equals(
+                options.AllowQueryString = !string.Equals(
                     Environment.GetEnvironmentVariable("BOOKSHELF_ALLOW_API_KEY_QUERY"),
-                    "true",
+                    "false",
                     StringComparison.OrdinalIgnoreCase);
             });
 

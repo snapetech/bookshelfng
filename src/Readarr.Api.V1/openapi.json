@@ -13970,13 +13970,13 @@
     "securitySchemes": {
       "X-Api-Key": {
         "type": "apiKey",
-        "description": "Apikey passed as header",
+        "description": "API key passed in the X-Api-Key header (recommended).",
         "name": "X-Api-Key",
         "in": "header"
       },
       "apikey": {
         "type": "apiKey",
-        "description": "Apikey passed as query parameter",
+        "description": "Legacy API key passed as the apikey query parameter. Disable with BOOKSHELF_ALLOW_API_KEY_QUERY=false.",
         "name": "apikey",
         "in": "query"
       }

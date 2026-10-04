@@ -179,7 +179,7 @@ namespace NzbDrone.Host
                     Name = "X-Api-Key",
                     Type = SecuritySchemeType.ApiKey,
                     Scheme = "apiKey",
-                    Description = "API key passed in the X-Api-Key header. REST query-string credentials are disabled by default.",
+                    Description = "API key passed in the X-Api-Key header (recommended).",
                     In = ParameterLocation.Header,
                     Reference = new OpenApiReference
                     {
@@ -190,9 +190,30 @@ namespace NzbDrone.Host
 
                 c.AddSecurityDefinition("X-Api-Key", apiKeyHeader);
 
+                var apiKeyQuery = new OpenApiSecurityScheme
+                {
+                    Name = "apikey",
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "apiKey",
+                    Description = "Legacy API key passed as the apikey query parameter. Disable with BOOKSHELF_ALLOW_API_KEY_QUERY=false.",
+                    In = ParameterLocation.Query,
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "apikey"
+                    },
+                };
+
+                c.AddSecurityDefinition("apikey", apiKeyQuery);
+
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     { apiKeyHeader, Array.Empty<string>() }
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    { apiKeyQuery, Array.Empty<string>() }
                 });
 
                 c.AddServer(new OpenApiServer

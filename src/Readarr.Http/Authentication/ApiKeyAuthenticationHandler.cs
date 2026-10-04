@@ -46,8 +46,8 @@ namespace Readarr.Http.Authentication
 
         private string ParseApiKey()
         {
-            // Query-string credentials are disabled by default because URLs are
-            // commonly retained in browser history, logs, and proxy access logs.
+            // Keep query-string credentials available for Readarr-compatible
+            // clients, but prefer headers because URLs are commonly logged.
             if (Options.AllowQueryString && !string.IsNullOrWhiteSpace(Options.QueryName) &&
                 Request.Query.TryGetValue(Options.QueryName, out var value))
             {
