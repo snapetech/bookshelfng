@@ -11,7 +11,7 @@ and [Readarr README](https://github.com/Readarr/Readarr/blob/develop/README.md).
 Bookshelf presents itself as a revival of Readarr. Readarr's repository now
 announces retirement, while its book-automation workflow remains the base
 BookshelfNG maintains. This comparison reflects the linked README content
-checked on 2026-09-23.
+checked on 2026-10-04.
 
 ## Product scope
 
@@ -250,6 +250,11 @@ following import and service connections:
   import-list configuration.
 - A native MyAnonamouse indexer with search filters and tracker session
   configuration.
+- A built-in Direct Download indexer and client for supported ebook sources.
+  It searches interactively, supports API-key downloads and an optional
+  Playwright/Chromium fallback for slow links, and does not need a separate
+  download-client service. Direct Download does not provide RSS. See
+  [search and download workflows](search-and-downloads.md).
 - qBittorrent 5.2 bearer API-key authentication, alongside inherited
   qBittorrent authentication and other download clients.
 - A Readarr-compatible API. `/api/v1/book/lookup` includes nested author and
@@ -310,19 +315,29 @@ schema](../src/Bookshelf.Diagnostics/README.md).
 
 ## Significant work maintained in BookshelfNG
 
-This is a feature-level inventory of the main changes since BookshelfNG began
-publishing its own images. It groups related commits rather than listing
-dependency updates and routine maintenance individually.
+This feature-level inventory covers work added or maintained in BookshelfNG
+from its May 18, 2026 fork from
+[pennydreadful/bookshelf](https://github.com/pennydreadful/bookshelf) through
+the [`main-v0.4.21.63` release](https://github.com/snapetech/bookshelfng/releases/tag/main-v0.4.21.63)
+published on October 4, 2026. Bookshelf itself is a Readarr revival. The table
+groups related changes rather than listing every bug fix, dependency bump, or
+routine maintenance commit. The sections below distinguish fork-maintained
+work from capabilities already shared with the Bookshelf and Readarr lineage.
+At this snapshot, BookshelfNG `main` included the direct parent's then-current
+`develop` history. For release-by-release entries see the
+[BookshelfNG releases](https://github.com/snapetech/bookshelfng/releases); the
+[main commit history](https://github.com/snapetech/bookshelfng/commits/main/)
+has the patch-level record.
 
 | Period | Maintained work |
 | --- | --- |
-| 2025 | Updated Linux container packaging and multi-architecture publishing for amd64 and arm64, adopted the LinuxServer entrypoint, added build caching and GHCR image publication, set a lower initial metadata-profile popularity threshold when `HARDCOVER=true`, added configurable self-hosted metadata endpoints and native MyAnonamouse support, preserved search ordering, and removed Servarr Sentry reporting. The current Bookshelf README also documents several of these capabilities. |
-| January 2026 | Added native Hardcover import lists and made the import sync only the list IDs selected in configuration. |
-| May–July 2026 | Enriched `/api/v1/book/lookup` with author and edition metadata, added tagged image publishing and downstream edge builds, and added qBittorrent 5.2 bearer API-key authentication. |
+| May–July 2026 | Established fork-owned tagged image publishing and downstream edge builds, enriched `/api/v1/book/lookup` with author and edition metadata, and added qBittorrent 5.2 bearer API-key authentication. |
 | August 2026 | Added a native Hardcover GraphQL metadata client so the Hardcover image can search and resolve records directly without a metadata proxy. |
 | September 1–23, 2026 | Added title-only and normalized-filename search for imports without author metadata; added optional chaptered M4B generation for multi-track audiobook downloads; added independently selectable runtime catalogs for Hardcover, Readarr-compatible metadata APIs, Open Library, Google Books, LOC, Gutendex, Internet Archive, NDL, Europeana, and optional Apify results; batched Hardcover lookups and honored rate-limit resets; reused stored author records and introduced periodic freshness checks; added an option to move configured extra files after author renames; added a separately installed diagnostics module; and added curated GitHub releases and Discord build announcements. |
+| September 24–October 1, 2026 | Migrated the application and release matrix to .NET 10; added self-contained desktop/server archives, Linux x86 and FreeBSD runtime-pack builds, a rollback-capable Windows installer, Ubuntu PPA, Debian/RPM/AUR/AppImage/Flatpak/Chocolatey packages, and versioned Helm/container releases. Tightened release validation and package-sync gates, and maintained the Unraid and YunoHost package handoffs. |
 | September 24, 2026 | Added field-level metadata source preferences, multiple formats per book, weighted edition and preferred-series matching, configurable automatic import title matching, manual Add searches and series-pack search, existing-torrent adoption, BookLore BookDrop uploads, and narrator search and audio tags. Added queue ignore behavior and safety fixes for metadata refresh and cross-origin redirects. |
 | September 26, 2026 | Added audiobook narrator credits from file tags to edition import scoring so matching narrators help rank audiobook editions when both local and provider metadata include them. |
+| September 27–October 4, 2026 | Added cross-catalog recovery for unmapped files, optional ebook/audiobook author folders, previewable per-author and bulk media moves, and SeerrNG format-scoped routes and availability counts. Hardened the SeerrNG credential and trusted-proxy boundaries, restored Readarr API and Docker compatibility, and added a built-in direct-download indexer/client with ordered source URLs, API-key downloads, optional headless-Chromium resolution, durable transfer state, and validated redirects. |
 
 BookshelfNG retains ebook identification behavior from the Readarr lineage:
 EPUB ISBN normalization and checksum checks, ISBN-13 preference, ASIN matching,
@@ -335,7 +350,7 @@ newer provider mapping.
 
 ## What is shared with upstream
 
-The upstream Bookshelf README snapshot checked on 2026-09-23 describes its
+The upstream Bookshelf README snapshot checked on 2026-10-04 describes its
 Readarr revival, one-format-per-book-per-instance model, Goodreads and
 Hardcover modes,
 native MyAnonamouse support, Hardcover list imports, self-hosted metadata
@@ -344,11 +359,13 @@ Bookshelf lineage capabilities and should not be described as unique to
 BookshelfNG. BookshelfNG has since extended format handling to keep multiple
 compatible ebook and audiobook files on one book record; see the
 [import matching guide](import-matching-and-formats.md). BookshelfNG maintains
-and extends that base; its notable implementation work
-is the direct Hardcover GraphQL client and request controls, supplemental
-runtime catalogs and stable IDs, durable author refresh policy, optional
-diagnostics module, richer book lookup API response, qBittorrent 5.2
-authentication, and current image/release automation.
+and extends that base; its notable implementation work is the direct Hardcover
+GraphQL client and request controls, supplemental runtime catalogs and stable
+IDs, durable author refresh policy, optional diagnostics module, richer book
+lookup API response, qBittorrent 5.2 authentication, SeerrNG format-specific
+availability, the Direct Download indexer/client, and current image/release
+automation. The October 4 comparison found no commits from the direct parent's
+then-current `develop` branch missing from BookshelfNG `main`.
 
 BookshelfNG also retains workflow features from Readarr that the brief
 Bookshelf README does not enumerate: existing-library scans, quality-based

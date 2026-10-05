@@ -16,6 +16,35 @@ in **Settings > Metadata**. See the main README's
 [metadata source settings](../README.md#metadata-sources) for provider setup
 and source identity behavior.
 
+## Search a direct-download ebook source
+
+Add the **Direct Download** indexer from **Settings > Indexers**. Enter one
+supported source URL per row, in the order BookshelfNG should try them. Add an
+API key when the source provides fast download links. If it requires a
+slow-download page, turn on the **Enable Slow-Download Browser Fallback**
+setting. The indexer requires at least one download method: an API key or the
+browser fallback.
+The indexer's **Test** action can validate an API key without downloading a
+book.
+
+Direct Download supports interactive ebook searches only; it has no RSS feed
+and does not search audiobooks. A successful result uses BookshelfNG's built-in
+Direct download client, so this source does not need a separate qBittorrent,
+Transmission, or other download-client service. The client tracks transfer
+progress and sends completed supported files through the normal import flow.
+
+The slow-download fallback opens the source page in headless Chromium and can
+take longer than an API grab. The standard BookshelfNG Docker image includes
+the Chromium headless shell. A custom or native deployment must provide a
+compatible Playwright Chromium runtime; set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when the browser is not at the default
+location. Leave the fallback disabled when the source's API or public links
+already resolve direct files.
+
+Use only sources you are allowed to access and trust. URLs must use HTTP or
+HTTPS and must not embed credentials. BookshelfNG validates configured source
+and resolved grab URLs, rejects unsafe destinations, and revalidates redirects.
+
 ## Search indexers and adopt an existing torrent
 
 Use interactive release search on a book or author to choose a result from a

@@ -7,11 +7,11 @@ metadata provider configuration.
 
 | Guide | Covers |
 | --- | --- |
-| [Capabilities and compatibility](capabilities-and-compatibility.md) | Supported formats, metadata providers, compatibility limits, and BookshelfNG-specific changes |
+| [Fork changes, capabilities, and compatibility](capabilities-and-compatibility.md) | BookshelfNG feature inventory, supported formats, metadata providers, upstream comparison, and compatibility limits |
 | [Import matching and formats](import-matching-and-formats.md) | Coexisting ebook and audiobook files, import thresholds, weighted edition terms, and preferred series |
 | [Catalog metadata and unmapped files](catalog-metadata-and-unmapped-files.md) | Combining metadata, covers, and author images across catalogs; retrying unmapped files with the UI, API, or CLI |
 | [Moving existing media](media-storage.md) | Per-author and bulk moves, preview behavior, API/CLI usage, permissions, and the legacy two-instance consolidation runbook |
-| [Search and downloads](search-and-downloads.md) | Add-page search, indexer release search, existing-torrent adoption, and ignoring queue items |
+| [Search and downloads](search-and-downloads.md) | Add-page catalog search, torrent and direct-download indexers, browser-assisted link resolution, torrent adoption, and queue handling |
 | [Series pack search](series-pack-search.md) | Searching a series and reviewing multi-book packs in Manual Import |
 | [Author metadata refresh](author-metadata-refresh.md) | Stored author metadata, refresh schedule, request limits, and troubleshooting |
 | [Reporting issues](reporting-issues.md) | Which application and container logs to include for UI and API failures |

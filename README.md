@@ -121,7 +121,12 @@ Per-format profiles are on the
   again after a failed download; automatic grabs and manually selected grabs
   have separate re-search settings. You can adopt a matching torrent already
   in a download client, and ignore an unmatched queue item without deleting
-  the download. See [search and download workflows](docs/search-and-downloads.md).
+  the download. For supported ebook sources, add the built-in **Direct
+  Download** indexer. It uses an API key when configured and can optionally
+  resolve slow links in headless Chromium; its built-in client tracks the
+  transfer without another download-client service. Direct search is
+  interactive and does not provide RSS. See
+  [search and download workflows](docs/search-and-downloads.md).
 - **Use narrator credits to identify audiobooks.** Import matching compares
   narrator tags with edition metadata when both are present. Narrators stay
   separate from authors, appear in book search and filtering, and can be
@@ -495,8 +500,10 @@ above when moving to Hardcover metadata.
 
 GitHub Actions publishes these rolling and versioned container tags:
 
-- `softcover`, `softcover-v0.4.20`, `softcover-v0.4.20.<run-number>`
-- `hardcover`, `hardcover-v0.4.20`, `hardcover-v0.4.20.<run-number>`
+- `softcover` and `softcover-v<release-version>` for the Readarr-compatible
+  metadata mode
+- `hardcover`, `latest`, and `hardcover-v<release-version>` for native
+  Hardcover mode
 
 Tagged `main-v*` builds also publish a GitHub Release with curated release
 notes, platform archives, the Windows x64 setup installer, checksums, and native
@@ -516,9 +523,9 @@ you can also authenticate with package read access.
 ## Documentation
 
 - [Documentation index](docs/README.md)
-- [Capabilities, upstream comparison, and compatibility boundaries](docs/capabilities-and-compatibility.md)
+- [Fork feature inventory, upstream comparison, and compatibility boundaries](docs/capabilities-and-compatibility.md)
 - [Import matching and multiple formats](docs/import-matching-and-formats.md)
-- [Search, torrent adoption, and queue workflows](docs/search-and-downloads.md)
+- [Search, direct downloads, torrent adoption, and queue workflows](docs/search-and-downloads.md)
 - [Audiobook narrator tags and Audiobookshelf sidecars](docs/audiobookshelf-metadata.md)
 - [BookLore import uploads](docs/booklore-integration.md)
 - [Series pack search](docs/series-pack-search.md)
