@@ -53,7 +53,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify YunoHost and Unraid packages are synced
+      - name: Verify Unraid package is synced
         if: github.event_name == 'push'
         run: bash scripts/verify-package-sync.sh
 

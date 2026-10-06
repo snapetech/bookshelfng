@@ -6,8 +6,6 @@ repo_root="$(git -C "$script_dir/.." rev-parse --show-toplevel)"
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-ynh_url="${BOOKSHELFNG_YNH_GIT_URL:-https://github.com/YunoHost-Apps/bookshelfng_ynh.git}"
-ynh_branch="${BOOKSHELFNG_YNH_BRANCH:-testing}"
 unraid_url="${BOOKSHELFNG_UNRAID_GIT_URL:-https://github.com/snapetech/bookshelfng-unraid.git}"
 unraid_branch="${BOOKSHELFNG_UNRAID_BRANCH:-main}"
 
@@ -16,14 +14,13 @@ if ! command -v rsync >/dev/null 2>&1; then
 	exit 1
 fi
 
-for source_path in packaging/yunohost/manifest.toml packaging/unraid/README.md; do
+for source_path in packaging/unraid/README.md; do
 	if [[ ! -f "$repo_root/$source_path" ]]; then
 		echo "Committed package source is missing $source_path." >&2
 		exit 1
 	fi
 done
 
-git clone --quiet --depth 1 --branch "$ynh_branch" "$ynh_url" "$work_dir/yunohost"
 git clone --quiet --depth 1 --branch "$unraid_branch" "$unraid_url" "$work_dir/unraid"
 
 check_tree() {
@@ -54,10 +51,6 @@ check_file() {
 		return 1
 	fi
 }
-
-# YunoHost regenerates its README from the manifest; the sync script preserves it.
-check_tree "YunoHost" "$repo_root/packaging/yunohost" "$work_dir/yunohost" \
-	--exclude='/.git/' --exclude='/README.md'
 
 # The Unraid repository also owns release notes outside the package source.
 # Match exactly the paths managed by sync-unraid-package.sh.

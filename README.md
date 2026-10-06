@@ -546,16 +546,17 @@ you can also authenticate with package read access.
 Please file a GitHub issue or start a discussion for help. Contributions are
 welcome, especially fixes and quality-of-life improvements.
 
-After cloning, maintainers must run `scripts/install-yunohost-sync-hook.sh` to
-install the post-commit and pre-push package sync hooks. Commits sync the
-YunoHost and Unraid package repositories immediately. Before a BookshelfNG
-push, both syncs run again and a failure blocks that push. GitHub protects
-`main` with a required pull request and package sync check, so a local hook
-bypass cannot merge package changes that are missing from either repository.
-Release workflows run the same check before publishing. Missing package
-sources or companion checkouts are errors. Set `BOOKSHELFNG_UNRAID_REPO` or
-`BOOKSHELFNG_YNH_REPO` if a companion checkout is outside the sibling-repository
-layout.
+After cloning, maintainers can run `scripts/install-package-sync-hook.sh` to
+install the post-commit and pre-push Unraid package sync hooks. They mirror
+`packaging/unraid/` to the companion repository; a failed sync blocks a push.
+GitHub workflows verify the Unraid package before release. Missing package
+sources or the companion checkout are errors. Set `BOOKSHELFNG_UNRAID_REPO` if
+that checkout is outside the sibling-repository layout.
+
+The YunoHost package source remains for reference, but BookshelfNG no longer
+publishes or updates it. Existing installations remain on their last published
+package; operators must move to a supported deployment or maintain package
+updates independently.
 
 ## Optional diagnostics
 

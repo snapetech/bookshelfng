@@ -134,7 +134,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify YunoHost and Unraid packages are synced
+      - name: Verify Unraid package is synced
         run: bash scripts/verify-package-sync.sh
 
       - name: Verify release tag is reachable from main

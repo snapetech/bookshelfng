@@ -11,9 +11,9 @@ while IFS= read -r git_environment_variable; do
 	unset "$git_environment_variable"
 done < <(git -C "$repo_root" rev-parse --local-env-vars)
 
-echo "Running YunoHost and Unraid package sync ($trigger)."
+echo "Running Unraid package sync ($trigger)."
 
-for script in sync-yunohost-package.sh sync-unraid-package.sh; do
+for script in sync-unraid-package.sh; do
 	sync_script="$repo_root/scripts/$script"
 	if [[ ! -f "$sync_script" ]]; then
 		echo "Package sync script not found: $sync_script" >&2
