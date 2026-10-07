@@ -54,6 +54,11 @@ namespace NzbDrone.Core.Test.Profiles
                                           .Build();
 
             var authorList = Builder<Author>.CreateListOfSize(3)
+                                            .All()
+                                            .With(c => c.EbookQualityProfileId = null)
+                                            .With(c => c.AudiobookQualityProfileId = null)
+                                            .With(c => c.EbookMetadataProfileId = null)
+                                            .With(c => c.AudiobookMetadataProfileId = null)
                                             .Random(1)
                                             .With(c => c.QualityProfileId = profile.Id)
                                             .Build().ToList();
@@ -87,6 +92,10 @@ namespace NzbDrone.Core.Test.Profiles
 
             var authorList = Builder<Author>.CreateListOfSize(3)
                 .All()
+                .With(c => c.EbookQualityProfileId = null)
+                .With(c => c.AudiobookQualityProfileId = null)
+                .With(c => c.EbookMetadataProfileId = null)
+                .With(c => c.AudiobookMetadataProfileId = null)
                 .With(c => c.QualityProfileId = 1)
                 .Build().ToList();
 
@@ -119,6 +128,10 @@ namespace NzbDrone.Core.Test.Profiles
 
             var authorList = Builder<Author>.CreateListOfSize(3)
                 .All()
+                .With(c => c.EbookQualityProfileId = null)
+                .With(c => c.AudiobookQualityProfileId = null)
+                .With(c => c.EbookMetadataProfileId = null)
+                .With(c => c.AudiobookMetadataProfileId = null)
                 .With(c => c.QualityProfileId = 1)
                 .Build().ToList();
 
@@ -147,6 +160,10 @@ namespace NzbDrone.Core.Test.Profiles
         {
             var authorList = Builder<Author>.CreateListOfSize(3)
                                             .All()
+                                            .With(c => c.EbookQualityProfileId = null)
+                                            .With(c => c.AudiobookQualityProfileId = null)
+                                            .With(c => c.EbookMetadataProfileId = null)
+                                            .With(c => c.AudiobookMetadataProfileId = null)
                                             .With(c => c.QualityProfileId = 2)
                                             .Build().ToList();
 
@@ -167,6 +184,24 @@ namespace NzbDrone.Core.Test.Profiles
             Subject.Delete(1);
 
             Mocker.GetMock<IProfileRepository>().Verify(c => c.Delete(1), Times.Once());
+        }
+
+        [Test]
+        public void should_not_be_able_to_delete_profile_if_assigned_to_format_specific_author_profile()
+        {
+            var profile = Builder<QualityProfile>.CreateNew()
+                .With(p => p.Id = 2)
+                .Build();
+            var author = Builder<Author>.CreateNew()
+                .With(c => c.QualityProfileId = 1)
+                .With(c => c.EbookQualityProfileId = profile.Id)
+                .Build();
+
+            Mocker.GetMock<IAuthorService>().Setup(c => c.GetAllAuthors()).Returns(new List<Author> { author });
+            Mocker.GetMock<IProfileRepository>().Setup(c => c.Get(profile.Id)).Returns(profile);
+
+            Assert.Throws<QualityProfileInUseException>(() => Subject.Delete(profile.Id));
+            Mocker.GetMock<IProfileRepository>().Verify(c => c.Delete(It.IsAny<int>()), Times.Never());
         }
     }
 }

@@ -23,7 +23,7 @@ namespace NzbDrone.Core.Profiles.Metadata
         List<MetadataProfile> All();
         MetadataProfile Get(int id);
         bool Exists(int id);
-        List<Book> FilterBooks(Author input, int profileId);
+        List<Book> FilterBooks(Author input, int profileId, int? ebookProfileId = null, int? audiobookProfileId = null);
     }
 
     public class MetadataProfileService : IMetadataProfileService, IHandle<ApplicationStartedEvent>
@@ -85,7 +85,7 @@ namespace NzbDrone.Core.Profiles.Metadata
             var profile = _profileRepository.Get(id);
 
             if (profile.Name == NONE_PROFILE_NAME ||
-                _authorService.GetAllAuthors().Any(c => c.MetadataProfileId == id) ||
+                _authorService.GetAllAuthors().Any(c => c.MetadataProfileId == id || c.EbookMetadataProfileId == id || c.AudiobookMetadataProfileId == id) ||
                 _importListFactory.All().Any(c => c.MetadataProfileId == id) ||
                 _rootFolderService.All().Any(c => c.DefaultMetadataProfileId == id))
             {
@@ -110,7 +110,7 @@ namespace NzbDrone.Core.Profiles.Metadata
             return _profileRepository.Exists(id);
         }
 
-        public List<Book> FilterBooks(Author input, int profileId)
+        public List<Book> FilterBooks(Author input, int profileId, int? ebookProfileId = null, int? audiobookProfileId = null)
         {
             var seriesLinks = input.Series?.Value?
                 .Where(x => x.LinkItems != null && x.LinkItems.Value != null)
@@ -142,10 +142,10 @@ namespace NzbDrone.Core.Profiles.Metadata
 
             var localFiles = _mediaFileService.GetFilesByAuthor(dbAuthor?.Id ?? 0);
 
-            return FilterBooks(input.Books.Value, localBooks, localFiles, seriesLinks, profileId);
+            return FilterBooks(input.Books.Value, localBooks, localFiles, seriesLinks, profileId, ebookProfileId, audiobookProfileId);
         }
 
-        private List<Book> FilterBooks(IEnumerable<Book> remoteBooks, List<Book> localBooks, List<BookFile> localFiles, Dictionary<Book, List<SeriesBookLink>> seriesLinks, int metadataProfileId)
+        private List<Book> FilterBooks(IEnumerable<Book> remoteBooks, List<Book> localBooks, List<BookFile> localFiles, Dictionary<Book, List<SeriesBookLink>> seriesLinks, int metadataProfileId, int? ebookProfileId, int? audiobookProfileId)
         {
             var profile = Get(metadataProfileId);
 
@@ -154,52 +154,101 @@ namespace NzbDrone.Core.Profiles.Metadata
             var hash = new HashSet<Book>(remoteBooks);
             var titles = new HashSet<string>(remoteBooks.Select(x => x.Title));
 
-            var localHash = new HashSet<string>(localBooks.Where(x => x.AddOptions.AddType == BookAddType.Manual).Select(x => x.ForeignBookId));
-            localHash.UnionWith(localFiles.Select(x => x.Edition.Value.Book.Value.ForeignBookId));
+            var localBookIds = new HashSet<string>(localBooks.Where(x => x.AddOptions.AddType == BookAddType.Manual).Select(x => x.ForeignBookId));
+            localBookIds.UnionWith(localFiles.Select(x => x.Edition.Value.Book.Value.ForeignBookId));
 
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, BookAllowedByRating, "rating criteria not met");
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => !p.SkipMissingDate || x.ReleaseDate.HasValue, "release date is missing");
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => !p.SkipPartsAndSets || !IsPartOrSet(x, seriesLinks.GetValueOrDefault(x), titles), "book is part of set");
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => !p.SkipSeriesSecondary || !seriesLinks.ContainsKey(x) || seriesLinks[x].Any(y => y.IsPrimary), "book is a secondary series item");
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => !p.Ignored.Any(i => MatchesTerms(x.Title, i)), "contains ignored terms");
-
-            foreach (var book in hash)
+            var profiles = new Dictionary<int, MetadataProfile> { [profile.Id] = profile };
+            foreach (var book in hash.ToList())
             {
+                var localBook = localBookIds.Contains(book.ForeignBookId);
                 var localEditions = localBooks.SingleOrDefault(x => x.ForeignBookId == book.ForeignBookId)?.Editions.Value ?? new List<Edition>();
+                var localEditionIds = new HashSet<string>(localEditions.Where(x => x.ManualAdd).Select(x => x.ForeignEditionId));
+                localEditionIds.UnionWith(localFiles.Select(x => x.Edition.Value.ForeignEditionId));
+                var editions = book.Editions?.Value ?? new List<Edition>();
+                var allowedEditions = new List<Edition>();
 
-                book.Editions = FilterEditions(book.Editions.Value, localEditions, localFiles, profile);
+                foreach (var editionGroup in editions.GroupBy(x => GetMetadataProfileId(x, profile.Id, ebookProfileId, audiobookProfileId)))
+                {
+                    if (!profiles.TryGetValue(editionGroup.Key, out var editionProfile))
+                    {
+                        editionProfile = Get(editionGroup.Key);
+                        profiles[editionGroup.Key] = editionProfile;
+                    }
+
+                    var profileEditions = editionGroup.ToList();
+                    if (!localBook && !BookAllowedByProfile(book, profileEditions, editionProfile, seriesLinks.GetValueOrDefault(book), titles))
+                    {
+                        continue;
+                    }
+
+                    foreach (var edition in profileEditions)
+                    {
+                        if (!localEditionIds.Contains(edition.ForeignEditionId) && !EditionAllowedByProfile(edition, editionProfile))
+                        {
+                            _logger.Trace("Skipping edition {0} because it does not meet metadata profile {1}", edition, editionProfile.Name);
+                            continue;
+                        }
+
+                        allowedEditions.Add(edition);
+                    }
+                }
+
+                book.Editions = allowedEditions;
+                if (allowedEditions.Count == 0 && !localBook)
+                {
+                    hash.Remove(book);
+                }
             }
 
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => x.Editions.Value.Any(e => e.PageCount > p.MinPages) || x.Editions.Value.All(e => e.PageCount == 0), "minimum page count not met");
-            FilterByPredicate(hash, x => x.ForeignBookId, localHash, profile, (x, p) => x.Editions.Value.Any(), "all editions filtered out");
-
             return hash.ToList();
         }
 
-        private List<Edition> FilterEditions(IEnumerable<Edition> editions, List<Edition> localEditions, List<BookFile> localFiles, MetadataProfile profile)
+        private static int GetMetadataProfileId(Edition edition, int profileId, int? ebookProfileId, int? audiobookProfileId)
         {
-            var allowedLanguages = profile.AllowedLanguages.IsNotNullOrWhiteSpace() ? new HashSet<string>(profile.AllowedLanguages.Trim(',').Split(',').Select(x => x.CanonicalizeLanguage())) : new HashSet<string>();
-
-            var hash = new HashSet<Edition>(editions);
-
-            var localHash = new HashSet<string>(localEditions.Where(x => x.ManualAdd).Select(x => x.ForeignEditionId));
-            localHash.UnionWith(localFiles.Select(x => x.Edition.Value.ForeignEditionId));
-
-            FilterByPredicate(hash, x => x.ForeignEditionId, localHash, profile, (x, p) => !allowedLanguages.Any() || allowedLanguages.Contains(x.Language?.CanonicalizeLanguage()), "edition language not allowed");
-            FilterByPredicate(hash, x => x.ForeignEditionId, localHash, profile, (x, p) => !p.SkipMissingIsbn || x.Isbn13.IsNotNullOrWhiteSpace() || x.Asin.IsNotNullOrWhiteSpace(), "isbn and asin is missing");
-            FilterByPredicate(hash, x => x.ForeignEditionId, localHash, profile, (x, p) => !p.Ignored.Any(i => MatchesTerms(x.Title, i)), "contains ignored terms");
-
-            return hash.ToList();
-        }
-
-        private void FilterByPredicate<T>(HashSet<T> remoteItems, Func<T, string> getId, HashSet<string> localItems, MetadataProfile profile, Func<T, MetadataProfile, bool> bookAllowed, string message)
-        {
-            var filtered = new HashSet<T>(remoteItems.Where(x => !bookAllowed(x, profile) && !localItems.Contains(getId(x))));
-            if (filtered.Any())
+            if (edition.IsEbook && ebookProfileId.HasValue && ebookProfileId.Value > 0)
             {
-                _logger.Trace($"Skipping {filtered.Count} {typeof(T).Name} because {message}:\n{filtered.ConcatToString(x => x.ToString(), "\n")}");
-                remoteItems.RemoveWhere(x => filtered.Contains(x));
+                return ebookProfileId.Value;
             }
+
+            if (MediaFileExtensions.IsAudiobookEdition(edition) && audiobookProfileId.HasValue && audiobookProfileId.Value > 0)
+            {
+                return audiobookProfileId.Value;
+            }
+
+            return profileId;
+        }
+
+        private bool BookAllowedByProfile(Book book, List<Edition> editions, MetadataProfile profile, List<SeriesBookLink> seriesLinks, HashSet<string> titles)
+        {
+            var allowed = BookAllowedByRating(book, profile) &&
+                (!profile.SkipMissingDate || book.ReleaseDate.HasValue) &&
+                (!profile.SkipPartsAndSets || !IsPartOrSet(book, seriesLinks, titles)) &&
+                (!profile.SkipSeriesSecondary || seriesLinks == null || seriesLinks.Any(x => x.IsPrimary)) &&
+                !profile.Ignored.Any(i => MatchesTerms(book.Title, i));
+
+            if (allowed && !(editions.Any(x => x.PageCount > profile.MinPages) || editions.All(x => x.PageCount == 0)))
+            {
+                _logger.Trace("Skipping book {0} because it does not meet the minimum page count in metadata profile {1}", book, profile.Name);
+                return false;
+            }
+
+            if (!allowed)
+            {
+                _logger.Trace("Skipping book {0} because it does not meet metadata profile {1}", book, profile.Name);
+            }
+
+            return allowed;
+        }
+
+        private bool EditionAllowedByProfile(Edition edition, MetadataProfile profile)
+        {
+            var allowedLanguages = profile.AllowedLanguages.IsNotNullOrWhiteSpace()
+                ? new HashSet<string>(profile.AllowedLanguages.Trim(',').Split(',').Select(x => x.CanonicalizeLanguage()))
+                : new HashSet<string>();
+
+            return (!allowedLanguages.Any() || allowedLanguages.Contains(edition.Language?.CanonicalizeLanguage())) &&
+                (!profile.SkipMissingIsbn || edition.Isbn13.IsNotNullOrWhiteSpace() || edition.Asin.IsNotNullOrWhiteSpace()) &&
+                !profile.Ignored.Any(i => MatchesTerms(edition.Title, i));
         }
 
         private bool BookAllowedByRating(Book b, MetadataProfile p)

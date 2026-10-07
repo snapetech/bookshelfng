@@ -54,7 +54,7 @@ namespace Readarr.Api.V1.History
 
             if (model.Author != null)
             {
-                resource.QualityCutoffNotMet = _upgradableSpecification.QualityCutoffNotMet(model.Author.QualityProfile.Value, model.Quality);
+                resource.QualityCutoffNotMet = _upgradableSpecification.QualityCutoffNotMet(model.Author.GetQualityProfileFor(model.Quality?.Quality), model.Quality);
             }
 
             return resource;

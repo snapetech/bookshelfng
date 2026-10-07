@@ -227,7 +227,11 @@ namespace NzbDrone.Core.Books
 
         protected override List<Book> GetRemoteChildren(Author local, Author remote)
         {
-            var filtered = _metadataProfileService.FilterBooks(remote, local.MetadataProfileId);
+            var filtered = _metadataProfileService.FilterBooks(
+                remote,
+                local.MetadataProfileId,
+                local.EbookMetadataProfileId,
+                local.AudiobookMetadataProfileId);
 
             var all = filtered.DistinctBy(m => m.ForeignBookId).ToList();
             var ids = all.Select(x => x.ForeignBookId).ToList();

@@ -110,6 +110,14 @@ namespace Readarr.Api.V1.Author
 
             SharedValidator.RuleFor(s => s.QualityProfileId).SetValidator(qualityProfileExistsValidator);
             SharedValidator.RuleFor(s => s.MetadataProfileId).SetValidator(metadataProfileExistsValidator);
+            SharedValidator.RuleFor(s => s.EbookQualityProfileId).GreaterThanOrEqualTo(0).When(s => s.EbookQualityProfileId.HasValue);
+            SharedValidator.RuleFor(s => s.AudiobookQualityProfileId).GreaterThanOrEqualTo(0).When(s => s.AudiobookQualityProfileId.HasValue);
+            SharedValidator.RuleFor(s => s.EbookMetadataProfileId).GreaterThanOrEqualTo(0).When(s => s.EbookMetadataProfileId.HasValue);
+            SharedValidator.RuleFor(s => s.AudiobookMetadataProfileId).GreaterThanOrEqualTo(0).When(s => s.AudiobookMetadataProfileId.HasValue);
+            SharedValidator.RuleFor(s => s.EbookQualityProfileId).SetValidator(qualityProfileExistsValidator).When(s => s.EbookQualityProfileId.HasValue && s.EbookQualityProfileId.Value > 0);
+            SharedValidator.RuleFor(s => s.AudiobookQualityProfileId).SetValidator(qualityProfileExistsValidator).When(s => s.AudiobookQualityProfileId.HasValue && s.AudiobookQualityProfileId.Value > 0);
+            SharedValidator.RuleFor(s => s.EbookMetadataProfileId).SetValidator(metadataProfileExistsValidator).When(s => s.EbookMetadataProfileId.HasValue && s.EbookMetadataProfileId.Value > 0);
+            SharedValidator.RuleFor(s => s.AudiobookMetadataProfileId).SetValidator(metadataProfileExistsValidator).When(s => s.AudiobookMetadataProfileId.HasValue && s.AudiobookMetadataProfileId.Value > 0);
 
             PostValidator.RuleFor(s => s.Path).IsValidPath().When(s => s.RootFolderPath.IsNullOrWhiteSpace());
             PostValidator.RuleFor(s => s.RootFolderPath)

@@ -17,7 +17,9 @@ namespace NzbDrone.Core.Books
         public void Handle(AuthorEditedEvent message)
         {
             // Refresh Author is we change BookType Preferences
-            if (message.Author.MetadataProfileId != message.OldAuthor.MetadataProfileId)
+            if (message.Author.MetadataProfileId != message.OldAuthor.MetadataProfileId ||
+                message.Author.EbookMetadataProfileId != message.OldAuthor.EbookMetadataProfileId ||
+                message.Author.AudiobookMetadataProfileId != message.OldAuthor.AudiobookMetadataProfileId)
             {
                 _commandQueueManager.Push(new RefreshAuthorCommand(message.Author.Id, forceRefresh: true));
             }

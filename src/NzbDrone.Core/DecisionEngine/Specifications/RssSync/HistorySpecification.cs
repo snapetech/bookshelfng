@@ -65,13 +65,13 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                     // The series will be the same as the one in history since it's the same episode.
                     // Instead of fetching the series from the DB reuse the known series.
                     var cutoffUnmet = _upgradableSpecification.CutoffNotMet(
-                        subject.Author.QualityProfile,
+                        subject.Author.GetQualityProfileFor(subject.ParsedBookInfo.Quality?.Quality),
                         new List<QualityModel> { mostRecent.Quality },
                         customFormats,
                         subject.ParsedBookInfo.Quality);
 
                     var upgradeable = _upgradableSpecification.IsUpgradable(
-                        subject.Author.QualityProfile,
+                        subject.Author.GetQualityProfileFor(subject.ParsedBookInfo.Quality?.Quality),
                         mostRecent.Quality,
                         customFormats,
                         subject.ParsedBookInfo.Quality,

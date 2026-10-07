@@ -127,6 +127,24 @@ namespace NzbDrone.Integration.Test.ApiTests
         }
 
         [Test]
+        public void update_author_format_profiles()
+        {
+            var author = EnsureAuthor("14586394", "43765115", "Andrew Hunter Murray");
+            author.EbookQualityProfileId = 2;
+            author.AudiobookQualityProfileId = 1;
+            author.EbookMetadataProfileId = 1;
+            author.AudiobookMetadataProfileId = 2;
+
+            Author.Put(author);
+            var result = Author.Get(author.Id);
+
+            result.EbookQualityProfileId.Should().Be(2);
+            result.AudiobookQualityProfileId.Should().Be(1);
+            result.EbookMetadataProfileId.Should().Be(1);
+            result.AudiobookMetadataProfileId.Should().Be(2);
+        }
+
+        [Test]
         [DependsOnTest(nameof(update_author_profile_id), AllowFailure = true)]
         public void update_author_monitored()
         {

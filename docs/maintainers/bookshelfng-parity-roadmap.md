@@ -18,7 +18,7 @@ public BookshelfNG snapshots.
 
 | Capability | BookshelfNG status | Evidence / boundary |
 | --- | --- | --- |
-| Ebook and audiobook in one instance and on one book record | Implemented | Multiple ebook formats and audiobook files coexist; imports and upgrades compare compatible format groups. Optional per-format author folders now route imports, upgrades, and renames; profile overrides and a previewable move for existing files remain. |
+| Ebook and audiobook in one instance and on one book record | Implemented | Multiple ebook formats and audiobook files coexist; imports and upgrades compare compatible format groups. Optional per-format author folders route imports, upgrades, and renames; format-specific profile overrides fall back to the author defaults. A previewable move for existing files remains. |
 | Standard book automation | Implemented | Author/book monitoring, RSS, indexers, download clients, quality profiles, imports, renaming, search, and upgrades are carried from the Readarr lineage. |
 | Narrator metadata | Implemented, now used in identification | Narrators are stored separately, searchable, taggable, and used to rank audio imports when both file and edition metadata provide a narrator. |
 | Publisher and edition preferences | Partial | Publisher and format influence matching; metadata profiles support weighted edition terms. There is no dedicated dramatized-audio or publisher-specific release model. |
@@ -36,10 +36,10 @@ BookshelfNG can store an ebook and audiobook under one book. `Author.Path`
 remains the backwards-compatible default, and authors can now set optional
 ebook and audiobook folder overrides for future imports and renames. Generated
 book sidecars follow their media files; author-wide metadata and extras remain
-under `Author.Path`. The existing author-level quality and metadata profiles remain shared. Add
-optional format-specific profiles next, keeping the author-level settings as
-defaults for compatibility. Existing files need a previewable move workflow
-before a path change can relocate them.
+under `Author.Path`. Optional format-specific quality and metadata profiles
+now override author-level choices for matching ebook and audiobook formats.
+Unset overrides continue to use the author-level profile. Existing files need
+a previewable move workflow before a path change can relocate them.
 
 This is a cross-cutting storage change. The first increment adds optional
 `EbookPath` and `AudiobookPath` overrides and routes file destinations, root
@@ -55,8 +55,9 @@ remain in `Author.Path`. Implement the remaining work in these stages:
 2. Completed: scan configured author locations for extra files and keep
    generated book sidecars beside their media; retain `Author.Path` as the
    shared location for author-wide metadata and extras.
-3. Add format-specific quality and metadata profile fields. Existing author
-   settings remain effective whenever a format-specific value is unset.
+3. **Completed:** add format-specific quality and metadata profile overrides.
+   Existing author settings remain effective whenever a format-specific value
+   is unset.
 4. Audit full-library scans, root-folder removal, bulk edit, and moves across
    every configured location. Keep same-path and overlap safeguards for all
    authors and all format paths.
@@ -128,8 +129,8 @@ repeatable.
 2. **Current storage increment:** optional format-specific author folders
    route future imports, upgrades, and renames while `Author.Path` remains the
    fallback. Existing files stay in place when an override changes.
-3. **Next storage increment:** add format-specific quality and metadata
-   profiles, keeping author-level choices as fallbacks.
+3. **Completed:** add format-specific quality and metadata profiles, keeping
+   author-level choices as fallbacks.
 4. **Storage move workflow:** scan, move, and delete safely across roots with
    explicit previews and reversible operations.
 5. **Audio processing milestone:** richer chapter preservation and single-file

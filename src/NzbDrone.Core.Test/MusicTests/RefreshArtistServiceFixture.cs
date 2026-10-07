@@ -51,6 +51,10 @@ namespace NzbDrone.Core.Test.MusicTests
                 .With(a => a.Metadata = metadata)
                 .With(a => a.Series = series)
                 .With(a => a.MetadataProfile = profile)
+                .With(a => a.EbookQualityProfileId = null)
+                .With(a => a.AudiobookQualityProfileId = null)
+                .With(a => a.EbookMetadataProfileId = null)
+                .With(a => a.AudiobookMetadataProfileId = null)
                 .Build();
 
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
@@ -61,7 +65,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.InsertMany(It.IsAny<List<Book>>()));
 
             Mocker.GetMock<IMetadataProfileService>()
-                .Setup(s => s.FilterBooks(It.IsAny<Author>(), It.IsAny<int>()))
+                .Setup(s => s.FilterBooks(It.IsAny<Author>(), It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<int?>()))
                 .Returns(_remoteBooks);
 
             Mocker.GetMock<IProvideAuthorInfo>()

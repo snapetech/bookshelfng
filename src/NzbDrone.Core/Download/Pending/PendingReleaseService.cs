@@ -240,7 +240,7 @@ namespace NzbDrone.Core.Download.Pending
             {
                 var author = g.First().Author;
 
-                return g.OrderByDescending(e => e.Quality, new QualityModelComparer(author.QualityProfile))
+                return g.OrderByDescending(e => e.Quality, new QualityModelComparer(author.GetQualityProfileFor(g.First().Quality?.Quality)))
                         .ThenBy(q => PrioritizeDownloadProtocol(q.Author, q.Protocol))
                         .First();
             });
@@ -407,7 +407,7 @@ namespace NzbDrone.Core.Download.Pending
                 return;
             }
 
-            var profile = remoteBook.Author.QualityProfile.Value;
+            var profile = remoteBook.Author.GetQualityProfileFor(remoteBook.ParsedBookInfo.Quality?.Quality);
 
             foreach (var existingReport in existingReports)
             {

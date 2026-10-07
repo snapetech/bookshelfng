@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Qualities;
 
@@ -37,7 +38,20 @@ namespace NzbDrone.Core.Books
 
                 if (belowCutoff.Any())
                 {
-                    qualitiesBelowCutoff.Add(new QualitiesBelowCutoff(profile.Id, belowCutoff.SelectMany(i => i.GetQualities().Select(q => q.Id))));
+                    var qualityIds = belowCutoff.SelectMany(i => i.GetQualities()).ToList();
+                    var ebookIds = qualityIds.Where(q => !MediaFileExtensions.IsAudioQuality(q)).Select(q => q.Id).ToList();
+                    var audiobookIds = qualityIds.Where(MediaFileExtensions.IsAudioQuality).Select(q => q.Id).ToList();
+                    if (ebookIds.Any())
+                    {
+                        qualitiesBelowCutoff.Add(new QualitiesBelowCutoff(profile.Id, ebookIds));
+                        qualitiesBelowCutoff.Add(new QualitiesBelowCutoff(profile.Id, ebookIds, isFormatOverride: true));
+                    }
+
+                    if (audiobookIds.Any())
+                    {
+                        qualitiesBelowCutoff.Add(new QualitiesBelowCutoff(profile.Id, audiobookIds, isAudio: true));
+                        qualitiesBelowCutoff.Add(new QualitiesBelowCutoff(profile.Id, audiobookIds, isAudio: true, isFormatOverride: true));
+                    }
                 }
             }
 

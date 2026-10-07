@@ -113,6 +113,10 @@ namespace NzbDrone.Core.Datastore
                   .HasOne(a => a.Metadata, a => a.AuthorMetadataId)
                   .HasOne(a => a.QualityProfile, a => a.QualityProfileId)
                   .HasOne(s => s.MetadataProfile, s => s.MetadataProfileId)
+                  .HasOne(a => a.EbookQualityProfile, a => a.EbookQualityProfileId ?? a.QualityProfileId)
+                  .HasOne(a => a.AudiobookQualityProfile, a => a.AudiobookQualityProfileId ?? a.QualityProfileId)
+                  .HasOne(a => a.EbookMetadataProfile, a => a.EbookMetadataProfileId ?? a.MetadataProfileId)
+                  .HasOne(a => a.AudiobookMetadataProfile, a => a.AudiobookMetadataProfileId ?? a.MetadataProfileId)
                   .LazyLoad(a => a.Books, (db, a) => db.Query<Book>(new SqlBuilder(db.DatabaseType).Where<Book>(b => b.AuthorMetadataId == a.AuthorMetadataId)).ToList(), a => a.AuthorMetadataId > 0);
 
             Mapper.Entity<Series>("Series").RegisterModel()

@@ -143,7 +143,7 @@ namespace NzbDrone.Core.DecisionEngine
                             _aggregationService.Augment(remoteBook);
 
                             remoteBook.CustomFormats = _formatCalculator.ParseCustomFormat(remoteBook, remoteBook.Release.Size);
-                            remoteBook.CustomFormatScore = remoteBook?.Author?.QualityProfile?.Value.CalculateCustomFormatScore(remoteBook.CustomFormats) ?? 0;
+                            remoteBook.CustomFormatScore = remoteBook?.Author?.GetQualityProfileFor(remoteBook.ParsedBookInfo?.Quality?.Quality)?.CalculateCustomFormatScore(remoteBook.CustomFormats) ?? 0;
 
                             remoteBook.DownloadAllowed = remoteBook.Books.Any();
                             decision = GetDecisionForReport(remoteBook, searchCriteria);

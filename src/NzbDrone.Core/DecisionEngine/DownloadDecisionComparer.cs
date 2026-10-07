@@ -69,10 +69,10 @@ namespace NzbDrone.Core.DecisionEngine
         {
             if (_configService.DownloadPropersAndRepacks == ProperDownloadTypes.DoNotPrefer)
             {
-                return CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Author.QualityProfile.Value.GetIndex(remoteBook.ParsedBookInfo.Quality.Quality));
+                return CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Author.GetQualityProfileFor(remoteBook.ParsedBookInfo.Quality?.Quality).GetIndex(remoteBook.ParsedBookInfo.Quality.Quality));
             }
 
-            return CompareAll(CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Author.QualityProfile.Value.GetIndex(remoteBook.ParsedBookInfo.Quality.Quality)),
+            return CompareAll(CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Author.GetQualityProfileFor(remoteBook.ParsedBookInfo.Quality?.Quality).GetIndex(remoteBook.ParsedBookInfo.Quality.Quality)),
                            CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.ParsedBookInfo.Quality.Revision));
         }
 

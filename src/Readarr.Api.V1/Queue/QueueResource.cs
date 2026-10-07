@@ -50,7 +50,7 @@ namespace Readarr.Api.V1.Queue
             }
 
             var customFormats = model.RemoteBook?.CustomFormats;
-            var customFormatScore = model.RemoteBook?.Author?.QualityProfile?.Value?.CalculateCustomFormatScore(customFormats) ?? 0;
+            var customFormatScore = model.RemoteBook?.Author?.GetQualityProfileFor(model.RemoteBook.ParsedBookInfo?.Quality?.Quality)?.CalculateCustomFormatScore(customFormats) ?? 0;
 
             return new QueueResource
             {

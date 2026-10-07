@@ -11,7 +11,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
         public virtual Decision IsSatisfiedBy(RemoteBook subject, SearchCriteriaBase searchCriteria)
         {
-            var minScore = subject.Author.QualityProfile.Value.MinFormatScore;
+            var minScore = subject.Author.GetQualityProfileFor(subject.ParsedBookInfo.Quality?.Quality).MinFormatScore;
             var score = subject.CustomFormatScore;
 
             if (score < minScore)

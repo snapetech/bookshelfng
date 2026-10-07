@@ -16,7 +16,8 @@ function createMapStateToProps() {
     (state, { includeNoChangeDisabled }) => includeNoChangeDisabled,
     (state, { includeMixed }) => includeMixed,
     (state, { includeNone }) => includeNone,
-    (metadataProfiles, includeNoChange, includeNoChangeDisabled = true, includeMixed, includeNone) => {
+    (state, { includeInherit }) => includeInherit,
+    (metadataProfiles, includeNoChange, includeNoChangeDisabled = true, includeMixed, includeNone, includeInherit) => {
 
       const profiles = metadataProfiles.items.filter((item) => item.name !== metadataProfileNames.NONE);
       const noneProfile = metadataProfiles.items.find((item) => item.name === metadataProfileNames.NONE);
@@ -27,6 +28,10 @@ function createMapStateToProps() {
           value: metadataProfile.name
         };
       });
+
+      if (includeInherit) {
+        values.unshift({ key: 'inherit', value: 'Use author default' });
+      }
 
       if (includeNone) {
         values.push({
@@ -67,8 +72,13 @@ class MetadataProfileSelectInputConnector extends Component {
     const {
       name,
       value,
-      values
+      values,
+      includeInherit
     } = this.props;
+
+    if (includeInherit && (value == null || value === 0)) {
+      return;
+    }
 
     if (!value || !values.some((option) => option.key === value || parseInt(option.key) === value)) {
       const firstValue = values.find((option) => !isNaN(parseInt(option.key)));
@@ -83,7 +93,15 @@ class MetadataProfileSelectInputConnector extends Component {
   // Listeners
 
   onChange = ({ name, value }) => {
-    this.props.onChange({ name, value: value === 'noChange' ? value : parseInt(value) });
+    let nextValue = value;
+
+    if (value === 'inherit') {
+      nextValue = 0;
+    } else if (value !== 'noChange') {
+      nextValue = parseInt(value);
+    }
+
+    this.props.onChange({ name, value: nextValue });
   };
 
   //
@@ -93,6 +111,7 @@ class MetadataProfileSelectInputConnector extends Component {
     return (
       <SelectInput
         {...this.props}
+        value={this.props.includeInherit && (this.props.value == null || this.props.value === 0) ? 'inherit' : this.props.value}
         onChange={this.onChange}
       />
     );
@@ -105,12 +124,14 @@ MetadataProfileSelectInputConnector.propTypes = {
   values: PropTypes.arrayOf(PropTypes.object).isRequired,
   includeNoChange: PropTypes.bool.isRequired,
   includeNone: PropTypes.bool.isRequired,
+  includeInherit: PropTypes.bool.isRequired,
   onChange: PropTypes.func.isRequired
 };
 
 MetadataProfileSelectInputConnector.defaultProps = {
   includeNoChange: false,
-  includeNone: true
+  includeNone: true,
+  includeInherit: false
 };
 
 export default connect(createMapStateToProps)(MetadataProfileSelectInputConnector);

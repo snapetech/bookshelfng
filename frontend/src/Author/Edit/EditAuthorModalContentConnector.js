@@ -28,25 +28,38 @@ function createMapStateToProps() {
   return createSelector(
     (state) => state.authors,
     (state) => state.settings.metadataProfiles,
+    (state) => state.settings.qualityProfiles,
     createAuthorSelector(),
     createIsPathChangingSelector(),
-    (authorsState, metadataProfiles, author, isPathChanging) => {
+    (authorsState, metadataProfiles, qualityProfiles, author, isPathChanging) => {
       const {
         isSaving,
         saveError,
         pendingChanges
       } = authorsState;
 
-      const authorSettings = _.pick(author, [
-        'monitored',
-        'monitorNewItems',
-        'qualityProfileId',
-        'metadataProfileId',
-        'path',
-        'ebookPath',
-        'audiobookPath',
-        'tags'
-      ]);
+      const authorSettings = {
+        ..._.pick(author, [
+          'monitored',
+          'monitorNewItems',
+          'qualityProfileId',
+          'metadataProfileId',
+          'ebookQualityProfileId',
+          'audiobookQualityProfileId',
+          'ebookMetadataProfileId',
+          'audiobookMetadataProfileId',
+          'path',
+          'ebookPath',
+          'audiobookPath',
+          'tags'
+        ]),
+        ebookQualityProfileId: author.ebookQualityProfileId ?? null,
+        audiobookQualityProfileId: author.audiobookQualityProfileId ?? null,
+        ebookMetadataProfileId: author.ebookMetadataProfileId ?? null,
+        audiobookMetadataProfileId: author.audiobookMetadataProfileId ?? null,
+        ebookPath: author.ebookPath ?? '',
+        audiobookPath: author.audiobookPath ?? ''
+      };
 
       const settings = selectSettings(authorSettings, pendingChanges, saveError);
 
@@ -58,6 +71,8 @@ function createMapStateToProps() {
         originalPath: author.path,
         item: settings.settings,
         showMetadataProfile: metadataProfiles.items.length > 1,
+        showFormatMetadataProfiles: metadataProfiles.items.length > 1,
+        showFormatQualityProfiles: qualityProfiles.items.length > 1,
         ...settings
       };
     }

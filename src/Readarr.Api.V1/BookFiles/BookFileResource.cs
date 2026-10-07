@@ -78,7 +78,7 @@ namespace Readarr.Api.V1.BookFiles
                 Quality = model.Quality,
                 QualityWeight = QualityWeight(model.Quality),
                 MediaInfo = model.MediaInfo.ToResource(),
-                QualityCutoffNotMet = upgradableSpecification.QualityCutoffNotMet(author.QualityProfile.Value, model.Quality),
+                QualityCutoffNotMet = upgradableSpecification.QualityCutoffNotMet(author.GetQualityProfileFor(model.Quality?.Quality), model.Quality),
                 IndexerFlags = (int)model.IndexerFlags
             };
         }

@@ -141,9 +141,13 @@ namespace NzbDrone.Core.Books
 
             foreach (var profile in qualitiesBelowCutoff)
             {
+                var profileField = profile.IsAudio ? "AudiobookQualityProfileId" : "EbookQualityProfileId";
                 foreach (var belowCutoff in profile.QualityIds)
                 {
-                    clauses.Add(string.Format("(\"Authors\".\"QualityProfileId\" = {0} AND \"BookFiles\".\"Quality\" LIKE '%_quality_: {1},%')", profile.ProfileId, belowCutoff));
+                    var profileMatch = profile.IsFormatOverride
+                        ? string.Format("\"Authors\".\"{0}\" = {1}", profileField, profile.ProfileId)
+                        : string.Format("(\"Authors\".\"QualityProfileId\" = {0} AND \"Authors\".\"{1}\" IS NULL)", profile.ProfileId, profileField);
+                    clauses.Add(string.Format("({0} AND \"BookFiles\".\"Quality\" LIKE '%_quality_: {1},%')", profileMatch, belowCutoff));
                 }
             }
 

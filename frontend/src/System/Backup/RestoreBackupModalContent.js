@@ -1,5 +1,8 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import Alert from 'Components/Alert';
+import FormGroup from 'Components/Form/FormGroup';
+import FormLabel from 'Components/Form/FormLabel';
 import TextInput from 'Components/Form/TextInput';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -59,6 +62,7 @@ class RestoreBackupModalContent extends Component {
     this.state = {
       file: null,
       path: '',
+      passphrase: '',
       isRestored: false,
       isRestarted: false,
       isReloading: false
@@ -95,8 +99,13 @@ class RestoreBackupModalContent extends Component {
   onPathChange = ({ value, files }) => {
     this.setState({
       file: files[0],
-      path: value
+      path: value,
+      passphrase: ''
     });
+  };
+
+  onPassphraseChange = ({ value }) => {
+    this.setState({ passphrase: value });
   };
 
   onRestorePress = () => {
@@ -105,9 +114,13 @@ class RestoreBackupModalContent extends Component {
       onRestorePress
     } = this.props;
 
+    const selectedFile = this.state.file;
+    const isEncrypted = !id && selectedFile && selectedFile.name.toLowerCase().endsWith('.enc');
+
     onRestorePress({
       id,
-      file: this.state.file
+      file: selectedFile,
+      passphrase: isEncrypted ? this.state.passphrase : undefined
     });
   };
 
@@ -126,6 +139,8 @@ class RestoreBackupModalContent extends Component {
 
     const {
       path,
+      file,
+      passphrase,
       isRestored,
       isRestarted,
       isReloading
@@ -133,6 +148,7 @@ class RestoreBackupModalContent extends Component {
 
     const isRestoreDisabled = (
       (!id && !path) ||
+      (!id && file && file.name.toLowerCase().endsWith('.enc') && passphrase.length < 16) ||
       isRestoring ||
       isRestarting ||
       isReloading
@@ -157,6 +173,29 @@ class RestoreBackupModalContent extends Component {
                 value={path}
                 onChange={this.onPathChange}
               />
+          }
+
+          {
+            !id && file && file.name.toLowerCase().endsWith('.enc') &&
+              <>
+                <Alert kind={kinds.INFO}>
+                  {translate('EncryptedBackupRestoreHelpText')}
+                </Alert>
+                <FormGroup>
+                  <FormLabel name="encryptedRestorePassphrase">
+                    {translate('Passphrase')}
+                  </FormLabel>
+                  <TextInput
+                    id="encryptedRestorePassphrase"
+                    name="passphrase"
+                    type="password"
+                    autoComplete="current-password"
+                    maxLength={4096}
+                    value={passphrase}
+                    onChange={this.onPassphraseChange}
+                  />
+                </FormGroup>
+              </>
           }
 
           <div className={styles.steps}>

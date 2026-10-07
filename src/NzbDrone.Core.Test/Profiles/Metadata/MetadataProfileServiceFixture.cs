@@ -127,6 +127,11 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
                 .Build();
 
             var authorList = Builder<Author>.CreateListOfSize(3)
+                                            .All()
+                                            .With(c => c.EbookQualityProfileId = null)
+                                            .With(c => c.AudiobookQualityProfileId = null)
+                                            .With(c => c.EbookMetadataProfileId = null)
+                                            .With(c => c.AudiobookMetadataProfileId = null)
                                             .Random(1)
                                             .With(c => c.MetadataProfileId = profile.Id)
                                             .Build().ToList();
@@ -160,6 +165,10 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
 
             var authorList = Builder<Author>.CreateListOfSize(3)
                 .All()
+                .With(c => c.EbookQualityProfileId = null)
+                .With(c => c.AudiobookQualityProfileId = null)
+                .With(c => c.EbookMetadataProfileId = null)
+                .With(c => c.AudiobookMetadataProfileId = null)
                 .With(c => c.MetadataProfileId = 1)
                 .Build().ToList();
 
@@ -192,6 +201,10 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
 
             var authorList = Builder<Author>.CreateListOfSize(3)
                 .All()
+                .With(c => c.EbookQualityProfileId = null)
+                .With(c => c.AudiobookQualityProfileId = null)
+                .With(c => c.EbookMetadataProfileId = null)
+                .With(c => c.AudiobookMetadataProfileId = null)
                 .With(c => c.MetadataProfileId = 1)
                 .Build().ToList();
 
@@ -224,6 +237,10 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
 
             var authorList = Builder<Author>.CreateListOfSize(3)
                                             .All()
+                                            .With(c => c.EbookQualityProfileId = null)
+                                            .With(c => c.AudiobookQualityProfileId = null)
+                                            .With(c => c.EbookMetadataProfileId = null)
+                                            .With(c => c.AudiobookMetadataProfileId = null)
                                             .With(c => c.MetadataProfileId = 2)
                                             .Build().ToList();
 
@@ -245,6 +262,24 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
             Subject.Delete(1);
 
             Mocker.GetMock<IMetadataProfileRepository>().Verify(c => c.Delete(1), Times.Once());
+        }
+
+        [Test]
+        public void should_not_be_able_to_delete_profile_if_assigned_to_format_specific_author_profile()
+        {
+            var profile = Builder<MetadataProfile>.CreateNew()
+                .With(p => p.Id = 2)
+                .Build();
+            var author = Builder<Author>.CreateNew()
+                .With(c => c.MetadataProfileId = 1)
+                .With(c => c.EbookMetadataProfileId = profile.Id)
+                .Build();
+
+            Mocker.GetMock<IAuthorService>().Setup(c => c.GetAllAuthors()).Returns(new List<Author> { author });
+            Mocker.GetMock<IMetadataProfileRepository>().Setup(c => c.Get(profile.Id)).Returns(profile);
+
+            Assert.Throws<MetadataProfileInUseException>(() => Subject.Delete(profile.Id));
+            Mocker.GetMock<IMetadataProfileRepository>().Verify(c => c.Delete(It.IsAny<int>()), Times.Never());
         }
 
         [Test]
@@ -375,6 +410,61 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
             // Assert - Should return the filtered books without crashing
             Assert.NotNull(result);
             Assert.IsInstanceOf<List<Book>>(result);
+        }
+
+        [Test]
+        public void FilterBooks_should_apply_format_specific_metadata_profiles_to_their_editions()
+        {
+            var defaultProfile = Builder<MetadataProfile>.CreateNew()
+                .With(p => p.Id = 1)
+                .With(p => p.MinPopularity = 0)
+                .With(p => p.MinPages = 0)
+                .With(p => p.AllowedLanguages = string.Empty)
+                .Build();
+            var ebookProfile = Builder<MetadataProfile>.CreateNew()
+                .With(p => p.Id = 2)
+                .With(p => p.MinPopularity = 0)
+                .With(p => p.MinPages = 0)
+                .With(p => p.AllowedLanguages = "en")
+                .Build();
+            var audiobookProfile = Builder<MetadataProfile>.CreateNew()
+                .With(p => p.Id = 3)
+                .With(p => p.MinPopularity = 0)
+                .With(p => p.MinPages = 0)
+                .With(p => p.AllowedLanguages = "fr")
+                .Build();
+
+            var editions = new List<Edition>
+            {
+                Builder<Edition>.CreateNew().With(e => e.ForeignEditionId = "ebook-en").With(e => e.IsEbook = true).With(e => e.Language = "en").Build(),
+                Builder<Edition>.CreateNew().With(e => e.ForeignEditionId = "ebook-fr").With(e => e.IsEbook = true).With(e => e.Language = "fr").Build(),
+                Builder<Edition>.CreateNew().With(e => e.ForeignEditionId = "audio-en").With(e => e.Format = "Audiobook").With(e => e.Language = "en").Build(),
+                Builder<Edition>.CreateNew().With(e => e.ForeignEditionId = "audio-fr").With(e => e.Format = "Audiobook").With(e => e.Language = "fr").Build()
+            };
+            var book = Builder<Book>.CreateNew()
+                .With(b => b.ForeignBookId = "book-1")
+                .With(b => b.Title = "A Format Split")
+                .With(b => b.Ratings = new Ratings { Value = 4.0m, Votes = 50 })
+                .With(b => b.ReleaseDate = DateTime.UtcNow.AddDays(-1))
+                .With(b => b.Editions = new LazyLoaded<List<Edition>>(editions))
+                .Build();
+            var author = Builder<Author>.CreateNew()
+                .With(a => a.ForeignAuthorId = "author-1")
+                .With(a => a.MetadataProfileId = defaultProfile.Id)
+                .With(a => a.Series = null)
+                .With(a => a.Books = new LazyLoaded<List<Book>>(new List<Book> { book }))
+                .Build();
+
+            Mocker.GetMock<IMetadataProfileRepository>().Setup(s => s.Get(1)).Returns(defaultProfile);
+            Mocker.GetMock<IMetadataProfileRepository>().Setup(s => s.Get(2)).Returns(ebookProfile);
+            Mocker.GetMock<IMetadataProfileRepository>().Setup(s => s.Get(3)).Returns(audiobookProfile);
+            Mocker.GetMock<IAuthorService>().Setup(s => s.FindById(It.IsAny<string>())).Returns((Author)null);
+            Mocker.GetMock<IMediaFileService>().Setup(s => s.GetFilesByAuthor(It.IsAny<int>())).Returns(new List<BookFile>());
+
+            var result = Subject.FilterBooks(author, defaultProfile.Id, ebookProfile.Id, audiobookProfile.Id);
+
+            Assert.That(result, Has.Count.EqualTo(1));
+            Assert.That(result[0].Editions.Value.Select(e => e.ForeignEditionId), Is.EquivalentTo(new[] { "ebook-en", "audio-fr" }));
         }
     }
 }

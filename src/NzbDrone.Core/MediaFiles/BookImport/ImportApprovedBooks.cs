@@ -176,8 +176,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             var qualifiedImports = decisions.Where(c => c.Approved)
-                .GroupBy(c => c.Item.Author.Id, (i, s) => s
-                         .OrderByDescending(c => c.Item.Quality, new QualityModelComparer(s.First().Item.Author.QualityProfile))
+                .GroupBy(c => new
+                {
+                    AuthorId = c.Item.Author.Id,
+                    IsAudio = MediaFileExtensions.IsAudioQuality(c.Item.Quality?.Quality)
+                }, (i, s) => s
+                         .OrderByDescending(c => c.Item.Quality, new QualityModelComparer(s.First().Item.Author.GetQualityProfileFor(s.First().Item.Quality?.Quality)))
                          .ThenByDescending(c => c.Item.Size))
                 .SelectMany(c => c)
                 .ToList();

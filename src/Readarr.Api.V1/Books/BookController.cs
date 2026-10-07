@@ -61,6 +61,14 @@ namespace Readarr.Api.V1.Books
             PostValidator.RuleFor(s => s.ForeignBookId).NotEmpty();
             PostValidator.RuleFor(s => s.Author.QualityProfileId).SetValidator(qualityProfileExistsValidator);
             PostValidator.RuleFor(s => s.Author.MetadataProfileId).SetValidator(metadataProfileExistsValidator);
+            PostValidator.RuleFor(s => s.Author.EbookQualityProfileId).GreaterThanOrEqualTo(0).When(s => s.Author.EbookQualityProfileId.HasValue);
+            PostValidator.RuleFor(s => s.Author.AudiobookQualityProfileId).GreaterThanOrEqualTo(0).When(s => s.Author.AudiobookQualityProfileId.HasValue);
+            PostValidator.RuleFor(s => s.Author.EbookMetadataProfileId).GreaterThanOrEqualTo(0).When(s => s.Author.EbookMetadataProfileId.HasValue);
+            PostValidator.RuleFor(s => s.Author.AudiobookMetadataProfileId).GreaterThanOrEqualTo(0).When(s => s.Author.AudiobookMetadataProfileId.HasValue);
+            PostValidator.RuleFor(s => s.Author.EbookQualityProfileId).SetValidator(qualityProfileExistsValidator).When(s => s.Author.EbookQualityProfileId.HasValue && s.Author.EbookQualityProfileId.Value > 0);
+            PostValidator.RuleFor(s => s.Author.AudiobookQualityProfileId).SetValidator(qualityProfileExistsValidator).When(s => s.Author.AudiobookQualityProfileId.HasValue && s.Author.AudiobookQualityProfileId.Value > 0);
+            PostValidator.RuleFor(s => s.Author.EbookMetadataProfileId).SetValidator(metadataProfileExistsValidator).When(s => s.Author.EbookMetadataProfileId.HasValue && s.Author.EbookMetadataProfileId.Value > 0);
+            PostValidator.RuleFor(s => s.Author.AudiobookMetadataProfileId).SetValidator(metadataProfileExistsValidator).When(s => s.Author.AudiobookMetadataProfileId.HasValue && s.Author.AudiobookMetadataProfileId.Value > 0);
             PostValidator.RuleFor(s => s.Author.RootFolderPath).IsValidPath().When(s => s.Author.Path.IsNullOrWhiteSpace());
             PostValidator.RuleFor(s => s.Author.ForeignAuthorId).NotEmpty();
         }
