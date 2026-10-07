@@ -14,6 +14,7 @@ metadata provider configuration.
 | [Search and downloads](search-and-downloads.md) | Add-page catalog search, torrent and direct-download indexers, browser-assisted link resolution, torrent adoption, and queue handling |
 | [Series pack search](series-pack-search.md) | Searching a series and reviewing multi-book packs in Manual Import |
 | [Author metadata refresh](author-metadata-refresh.md) | Stored author metadata, refresh schedule, request limits, and troubleshooting |
+| [Encrypted portable backups](encrypted-backups.md) | Passphrase-protected backup export, restore, API routes, and file format |
 | [Reporting issues](reporting-issues.md) | Which application and container logs to include for UI and API failures |
 
 ## Audiobooks and integrations

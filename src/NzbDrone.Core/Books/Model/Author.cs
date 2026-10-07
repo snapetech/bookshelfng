@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using Equ;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Profiles.Qualities;
+using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.Books
 {
@@ -29,6 +31,10 @@ namespace NzbDrone.Core.Books
         public DateTime Added { get; set; }
         public int QualityProfileId { get; set; }
         public int MetadataProfileId { get; set; }
+        public int? EbookQualityProfileId { get; set; }
+        public int? AudiobookQualityProfileId { get; set; }
+        public int? EbookMetadataProfileId { get; set; }
+        public int? AudiobookMetadataProfileId { get; set; }
         public HashSet<int> Tags { get; set; }
         [MemberwiseEqualityIgnore]
         public AddAuthorOptions AddOptions { get; set; }
@@ -41,9 +47,47 @@ namespace NzbDrone.Core.Books
         [MemberwiseEqualityIgnore]
         public LazyLoaded<MetadataProfile> MetadataProfile { get; set; }
         [MemberwiseEqualityIgnore]
+        public LazyLoaded<QualityProfile> EbookQualityProfile { get; set; }
+        [MemberwiseEqualityIgnore]
+        public LazyLoaded<QualityProfile> AudiobookQualityProfile { get; set; }
+        [MemberwiseEqualityIgnore]
+        public LazyLoaded<MetadataProfile> EbookMetadataProfile { get; set; }
+        [MemberwiseEqualityIgnore]
+        public LazyLoaded<MetadataProfile> AudiobookMetadataProfile { get; set; }
+        [MemberwiseEqualityIgnore]
         public LazyLoaded<List<Book>> Books { get; set; }
         [MemberwiseEqualityIgnore]
         public LazyLoaded<List<Series>> Series { get; set; }
+
+        public QualityProfile GetQualityProfileFor(Quality quality)
+        {
+            if (quality != null && MediaFileExtensions.IsAudioQuality(quality) && AudiobookQualityProfileId.HasValue && AudiobookQualityProfile != null)
+            {
+                return AudiobookQualityProfile.Value;
+            }
+
+            if (quality != null && !MediaFileExtensions.IsAudioQuality(quality) && EbookQualityProfileId.HasValue && EbookQualityProfile != null)
+            {
+                return EbookQualityProfile.Value;
+            }
+
+            return QualityProfile?.Value;
+        }
+
+        public MetadataProfile GetMetadataProfileFor(Edition edition)
+        {
+            if (edition?.IsEbook == true && EbookMetadataProfileId.HasValue && EbookMetadataProfile != null)
+            {
+                return EbookMetadataProfile.Value;
+            }
+
+            if (edition != null && MediaFileExtensions.IsAudiobookEdition(edition) && AudiobookMetadataProfileId.HasValue && AudiobookMetadataProfile != null)
+            {
+                return AudiobookMetadataProfile.Value;
+            }
+
+            return MetadataProfile.Value;
+        }
 
         //compatibility properties
         [MemberwiseEqualityIgnore]
@@ -84,6 +128,14 @@ namespace NzbDrone.Core.Books
             QualityProfile = other.QualityProfile;
             MetadataProfileId = other.MetadataProfileId;
             MetadataProfile = other.MetadataProfile;
+            EbookQualityProfileId = other.EbookQualityProfileId;
+            AudiobookQualityProfileId = other.AudiobookQualityProfileId;
+            EbookMetadataProfileId = other.EbookMetadataProfileId;
+            AudiobookMetadataProfileId = other.AudiobookMetadataProfileId;
+            EbookQualityProfile = other.EbookQualityProfile;
+            AudiobookQualityProfile = other.AudiobookQualityProfile;
+            EbookMetadataProfile = other.EbookMetadataProfile;
+            AudiobookMetadataProfile = other.AudiobookMetadataProfile;
             Tags = other.Tags;
             AddOptions = other.AddOptions;
         }
@@ -97,6 +149,14 @@ namespace NzbDrone.Core.Books
             QualityProfile = other.QualityProfile;
             MetadataProfileId = other.MetadataProfileId;
             MetadataProfile = other.MetadataProfile;
+            EbookQualityProfileId = other.EbookQualityProfileId;
+            AudiobookQualityProfileId = other.AudiobookQualityProfileId;
+            EbookMetadataProfileId = other.EbookMetadataProfileId;
+            AudiobookMetadataProfileId = other.AudiobookMetadataProfileId;
+            EbookQualityProfile = other.EbookQualityProfile;
+            AudiobookQualityProfile = other.AudiobookQualityProfile;
+            EbookMetadataProfile = other.EbookMetadataProfile;
+            AudiobookMetadataProfile = other.AudiobookMetadataProfile;
 
             Books = other.Books;
             Tags = other.Tags;

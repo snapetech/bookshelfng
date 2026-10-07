@@ -67,6 +67,8 @@ class EditAuthorModalContent extends Component {
       item,
       isSaving,
       showMetadataProfile,
+      showFormatQualityProfiles,
+      showFormatMetadataProfiles,
       originalPath,
       onInputChange,
       onModalClose,
@@ -79,6 +81,10 @@ class EditAuthorModalContent extends Component {
       monitorNewItems,
       qualityProfileId,
       metadataProfileId,
+      ebookQualityProfileId,
+      audiobookQualityProfileId,
+      ebookMetadataProfileId,
+      audiobookMetadataProfileId,
       path,
       ebookPath,
       audiobookPath,
@@ -146,6 +152,35 @@ class EditAuthorModalContent extends Component {
             </FormGroup>
 
             {
+              showFormatQualityProfiles &&
+                <>
+                  <FormGroup>
+                    <FormLabel>Ebook Quality Profile</FormLabel>
+                    <FormInputGroup
+                      type={inputTypes.QUALITY_PROFILE_SELECT}
+                      name="ebookQualityProfileId"
+                      helpText="Use the author quality profile unless you select an ebook override."
+                      includeInherit={true}
+                      {...ebookQualityProfileId}
+                      onChange={onInputChange}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Audiobook Quality Profile</FormLabel>
+                    <FormInputGroup
+                      type={inputTypes.QUALITY_PROFILE_SELECT}
+                      name="audiobookQualityProfileId"
+                      helpText="Use the author quality profile unless you select an audiobook override."
+                      includeInherit={true}
+                      {...audiobookQualityProfileId}
+                      onChange={onInputChange}
+                    />
+                  </FormGroup>
+                </>
+            }
+
+            {
               showMetadataProfile &&
                 <FormGroup>
                   <FormLabel>
@@ -171,6 +206,38 @@ class EditAuthorModalContent extends Component {
                     helpText={translate('MetadataProfileIdHelpText')}
                     includeNone={true}
                     {...metadataProfileId}
+                    onChange={onInputChange}
+                  />
+                </FormGroup>
+            }
+
+            {
+              showFormatMetadataProfiles &&
+                <FormGroup>
+                  <FormLabel>Ebook Metadata Profile</FormLabel>
+                  <FormInputGroup
+                    type={inputTypes.METADATA_PROFILE_SELECT}
+                    name="ebookMetadataProfileId"
+                    includeNone={true}
+                    includeInherit={true}
+                    helpText="Use the author metadata profile unless you select an ebook override."
+                    {...ebookMetadataProfileId}
+                    onChange={onInputChange}
+                  />
+                </FormGroup>
+            }
+
+            {
+              showFormatMetadataProfiles &&
+                <FormGroup>
+                  <FormLabel>Audiobook Metadata Profile</FormLabel>
+                  <FormInputGroup
+                    type={inputTypes.METADATA_PROFILE_SELECT}
+                    name="audiobookMetadataProfileId"
+                    includeNone={true}
+                    includeInherit={true}
+                    helpText="Use the author metadata profile unless you select an audiobook override."
+                    {...audiobookMetadataProfileId}
                     onChange={onInputChange}
                   />
                 </FormGroup>
@@ -285,6 +352,8 @@ EditAuthorModalContent.propTypes = {
   item: PropTypes.object.isRequired,
   isSaving: PropTypes.bool.isRequired,
   showMetadataProfile: PropTypes.bool.isRequired,
+  showFormatQualityProfiles: PropTypes.bool.isRequired,
+  showFormatMetadataProfiles: PropTypes.bool.isRequired,
   isPathChanging: PropTypes.bool.isRequired,
   originalPath: PropTypes.string.isRequired,
   onInputChange: PropTypes.func.isRequired,

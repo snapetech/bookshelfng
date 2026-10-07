@@ -43,7 +43,7 @@ namespace Readarr.Api.V1.Indexers
             {
                 release.QualityWeight = decision.RemoteBook
                                                 .Author
-                                                .QualityProfile.Value.GetIndex(release.Quality.Quality).Index * 100;
+                                                .GetQualityProfileFor(release.Quality.Quality).GetIndex(release.Quality.Quality).Index * 100;
             }
 
             release.QualityWeight += release.Quality.Revision.Real * 10;

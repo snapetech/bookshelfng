@@ -34,7 +34,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
             }
 
             var downloadPropersAndRepacks = _configService.DownloadPropersAndRepacks;
-            var qualityComparer = new QualityModelComparer(item.Author.QualityProfile);
+            var qualityComparer = new QualityModelComparer(item.Author.GetQualityProfileFor(item.Quality?.Quality));
 
             foreach (var bookFile in files)
             {

@@ -14,13 +14,18 @@ function createMapStateToProps() {
     (state, { includeNoChange }) => includeNoChange,
     (state, { includeNoChangeDisabled }) => includeNoChangeDisabled,
     (state, { includeMixed }) => includeMixed,
-    (qualityProfiles, includeNoChange, includeNoChangeDisabled = true, includeMixed) => {
+    (state, { includeInherit }) => includeInherit,
+    (qualityProfiles, includeNoChange, includeNoChangeDisabled = true, includeMixed, includeInherit) => {
       const values = _.map(qualityProfiles.items, (qualityProfile) => {
         return {
           key: qualityProfile.id,
           value: qualityProfile.name
         };
       });
+
+      if (includeInherit) {
+        values.unshift({ key: 'inherit', value: 'Use author default' });
+      }
 
       if (includeNoChange) {
         values.unshift({
@@ -54,8 +59,13 @@ class QualityProfileSelectInputConnector extends Component {
     const {
       name,
       value,
-      values
+      values,
+      includeInherit
     } = this.props;
+
+    if (includeInherit && (value == null || value === 0)) {
+      return;
+    }
 
     if (!value || !values.some((option) => option.key === value || parseInt(option.key) === value)) {
       const firstValue = values.find((option) => !isNaN(parseInt(option.key)));
@@ -70,7 +80,15 @@ class QualityProfileSelectInputConnector extends Component {
   // Listeners
 
   onChange = ({ name, value }) => {
-    this.props.onChange({ name, value: value === 'noChange' ? value : parseInt(value) });
+    let nextValue = value;
+
+    if (value === 'inherit') {
+      nextValue = 0;
+    } else if (value !== 'noChange') {
+      nextValue = parseInt(value);
+    }
+
+    this.props.onChange({ name, value: nextValue });
   };
 
   //
@@ -80,6 +98,7 @@ class QualityProfileSelectInputConnector extends Component {
     return (
       <SelectInput
         {...this.props}
+        value={this.props.includeInherit && (this.props.value == null || this.props.value === 0) ? 'inherit' : this.props.value}
         onChange={this.onChange}
       />
     );
@@ -91,11 +110,13 @@ QualityProfileSelectInputConnector.propTypes = {
   value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   values: PropTypes.arrayOf(PropTypes.object).isRequired,
   includeNoChange: PropTypes.bool.isRequired,
+  includeInherit: PropTypes.bool.isRequired,
   onChange: PropTypes.func.isRequired
 };
 
 QualityProfileSelectInputConnector.defaultProps = {
-  includeNoChange: false
+  includeNoChange: false,
+  includeInherit: false
 };
 
 export default connect(createMapStateToProps)(QualityProfileSelectInputConnector);

@@ -36,9 +36,15 @@ class AddAuthorOptionsForm extends Component {
       monitorNewItems,
       qualityProfileId,
       metadataProfileId,
+      ebookQualityProfileId,
+      audiobookQualityProfileId,
+      ebookMetadataProfileId,
+      audiobookMetadataProfileId,
       includeNoneMetadataProfile,
       includeSpecificBookMonitor,
       showMetadataProfile,
+      showFormatMetadataProfiles,
+      showFormatQualityProfiles,
       folder,
       tags,
       isWindows,
@@ -164,6 +170,62 @@ class AddAuthorOptionsForm extends Component {
           />
         </FormGroup>
 
+        {
+          showFormatQualityProfiles &&
+            <>
+              <FormGroup>
+                <FormLabel>Ebook Quality Profile</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.QUALITY_PROFILE_SELECT}
+                  name="ebookQualityProfileId"
+                  includeInherit={true}
+                  {...ebookQualityProfileId}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Audiobook Quality Profile</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.QUALITY_PROFILE_SELECT}
+                  name="audiobookQualityProfileId"
+                  includeInherit={true}
+                  {...audiobookQualityProfileId}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+            </>
+        }
+
+        {
+          showFormatMetadataProfiles &&
+            <>
+              <FormGroup>
+                <FormLabel>Ebook Metadata Profile</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.METADATA_PROFILE_SELECT}
+                  name="ebookMetadataProfileId"
+                  includeInherit={true}
+                  includeNone={true}
+                  {...ebookMetadataProfileId}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Audiobook Metadata Profile</FormLabel>
+                <FormInputGroup
+                  type={inputTypes.METADATA_PROFILE_SELECT}
+                  name="audiobookMetadataProfileId"
+                  includeInherit={true}
+                  includeNone={true}
+                  {...audiobookMetadataProfileId}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+            </>
+        }
+
         <FormGroup>
           <FormLabel>
             {translate('Tags')}
@@ -187,7 +249,13 @@ AddAuthorOptionsForm.propTypes = {
   monitorNewItems: PropTypes.object.isRequired,
   qualityProfileId: PropTypes.object,
   metadataProfileId: PropTypes.object,
+  ebookQualityProfileId: PropTypes.object,
+  audiobookQualityProfileId: PropTypes.object,
+  ebookMetadataProfileId: PropTypes.object,
+  audiobookMetadataProfileId: PropTypes.object,
   showMetadataProfile: PropTypes.bool.isRequired,
+  showFormatMetadataProfiles: PropTypes.bool,
+  showFormatQualityProfiles: PropTypes.bool,
   includeNoneMetadataProfile: PropTypes.bool.isRequired,
   includeSpecificBookMonitor: PropTypes.bool.isRequired,
   folder: PropTypes.string.isRequired,

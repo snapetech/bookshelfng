@@ -172,6 +172,10 @@ namespace NzbDrone.Core.Books
                     Metadata = remote.AuthorMetadata.Value,
                     MetadataProfileId = oldAuthor.MetadataProfileId,
                     QualityProfileId = oldAuthor.QualityProfileId,
+                    EbookQualityProfileId = oldAuthor.EbookQualityProfileId,
+                    AudiobookQualityProfileId = oldAuthor.AudiobookQualityProfileId,
+                    EbookMetadataProfileId = oldAuthor.EbookMetadataProfileId,
+                    AudiobookMetadataProfileId = oldAuthor.AudiobookMetadataProfileId,
                     RootFolderPath = _rootFolderService.GetBestRootFolderPath(oldAuthor.Path),
                     Monitored = oldAuthor.Monitored,
                     Tags = oldAuthor.Tags

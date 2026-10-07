@@ -12,6 +12,7 @@ import TableBody from 'Components/Table/TableBody';
 import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import BackupRow from './BackupRow';
+import EncryptedBackupModal from './EncryptedBackupModal';
 import RestoreBackupModalConnector from './RestoreBackupModalConnector';
 
 const columns = [
@@ -49,7 +50,8 @@ class Backups extends Component {
     super(props, context);
 
     this.state = {
-      isRestoreModalOpen: false
+      isRestoreModalOpen: false,
+      isEncryptedBackupModalOpen: false
     };
   }
 
@@ -62,6 +64,14 @@ class Backups extends Component {
 
   onRestoreModalClose = () => {
     this.setState({ isRestoreModalOpen: false });
+  };
+
+  onEncryptedBackupPress = () => {
+    this.setState({ isEncryptedBackupModalOpen: true });
+  };
+
+  onEncryptedBackupModalClose = () => {
+    this.setState({ isEncryptedBackupModalOpen: false });
   };
 
   //
@@ -96,6 +106,12 @@ class Backups extends Component {
               label={translate('RestoreBackup')}
               iconName={icons.RESTORE}
               onPress={this.onRestorePress}
+            />
+
+            <PageToolbarButton
+              label={translate('DownloadEncryptedBackup')}
+              iconName={icons.BACKUP}
+              onPress={this.onEncryptedBackupPress}
             />
           </PageToolbarSection>
         </PageToolbar>
@@ -159,6 +175,11 @@ class Backups extends Component {
         <RestoreBackupModalConnector
           isOpen={this.state.isRestoreModalOpen}
           onModalClose={this.onRestoreModalClose}
+        />
+
+        <EncryptedBackupModal
+          isOpen={this.state.isEncryptedBackupModalOpen}
+          onModalClose={this.onEncryptedBackupModalClose}
         />
       </PageContent>
     );

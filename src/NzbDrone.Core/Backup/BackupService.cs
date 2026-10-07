@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Backup
     public interface IBackupService
     {
         void Backup(BackupType backupType);
+        string CreateTemporaryBackup();
         List<Backup> GetBackups();
         void Restore(string backupFileName);
         string GetBackupFolder();
@@ -87,20 +88,29 @@ namespace NzbDrone.Core.Backup
                 CleanupOldBackups(backupType);
             }
 
-            BackupConfigFile();
-            BackupDatabase();
-            CreateVersionInfo(dateNow);
+            CreateBackupArchive(backupPath, dateNow);
+        }
 
-            _logger.ProgressDebug("Creating backup zip");
+        public string CreateTemporaryBackup()
+        {
+            _diskProvider.EnsureFolder(_appFolderInfo.TempFolder);
 
-            // Delete journal file created during database backup
-            _diskProvider.DeleteFile(Path.Combine(_backupTempFolder, "readarr.db-journal"));
+            var backupPath = Path.Combine(_appFolderInfo.TempFolder, $"readarr_backup_export_{Guid.NewGuid():N}.zip");
 
-            _archiveService.CreateZip(backupPath, _diskProvider.GetFiles(_backupTempFolder, false));
+            try
+            {
+                CreateBackupArchive(backupPath, DateTime.Now);
+                return backupPath;
+            }
+            catch
+            {
+                if (_diskProvider.FileExists(backupPath))
+                {
+                    _diskProvider.DeleteFile(backupPath);
+                }
 
-            Cleanup();
-
-            _logger.ProgressDebug("Backup zip created");
+                throw;
+            }
         }
 
         public List<Backup> GetBackups()
@@ -187,6 +197,32 @@ namespace NzbDrone.Core.Backup
             if (_diskProvider.FolderExists(_backupTempFolder))
             {
                 _diskProvider.EmptyFolder(_backupTempFolder);
+            }
+        }
+
+        private void CreateBackupArchive(string backupPath, DateTime dateNow)
+        {
+            _diskProvider.EnsureFolder(_backupTempFolder);
+            Cleanup();
+
+            try
+            {
+                BackupConfigFile();
+                BackupDatabase();
+                CreateVersionInfo(dateNow);
+
+                _logger.ProgressDebug("Creating backup zip");
+
+                // Delete journal file created during database backup
+                _diskProvider.DeleteFile(Path.Combine(_backupTempFolder, "readarr.db-journal"));
+
+                _archiveService.CreateZip(backupPath, _diskProvider.GetFiles(_backupTempFolder, false));
+
+                _logger.ProgressDebug("Backup zip created");
+            }
+            finally
+            {
+                Cleanup();
             }
         }
 

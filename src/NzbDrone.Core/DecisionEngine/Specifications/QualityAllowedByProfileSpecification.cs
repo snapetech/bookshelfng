@@ -20,7 +20,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         {
             _logger.Debug("Checking if report meets quality requirements. {0}", subject.ParsedBookInfo.Quality);
 
-            var profile = subject.Author.QualityProfile.Value;
+            var profile = subject.Author.GetQualityProfileFor(subject.ParsedBookInfo.Quality?.Quality);
             var qualityIndex = profile.GetIndex(subject.ParsedBookInfo.Quality.Quality);
             var qualityOrGroup = profile.Items[qualityIndex.Index];
 

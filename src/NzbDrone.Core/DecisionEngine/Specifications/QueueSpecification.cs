@@ -46,7 +46,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             foreach (var queueItem in matchingBook)
             {
                 var remoteBook = queueItem.RemoteBook;
-                var qualityProfile = subject.Author.QualityProfile.Value;
+                var qualityProfile = subject.Author.GetQualityProfileFor(subject.ParsedBookInfo.Quality?.Quality);
 
                 // To avoid a race make sure it's not FailedPending (failed awaiting removal/search).
                 // Failed items (already searching for a replacement) won't be part of the queue since

@@ -41,6 +41,10 @@ namespace Readarr.Api.V1.Author
         public string AudiobookPath { get; set; }
         public int QualityProfileId { get; set; }
         public int MetadataProfileId { get; set; }
+        public int? EbookQualityProfileId { get; set; }
+        public int? AudiobookQualityProfileId { get; set; }
+        public int? EbookMetadataProfileId { get; set; }
+        public int? AudiobookMetadataProfileId { get; set; }
 
         //Editing Only
         public bool Monitored { get; set; }
@@ -93,6 +97,10 @@ namespace Readarr.Api.V1.Author
                 AudiobookPath = model.AudiobookPath,
                 QualityProfileId = model.QualityProfileId,
                 MetadataProfileId = model.MetadataProfileId,
+                EbookQualityProfileId = model.EbookQualityProfileId,
+                AudiobookQualityProfileId = model.AudiobookQualityProfileId,
+                EbookMetadataProfileId = model.EbookMetadataProfileId,
+                AudiobookMetadataProfileId = model.AudiobookMetadataProfileId,
                 Links = model.Metadata.Value.Links,
 
                 Monitored = model.Monitored,
@@ -147,6 +155,10 @@ namespace Readarr.Api.V1.Author
                 AudiobookPath = resource.AudiobookPath,
                 QualityProfileId = resource.QualityProfileId,
                 MetadataProfileId = resource.MetadataProfileId,
+                EbookQualityProfileId = resource.EbookQualityProfileId.GetValueOrDefault() > 0 ? resource.EbookQualityProfileId : null,
+                AudiobookQualityProfileId = resource.AudiobookQualityProfileId.GetValueOrDefault() > 0 ? resource.AudiobookQualityProfileId : null,
+                EbookMetadataProfileId = resource.EbookMetadataProfileId.GetValueOrDefault() > 0 ? resource.EbookMetadataProfileId : null,
+                AudiobookMetadataProfileId = resource.AudiobookMetadataProfileId.GetValueOrDefault() > 0 ? resource.AudiobookMetadataProfileId : null,
 
                 Monitored = resource.Monitored,
                 MonitorNewItems = resource.MonitorNewItems,
@@ -182,6 +194,26 @@ namespace Readarr.Api.V1.Author
             else if (resource.AudiobookPath.IsNullOrWhiteSpace())
             {
                 updatedAuthor.AudiobookPath = null;
+            }
+
+            if (!resource.EbookQualityProfileId.HasValue)
+            {
+                updatedAuthor.EbookQualityProfileId = author.EbookQualityProfileId;
+            }
+
+            if (!resource.AudiobookQualityProfileId.HasValue)
+            {
+                updatedAuthor.AudiobookQualityProfileId = author.AudiobookQualityProfileId;
+            }
+
+            if (!resource.EbookMetadataProfileId.HasValue)
+            {
+                updatedAuthor.EbookMetadataProfileId = author.EbookMetadataProfileId;
+            }
+
+            if (!resource.AudiobookMetadataProfileId.HasValue)
+            {
+                updatedAuthor.AudiobookMetadataProfileId = author.AudiobookMetadataProfileId;
             }
 
             author.ApplyChanges(updatedAuthor);

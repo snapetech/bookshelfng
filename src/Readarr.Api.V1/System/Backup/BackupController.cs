@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Crypto;
 using NzbDrone.Common.Disk;
@@ -17,16 +19,19 @@ namespace Readarr.Api.V1.System.Backup
     public class BackupController : Controller
     {
         private readonly IBackupService _backupService;
+        private readonly IEncryptedBackupService _encryptedBackupService;
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
 
-        private static readonly List<string> ValidExtensions = new () { ".zip", ".db", ".xml" };
+        private static readonly List<string> ValidExtensions = new () { ".zip", ".db", ".xml", ".enc" };
 
         public BackupController(IBackupService backupService,
+                            IEncryptedBackupService encryptedBackupService,
                             IAppFolderInfo appFolderInfo,
                             IDiskProvider diskProvider)
         {
             _backupService = backupService;
+            _encryptedBackupService = encryptedBackupService;
             _appFolderInfo = appFolderInfo;
             _diskProvider = diskProvider;
         }
@@ -91,6 +96,38 @@ namespace Readarr.Api.V1.System.Backup
             };
         }
 
+        [HttpPost("encrypted")]
+        public IActionResult CreateEncryptedBackup()
+        {
+            var passphrase = GetPassphrase();
+            var encryptedPath = Path.Combine(_appFolderInfo.TempFolder, $"bookshelf_backup_{Guid.NewGuid():N}.enc");
+            string backupPath = null;
+
+            try
+            {
+                backupPath = _backupService.CreateTemporaryBackup();
+                _encryptedBackupService.Encrypt(backupPath, encryptedPath, passphrase);
+
+                var stream = global::System.IO.File.OpenRead(encryptedPath);
+                Response.Headers.CacheControl = "no-store, no-cache";
+                Response.Headers.Pragma = "no-cache";
+                Response.OnCompleted(() =>
+                {
+                    DeleteTemporaryFile(backupPath);
+                    DeleteTemporaryFile(encryptedPath);
+                    return Task.CompletedTask;
+                });
+
+                return File(stream, "application/octet-stream", $"bookshelfng_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.enc");
+            }
+            catch
+            {
+                DeleteTemporaryFile(backupPath);
+                DeleteTemporaryFile(encryptedPath);
+                throw;
+            }
+        }
+
         [HttpPost("restore/upload")]
         [RequestSizeLimit(1000000000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 1000000000)]
@@ -104,20 +141,43 @@ namespace Readarr.Api.V1.System.Backup
             }
 
             var file = files.First();
-            var extension = Path.GetExtension(file.FileName);
+            var extension = Path.GetExtension(file.FileName) ?? string.Empty;
 
-            if (!ValidExtensions.Contains(extension))
+            if (!ValidExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
             {
                 throw new UnsupportedMediaTypeException($"Invalid extension, must be one of: {ValidExtensions.Join(", ")}");
             }
 
-            var path = Path.Combine(_appFolderInfo.TempFolder, $"readarr_backup_restore{extension}");
+            var path = Path.Combine(_appFolderInfo.TempFolder, $"readarr_backup_restore_{Guid.NewGuid():N}{extension}");
+            var decryptedPath = Path.Combine(_appFolderInfo.TempFolder, $"readarr_backup_restore_{Guid.NewGuid():N}.zip");
 
-            _diskProvider.SaveStream(file.OpenReadStream(), path);
-            _backupService.Restore(path);
+            try
+            {
+                _diskProvider.SaveStream(file.OpenReadStream(), path);
 
-            // Cleanup restored file
-            _diskProvider.DeleteFile(path);
+                if (extension.Equals(".enc", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        _encryptedBackupService.Decrypt(path, decryptedPath, GetPassphrase());
+                    }
+                    catch (InvalidDataException exception)
+                    {
+                        throw new BadRequestException(exception.Message);
+                    }
+
+                    _backupService.Restore(decryptedPath);
+                }
+                else
+                {
+                    _backupService.Restore(path);
+                }
+            }
+            finally
+            {
+                DeleteTemporaryFile(path);
+                DeleteTemporaryFile(decryptedPath);
+            }
 
             return new
             {
@@ -138,6 +198,26 @@ namespace Readarr.Api.V1.System.Backup
         private NzbDrone.Core.Backup.Backup GetBackup(int id)
         {
             return _backupService.GetBackups().SingleOrDefault(b => GetBackupId(b) == id);
+        }
+
+        private string GetPassphrase()
+        {
+            var passphrase = Request.Headers[EncryptedBackupService.PassphraseHeader].ToString();
+
+            if (!EncryptedBackupService.IsValidPassphrase(passphrase))
+            {
+                throw new BadRequestException($"A passphrase with at least {EncryptedBackupService.MinimumPassphraseLength} characters is required.");
+            }
+
+            return passphrase;
+        }
+
+        private void DeleteTemporaryFile(string path)
+        {
+            if (!string.IsNullOrEmpty(path) && _diskProvider.FileExists(path))
+            {
+                _diskProvider.DeleteFile(path);
+            }
         }
     }
 }

@@ -18,7 +18,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 
         public Decision IsSatisfiedBy(LocalEdition item, DownloadClientItem downloadClientItem)
         {
-            var qualityComparer = new QualityModelComparer(item.Edition.Book.Value.Author.Value.QualityProfile);
+            var qualityComparer = new QualityModelComparer(item.Edition.Book.Value.Author.Value.GetQualityProfileFor(item.LocalBooks.FirstOrDefault()?.Quality?.Quality));
 
             // min quality of all new tracks
             var newMinQuality = item.LocalBooks.Select(x => x.Quality).OrderBy(x => x, qualityComparer).First();

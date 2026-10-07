@@ -12,9 +12,10 @@ function createMapStateToProps() {
   return createSelector(
     (state) => state.search,
     (state) => state.settings.metadataProfiles,
+    (state) => state.settings.qualityProfiles,
     createDimensionsSelector(),
     createSystemStatusSelector(),
-    (searchState, metadataProfiles, dimensions, systemStatus) => {
+    (searchState, metadataProfiles, qualityProfiles, dimensions, systemStatus) => {
       const {
         isAdding,
         addError,
@@ -31,6 +32,8 @@ function createMapStateToProps() {
         isAdding,
         addError,
         showMetadataProfile: metadataProfiles.items.length > 2, // NONE (not allowed for authors) and one other
+        showFormatMetadataProfiles: metadataProfiles.items.length > 1,
+        showFormatQualityProfiles: qualityProfiles.items.length > 1,
         isSmallScreen: dimensions.isSmallScreen,
         validationErrors,
         validationWarnings,
@@ -63,6 +66,10 @@ class AddNewAuthorModalContentConnector extends Component {
       monitorNewItems,
       qualityProfileId,
       metadataProfileId,
+      ebookQualityProfileId,
+      audiobookQualityProfileId,
+      ebookMetadataProfileId,
+      audiobookMetadataProfileId,
       tags
     } = this.props;
 
@@ -73,6 +80,10 @@ class AddNewAuthorModalContentConnector extends Component {
       monitorNewItems: monitorNewItems.value,
       qualityProfileId: qualityProfileId.value,
       metadataProfileId: metadataProfileId.value,
+      ebookQualityProfileId: ebookQualityProfileId.value,
+      audiobookQualityProfileId: audiobookQualityProfileId.value,
+      ebookMetadataProfileId: ebookMetadataProfileId.value,
+      audiobookMetadataProfileId: audiobookMetadataProfileId.value,
       tags: tags.value,
       searchForMissingBooks
     });
@@ -99,6 +110,10 @@ AddNewAuthorModalContentConnector.propTypes = {
   monitorNewItems: PropTypes.object.isRequired,
   qualityProfileId: PropTypes.object,
   metadataProfileId: PropTypes.object,
+  ebookQualityProfileId: PropTypes.object,
+  audiobookQualityProfileId: PropTypes.object,
+  ebookMetadataProfileId: PropTypes.object,
+  audiobookMetadataProfileId: PropTypes.object,
   tags: PropTypes.object.isRequired,
   onModalClose: PropTypes.func.isRequired,
   setAuthorAddDefault: PropTypes.func.isRequired,

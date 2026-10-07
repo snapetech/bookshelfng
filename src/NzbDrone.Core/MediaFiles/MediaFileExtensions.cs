@@ -2,12 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.MediaFiles
 {
     public static class MediaFileExtensions
     {
+        private static readonly HashSet<string> _audiobookEditionFormats = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Audiobook", "Audio CD", "Audio Cassette", "Audible Audio", "CD-ROM", "MP3 CD"
+        };
+
         private static readonly Dictionary<string, Quality> _textExtensions;
         private static readonly Dictionary<string, Quality> _audioExtensions;
 
@@ -77,6 +83,19 @@ namespace NzbDrone.Core.MediaFiles
             return existing == incoming;
         }
 
+        public static bool IsAudioQuality(Quality quality)
+        {
+            return quality == Quality.UnknownAudio ||
+                   quality == Quality.MP3 ||
+                   quality == Quality.M4B ||
+                   quality == Quality.FLAC;
+        }
+
+        public static bool IsAudiobookEdition(Edition edition)
+        {
+            return edition != null && _audiobookEditionFormats.Contains(edition.Format ?? string.Empty);
+        }
+
         public static bool AreCompatibleFormats(Quality existingQuality,
                                                 string existingPath,
                                                 Quality incomingQuality,
@@ -93,14 +112,6 @@ namespace NzbDrone.Core.MediaFiles
             return string.Equals(Path.GetExtension(existingPath),
                                  Path.GetExtension(incomingPath),
                                  StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsAudioQuality(Quality quality)
-        {
-            return quality == Quality.UnknownAudio ||
-                   quality == Quality.MP3 ||
-                   quality == Quality.M4B ||
-                   quality == Quality.FLAC;
         }
 
         private static bool IsAudioFormat(Quality quality, string path)

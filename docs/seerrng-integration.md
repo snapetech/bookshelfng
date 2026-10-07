@@ -4,8 +4,9 @@ BookshelfNG can serve the ebook and audiobook entries in SeerrNG from one
 process, one database, and one media library. Configure both SeerrNG entries
 with the same BookshelfNG URL and API key. The service entries can still use
 different SeerrNG root folders. BookshelfNG stores ebook and audiobook paths
-separately, while quality and metadata profiles remain shared on the author
-record.
+separately. Each author can override quality and metadata profiles for ebooks
+and audiobooks independently; when an override is unset, BookshelfNG uses the
+existing author-level profile.
 
 BookshelfNG exposes `/api/v1/system/capabilities` with the
 `seerrng-bookshelf` contract. SeerrNG can use the format-scoped API aliases
