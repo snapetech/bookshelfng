@@ -11,6 +11,7 @@ using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Processes;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using RestSharp;
@@ -38,12 +39,12 @@ namespace NzbDrone.Test.Common
             Port = port;
         }
 
-        public void Start(bool enableAuth = false)
+        public void Start(bool enableAuth = false, AuthenticationRequiredType authenticationRequired = AuthenticationRequiredType.DisabledForLocalAddresses)
         {
             AppData = Path.Combine(TestContext.CurrentContext.TestDirectory, "_intg_" + TestBase.GetUID());
             Directory.CreateDirectory(AppData);
 
-            GenerateConfigFile(enableAuth);
+            GenerateConfigFile(enableAuth, authenticationRequired);
 
             string readarrConsoleExe;
             if (OsInfo.IsWindows)
@@ -178,7 +179,7 @@ namespace NzbDrone.Test.Common
             }
         }
 
-        private void GenerateConfigFile(bool enableAuth)
+        private void GenerateConfigFile(bool enableAuth, AuthenticationRequiredType authenticationRequired)
         {
             var configFile = Path.Combine(AppData, "config.xml");
 
@@ -191,7 +192,7 @@ namespace NzbDrone.Test.Common
                              new XElement(nameof(ConfigFileProvider.ApiKey), apiKey),
                              new XElement(nameof(ConfigFileProvider.LogLevel), "trace"),
                              new XElement(nameof(ConfigFileProvider.AuthenticationMethod), enableAuth ? "Forms" : "None"),
-                             new XElement(nameof(ConfigFileProvider.AuthenticationRequired), "DisabledForLocalAddresses"),
+                             new XElement(nameof(ConfigFileProvider.AuthenticationRequired), authenticationRequired),
                              new XElement(nameof(ConfigFileProvider.Port), Port)));
 
             var data = xDoc.ToString();
