@@ -42,11 +42,11 @@
       },
       "Selenium.Support": {
         "type": "Direct",
-        "requested": "[3.141.0, )",
-        "resolved": "3.141.0",
-        "contentHash": "F4sxMCXGyqWtbw5qsniJRgza2UsBnslHwFgNA2p7hPxvJhqg73lyXu/ZscJ7FSfRvq3eJrosysv92+4sZ3vWsg==",
+        "requested": "[4.50.0, )",
+        "resolved": "4.50.0",
+        "contentHash": "2XOu51CULudkhL3jVab6yJ42lEXBsuh2Ww7GntOluzCSCasmrdZXgGp4lnBuzKd4lqbrhv+CPq1p9x8KYuQ37Q==",
         "dependencies": {
-          "Selenium.WebDriver": "3.141.0"
+          "Selenium.WebDriver": "4.50.0"
         }
       },
       "Selenium.WebDriver.ChromeDriver": {
@@ -479,11 +479,8 @@
       },
       "Selenium.WebDriver": {
         "type": "Transitive",
-        "resolved": "3.141.0",
-        "contentHash": "wPqzXO3f79DzqauTZSzLMKiaBCN0Z2Mv7KvWP+hnV6EL88zh/pJJnFtdIR1X5wa3hsTOpF/bBJs45rz7kArsiA==",
-        "dependencies": {
-          "Newtonsoft.Json": "10.0.3"
-        }
+        "resolved": "4.50.0",
+        "contentHash": "4D7SYT9u25xHk7KYI7cyd1vQnv04jUAKkGWi2Ia6RUj2SDzYLhlTMZ7uknliS/HNu+WELewsugY/fLUaYpMVNA=="
       },
       "Servarr.FluentMigrator": {
         "type": "Transitive",
@@ -1138,6 +1135,11 @@
         "resolved": "7.1.0",
         "contentHash": "rWunOb6Dby0lcI82PohARcRbF+4x4wNKxnKRSHXhuwZMu8/cCS68DCfhceq4bv1gUEfoL5dWXHYnfxVvLQUN+Q=="
       },
+      "Selenium.WebDriver": {
+        "type": "Transitive",
+        "resolved": "4.50.0",
+        "contentHash": "4D7SYT9u25xHk7KYI7cyd1vQnv04jUAKkGWi2Ia6RUj2SDzYLhlTMZ7uknliS/HNu+WELewsugY/fLUaYpMVNA=="
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.12",
@@ -1194,6 +1196,11 @@
         "resolved": "7.1.0",
         "contentHash": "rWunOb6Dby0lcI82PohARcRbF+4x4wNKxnKRSHXhuwZMu8/cCS68DCfhceq4bv1gUEfoL5dWXHYnfxVvLQUN+Q=="
       },
+      "Selenium.WebDriver": {
+        "type": "Transitive",
+        "resolved": "4.50.0",
+        "contentHash": "4D7SYT9u25xHk7KYI7cyd1vQnv04jUAKkGWi2Ia6RUj2SDzYLhlTMZ7uknliS/HNu+WELewsugY/fLUaYpMVNA=="
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.12",
@@ -1249,6 +1256,11 @@
         "type": "Transitive",
         "resolved": "7.1.0",
         "contentHash": "rWunOb6Dby0lcI82PohARcRbF+4x4wNKxnKRSHXhuwZMu8/cCS68DCfhceq4bv1gUEfoL5dWXHYnfxVvLQUN+Q=="
+      },
+      "Selenium.WebDriver": {
+        "type": "Transitive",
+        "resolved": "4.50.0",
+        "contentHash": "4D7SYT9u25xHk7KYI7cyd1vQnv04jUAKkGWi2Ia6RUj2SDzYLhlTMZ7uknliS/HNu+WELewsugY/fLUaYpMVNA=="
       },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
