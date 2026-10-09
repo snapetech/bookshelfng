@@ -199,9 +199,9 @@
       },
       "RestSharp": {
         "type": "Direct",
-        "requested": "[106.15.0, )",
-        "resolved": "106.15.0",
-        "contentHash": "HM7ohR6AscxedNenrrl93DSZG6hvdnA7O+NHyCl/6ZKTfn8psQ9rRmUpcb9eWr+140vmfxoVemql0bUoeGEW3A=="
+        "requested": "[114.0.0, )",
+        "resolved": "114.0.0",
+        "contentHash": "8pDO4q+K8nIqXbvGCb9ciKcngj36pCXGRDzOYPEPoS2IvBIL+mejmUMAtSNALt/NkDc9LQmHvM95kdniLSbGtg=="
       },
       "Servarr.FluentMigrator.Runner": {
         "type": "Direct",
