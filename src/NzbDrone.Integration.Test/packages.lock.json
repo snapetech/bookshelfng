@@ -46,9 +46,9 @@
       },
       "NunitXml.TestLogger": {
         "type": "Direct",
-        "requested": "[3.1.20, )",
-        "resolved": "3.1.20",
-        "contentHash": "Pd9EYPNsQGaKYW+F+l7vTuvDjp8tzTYLqqfLM1Sz5WwLHhvnaJArQZjw/93WF3i07Rxb50WFVu0kjrjKCVFHDg=="
+        "requested": "[8.0.0, )",
+        "resolved": "8.0.0",
+        "contentHash": "2a6ZitqCLjb3Lj3aYYKAe+6zMx/HVXqNVd/fXehHA+cNKZRB4wCxHu+PCb2r6DxospNCisMNjkPu1DYhnR+jyg=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
